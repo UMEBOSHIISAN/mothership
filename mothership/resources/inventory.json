@@ -39,7 +39,7 @@
     {
       "path": "protocols/registry.json",
       "size": 2394,
-      "sha256": "761c9238e319fde89eac73ac5250767b982a5eafa698898d211377f4721428cd"
+      "sha256": "30de2f49bf5cc1c9b14b4237ada526e863c885ae9d927e7b7e30ead49ce61e86"
     },
     {
       "path": "protocols/schemas/frontdoor-task.intake.v0.schema.json",
@@ -48,8 +48,8 @@
     },
     {
       "path": "protocols/schemas/governance-handoff.1.0.schema.json",
-      "size": 891,
-      "sha256": "e59784d4da3368e97fcf7dd104d713169057bbad59047ad9d61f4bba572305d0"
+      "size": 1023,
+      "sha256": "d8a2cac7ef6884c3b45630a6752b1766dabfcbc7a1dc3bffb75391cd98202ce0"
     },
     {
       "path": "protocols/schemas/observation-snapshot.1.0.schema.json",
