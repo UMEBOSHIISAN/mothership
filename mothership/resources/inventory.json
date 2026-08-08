@@ -39,7 +39,7 @@
     {
       "path": "protocols/registry.json",
       "size": 2394,
-      "sha256": "2a2f58d7e0bbf73cbf6fc6dd2c2c95c699da8e4e5a31de5804a5b9e2f785fcbf"
+      "sha256": "9c1cab9871ea327febd4ebe016f83c2eb6c28f36523ab018a47b1abab4c4863b"
     },
     {
       "path": "protocols/schemas/frontdoor-task.intake.v0.schema.json",
@@ -48,18 +48,18 @@
     },
     {
       "path": "protocols/schemas/governance-handoff.1.0.schema.json",
-      "size": 1023,
-      "sha256": "d8a2cac7ef6884c3b45630a6752b1766dabfcbc7a1dc3bffb75391cd98202ce0"
+      "size": 1035,
+      "sha256": "c3e45e320d141e4364f465de86cb0af88d7a9034b62dd8fc05b87a3ab07d4c53"
     },
     {
       "path": "protocols/schemas/observation-snapshot.1.0.schema.json",
-      "size": 1243,
-      "sha256": "9c0b654c500f9a42a77f22e7a81fadd8efacccec13d2d901ec697b7c8788555a"
+      "size": 1247,
+      "sha256": "01ae28e560a85a1927eb8c2eaf46a4101c2f97caa0ca490ff5cfb23767a01534"
     },
     {
       "path": "protocols/schemas/router-manifest.1.0.schema.json",
-      "size": 1725,
-      "sha256": "d3246cd4e554b61ad219de4743a91f4222fd53453373f4e003b616d665509066"
+      "size": 1741,
+      "sha256": "de2183b6ca51afc5da53fd335e3131f403a50d039e17de6fbaa9e538d2233c91"
     }
   ]
 }

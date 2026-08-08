@@ -78,7 +78,7 @@ OWNERS = (
         schema_path="schemas/workflow-handoff.schema.json",
         bundled_schema_path="protocols/schemas/governance-handoff.1.0.schema.json",
         example_path="examples/handoff.valid.json",
-        commit="dbc030a28e13a3b4d46ef0f9fe037901e4455634",
+        commit="49804f7854dfe03d7aaa07c4400b909571a17a38",
     ),
     Owner(
         repository="mothership-router",
@@ -87,7 +87,7 @@ OWNERS = (
         schema_path="src/mothership_router/schema/router-manifest.1.0.schema.json",
         bundled_schema_path="protocols/schemas/router-manifest.1.0.schema.json",
         example_path="examples/router-manifest.json",
-        commit="d53d41961a99908f24a470737a3f49c88a53e28f",
+        commit="d129171eb20bdde5ce6a834e31cceb933c7af87d",
     ),
     Owner(
         repository="secretary-tui",
@@ -96,7 +96,7 @@ OWNERS = (
         schema_path="schemas/observation-snapshot.1.0.schema.json",
         bundled_schema_path="protocols/schemas/observation-snapshot.1.0.schema.json",
         example_path="examples/observation-snapshot.json",
-        commit="cbf524e8fe078eb7b71c1f781183a30b81225d07",
+        commit="18eeaefd21791584e3439b803ad2a9c675195eef",
     ),
 )
 
