@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "approval-event.schema.json",
+  "title": "Friend Mothership Core Approval Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "alias",
+    "invocation_id",
+    "registry_sha256",
+    "task_sha256",
+    "prompt_sha256",
+    "scope_sha256",
+    "invocation_sha256",
+    "recorded_at",
+    "expires_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{32}$"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "confirmation_failed",
+        "approval_granted",
+        "attempt_started",
+        "attempt_finished"
+      ]
+    },
+    "alias": {
+      "type": "string",
+      "enum": [
+        "claude-code-agent",
+        "codex-cli",
+        "ollama-local"
+      ]
+    },
+    "invocation_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "registry_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "task_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "prompt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "scope_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "invocation_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "recorded_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "confirmation_result": {
+      "type": "string",
+      "enum": [
+        "input-not-tty",
+        "output-not-tty",
+        "mismatch",
+        "eof"
+      ]
+    },
+    "approval_event_id": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{32}$"
+    },
+    "approval_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "attempt_started_event_id": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{32}$"
+    },
+    "exit_class": {
+      "type": "string",
+      "enum": [
+        "success",
+        "nonzero-exit",
+        "launch-error",
+        "timeout",
+        "output-limit-exceeded"
+      ]
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assessment.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "invocation_id", "classification", "reason_codes", "authority_effect"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "task_id": {"type": "string", "minLength": 1},
+    "invocation_id": {"type": "string", "minLength": 1},
+    "classification": {"enum": ["blocked", "human-review-required", "unclassified"]},
+    "reason_codes": {"type": "array", "minItems": 1, "items": {"enum": ["invalid_mode", "invalid_call_depth", "unsupported_risk_class", "elevated_risk_execute_blocked", "elevated_risk_human_review", "mutation_not_none", "missing_selected_alias_for_execute", "call_depth_exceeds_maximum", "retry_enabled", "fallback_enabled", "max_attempts_not_one", "missing_scope_for_execute", "read_only_capability_required", "no_authority_effect"]}, "uniqueItems": true},
+    "authority_effect": {"const": "none"}
+  }
+}

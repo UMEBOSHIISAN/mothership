@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "invocation_id",
+    "status",
+    "recommended_alias",
+    "selected_alias",
+    "actual_alias",
+    "authority_effect"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "task_id": {"type": "string", "minLength": 1},
+    "invocation_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["recommended", "no_eligible_alias", "human_review_required"]},
+    "recommended_alias": {"type": ["string", "null"], "minLength": 1},
+    "selected_alias": {"const": null},
+    "actual_alias": {"const": null},
+    "authority_effect": {"const": "none"}
+  }
+}

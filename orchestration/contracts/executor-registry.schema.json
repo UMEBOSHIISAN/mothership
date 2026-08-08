@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "executor-registry.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claude-code-agent", "codex-cli", "ollama-local"],
+  "properties": {
+    "claude-code-agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter_id", "state", "capabilities"],
+      "properties": {
+        "adapter_id": {"const": "claude-code-agent"},
+        "state": {"const": "staged"},
+        "capabilities": {"const": ["read-only", "advisory"]}
+      }
+    },
+    "codex-cli": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter_id", "state", "capabilities"],
+      "properties": {
+        "adapter_id": {"const": "codex-cli"},
+        "state": {"const": "staged"},
+        "capabilities": {"const": ["read-only", "advisory"]}
+      }
+    },
+    "ollama-local": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter_id", "state", "capabilities", "model_alias"],
+      "properties": {
+        "adapter_id": {"const": "ollama-local"},
+        "state": {"const": "staged"},
+        "capabilities": {"const": ["read-only", "advisory"]},
+        "model_alias": {"const": "friend-core-advisory"}
+      }
+    }
+  }
+}

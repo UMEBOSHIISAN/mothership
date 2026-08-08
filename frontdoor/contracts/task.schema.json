@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "caller_id",
+    "invocation_id",
+    "requested_action",
+    "risk_class",
+    "mutation_class",
+    "required_capabilities",
+    "cost_ceiling_usd_micros",
+    "context_files",
+    "max_context_files",
+    "max_context_bytes",
+    "max_attempts",
+    "retry",
+    "fallback",
+    "prompt_file"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "task_id": {"type": "string", "minLength": 1},
+    "caller_id": {"type": "string", "minLength": 1},
+    "invocation_id": {"type": "string", "minLength": 1},
+    "requested_action": {"enum": ["advisory", "dry-run", "execute-request"]},
+    "risk_class": {"enum": ["low", "medium", "high", "unknown"]},
+    "mutation_class": {"const": "none"},
+    "required_capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "cost_ceiling_usd_micros": {"type": "integer", "minimum": 0},
+    "context_files": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "max_context_files": {"type": "integer", "minimum": 1, "maximum": 32},
+    "max_context_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
+    "max_attempts": {"type": "integer", "const": 1},
+    "retry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {"enabled": {"const": false}}
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {"enabled": {"const": false}}
+    },
+    "prompt_file": {"type": "string", "minLength": 1}
+  }
+}

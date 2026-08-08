@@ -1,0 +1,18 @@
+{
+  "claude-code-agent": {
+    "adapter_id": "claude-code-agent",
+    "state": "staged",
+    "capabilities": ["read-only", "advisory"]
+  },
+  "codex-cli": {
+    "adapter_id": "codex-cli",
+    "state": "staged",
+    "capabilities": ["read-only", "advisory"]
+  },
+  "ollama-local": {
+    "adapter_id": "ollama-local",
+    "state": "staged",
+    "capabilities": ["read-only", "advisory"],
+    "model_alias": "friend-core-advisory"
+  }
+}

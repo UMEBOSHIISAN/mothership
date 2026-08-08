@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "invocation-request.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "invocation_id",
+    "task_ref",
+    "task_sha256",
+    "registry_sha256",
+    "prompt_sha256",
+    "scope_sha256",
+    "selected_alias",
+    "execute",
+    "task_root",
+    "run_root"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "invocation_id": {"type": "string", "minLength": 1},
+    "task_ref": {"type": "string", "minLength": 1},
+    "task_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "registry_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "prompt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scope_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "selected_alias": {"type": "string", "minLength": 1},
+    "execute": {"type": "boolean"},
+    "task_root": {"type": "string", "minLength": 1},
+    "run_root": {"type": "string", "minLength": 1}
+  }
+}
