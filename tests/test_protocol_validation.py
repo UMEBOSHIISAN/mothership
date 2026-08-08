@@ -157,6 +157,23 @@ class ProtocolValidationTests(unittest.TestCase):
                 self.assertNotIn("never-print", message)
                 self.assertNotIn(private_prefix, message)
 
+    def test_direct_api_rejects_non_json_and_hostile_keys_without_reflection(self) -> None:
+        from mothership.protocols import ProtocolError, validate_protocol
+
+        private_key = "/" + "private/never-reflect"
+        cases = (
+            {**VALID["governance-handoff"], 1: "invalid-key"},
+            {**VALID["governance-handoff"], private_key: "invalid-key"},
+            {**VALID["governance-handoff"], "meta": {1: "invalid-key"}},
+        )
+        for document in cases:
+            with self.subTest(keys=tuple(document)):
+                with self.assertRaises(ProtocolError) as caught:
+                    validate_protocol("governance-handoff", document)
+                message = str(caught.exception)
+                self.assertNotIn("never-reflect", message)
+                self.assertNotIn(private_key, message)
+
     def test_file_loader_rejects_unsafe_and_malformed_inputs(self) -> None:
         from mothership.protocols import ProtocolError, validate_protocol_file
 

@@ -18,6 +18,16 @@ from .protocols import ProtocolError, list_protocols, validate_protocol_file
 from .verify import verify_installation
 
 
+_PROTOCOL_KINDS = frozenset(
+    {
+        "frontdoor-task",
+        "governance-handoff",
+        "router-manifest",
+        "observation-snapshot",
+    }
+)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mothership",
@@ -124,7 +134,7 @@ def command_protocol_validate(
         return 1, {
             "schema_version": "mothership.protocol-validation.v1",
             "status": "failed",
-            "kind": kind if type(kind) is str else "invalid",
+            "kind": kind if type(kind) is str and kind in _PROTOCOL_KINDS else "unknown",
             "error": "protocol_validation_failed",
             "authority_effect": False,
             "execution_effect": False,

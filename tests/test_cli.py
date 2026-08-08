@@ -96,6 +96,12 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("never-print", serialized)
         self.assertNotIn(str(path), serialized)
 
+        hostile_kind = "/" + "private/never-reflect"
+        exit_code, result = command_protocol_validate(hostile_kind, path)
+        self.assertEqual(1, exit_code)
+        self.assertEqual("unknown", result["kind"])
+        self.assertNotIn("never-reflect", json.dumps(result))
+
     def test_doctor_uses_only_fixed_probes_and_closed_results(self) -> None:
         from mothership.cli import command_doctor
 
