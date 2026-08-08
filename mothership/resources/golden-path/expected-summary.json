@@ -1,0 +1,15 @@
+{
+  "schema_version": "mothership.demo.v1",
+  "status": "passed",
+  "task_id": "demo-review-001",
+  "capability": "code-review",
+  "stages": [
+    {"kind": "frontdoor-task", "schema_version": "intake.v0", "valid": true},
+    {"kind": "governance-handoff", "schema_version": "1.0", "valid": true},
+    {"kind": "router-manifest", "schema_version": "1.0", "valid": true},
+    {"kind": "observation-snapshot", "schema_version": "1.0", "valid": true}
+  ],
+  "authority_effect": false,
+  "execution_effect": false,
+  "claim": "protocol-composition-only"
+}

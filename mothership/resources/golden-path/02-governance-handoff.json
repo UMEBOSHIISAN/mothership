@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "task_id": "demo-review-001",
+  "capability": "code-review",
+  "risk": "low",
+  "token_budget": 4000,
+  "evidence_references": ["evidence:demo-change-v1"]
+}
