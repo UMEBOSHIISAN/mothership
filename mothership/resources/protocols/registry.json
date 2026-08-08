@@ -1,0 +1,57 @@
+{
+  "schema_version": "mothership.protocol-registry.v1",
+  "protocols": [
+    {
+      "kind": "frontdoor-task",
+      "schema_version": "intake.v0",
+      "owner_repository": "UMEBOSHIISAN/agent-frontdoor",
+      "upstream_source_path": "src/frontdoor/schema/intake.v0.json",
+      "bundled_schema_path": "protocols/schemas/frontdoor-task.intake.v0.schema.json",
+      "schema_sha256": "6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e",
+      "predecessors": [],
+      "successors": ["governance-handoff"],
+      "authority_capable": false,
+      "execution_capable": false,
+      "frozen_in_mothership": "0.2.0"
+    },
+    {
+      "kind": "governance-handoff",
+      "schema_version": "1.0",
+      "owner_repository": "UMEBOSHIISAN/workflow-governance-model",
+      "upstream_source_path": "schemas/workflow-handoff.schema.json",
+      "bundled_schema_path": "protocols/schemas/governance-handoff.1.0.schema.json",
+      "schema_sha256": "e59784d4da3368e97fcf7dd104d713169057bbad59047ad9d61f4bba572305d0",
+      "predecessors": ["frontdoor-task"],
+      "successors": ["router-manifest"],
+      "authority_capable": false,
+      "execution_capable": false,
+      "frozen_in_mothership": "0.2.0"
+    },
+    {
+      "kind": "router-manifest",
+      "schema_version": "1.0",
+      "owner_repository": "UMEBOSHIISAN/mothership-router",
+      "upstream_source_path": "src/mothership_router/schema/router-manifest.1.0.schema.json",
+      "bundled_schema_path": "protocols/schemas/router-manifest.1.0.schema.json",
+      "schema_sha256": "2f1c244ca62ef68d2bcb5ea8531002991be812c5d7b31e101990500d5df8ffa5",
+      "predecessors": ["governance-handoff"],
+      "successors": ["observation-snapshot"],
+      "authority_capable": false,
+      "execution_capable": false,
+      "frozen_in_mothership": "0.2.0"
+    },
+    {
+      "kind": "observation-snapshot",
+      "schema_version": "1.0",
+      "owner_repository": "UMEBOSHIISAN/secretary-tui",
+      "upstream_source_path": "schemas/observation-snapshot.1.0.schema.json",
+      "bundled_schema_path": "protocols/schemas/observation-snapshot.1.0.schema.json",
+      "schema_sha256": "f86e5ec5ccd407752557e9930def9ab8096449d330df1b2707e1d11ef41b4a3a",
+      "predecessors": ["router-manifest"],
+      "successors": [],
+      "authority_capable": false,
+      "execution_capable": false,
+      "frozen_in_mothership": "0.2.0"
+    }
+  ]
+}
