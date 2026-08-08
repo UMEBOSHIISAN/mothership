@@ -131,7 +131,7 @@ class DocumentationCommandTests(unittest.TestCase):
 
     def test_release_checklist_uses_the_same_portable_test_command(self) -> None:
         text = RELEASE_CHECKLIST.read_text("utf-8")
-        portable = "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v"
+        portable = "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v"
         self.assertIn(f"`{portable}`", text)
         self.assertNotIn("/opt/homebrew", text)
 

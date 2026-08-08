@@ -82,4 +82,3 @@ Do not claim any of the following from the present evidence:
 Before submission, add an independently authored or blinded request corpus, inter-rater agreement for labels, baseline comparisons, operating-system and Python-version replication, ablation studies for each boundary check, and an external reproduction by a separate operator. Report confidence intervals once the sample design makes them meaningful; do not compute them over the current hand-authored conformance cases as if they were an independent sample.
 
 The strongest near-term venue fit is a systems, software-engineering, AI tooling, or artifact-evaluation track. Framing it as an ML-accuracy paper would undersell the actual contribution and overstate what has been measured.
-
