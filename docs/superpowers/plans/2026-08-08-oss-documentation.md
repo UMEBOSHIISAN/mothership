@@ -70,7 +70,7 @@ Run `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v`. Expect
 
 - [ ] **Step 2: Check documentation integrity**
 
-Search `README.md`, `docs`, `config`, and `assets` for `/Users/`, `/private/`, `ghp_`, `github_pat_`, or private-key markers. Verify Markdown targets exist and all five guides have a first-level heading; verify the README has a Mermaid code fence.
+Search `README.md`, `docs`, `config`, and `assets` for user-home absolute paths, system-temporary absolute paths, GitHub personal-token markers, or private-key markers. Verify Markdown targets exist and all five guides have a first-level heading; verify the README has a Mermaid code fence.
 
 - [ ] **Step 3: Correct and persist verified documentation**
 
