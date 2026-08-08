@@ -399,5 +399,98 @@ class SupportingDocumentationTests(unittest.TestCase):
             self.assertIn(excluded, roadmap)
 
 
+class JapaneseGuideTests(unittest.TestCase):
+    JAPANESE_H2 = (
+        "クイックスタート",
+        "60秒で全体を確認",
+        "課題",
+        "Mothershipの答え",
+        "アーキテクチャ",
+        "導入パス",
+        "安全保証",
+        "Mothershipではないもの",
+        "比較",
+        "公開API",
+        "エコシステムプロトコル",
+        "互換性",
+        "ドキュメント",
+        "コントリビューション",
+        "セキュリティ",
+        "ロードマップ",
+        "ライセンス",
+    )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.english = README.read_text("utf-8")
+        cls.japanese = (ROOT / "docs/ja/README.md").read_text("utf-8")
+
+    def test_japanese_product_story_has_complete_section_parity(self) -> None:
+        headings = tuple(
+            line.removeprefix("## ")
+            for line in self.japanese.splitlines()
+            if line.startswith("## ")
+        )
+        self.assertEqual(self.JAPANESE_H2, headings)
+
+    def test_quickstart_and_demo_bytes_match_english_contract(self) -> None:
+        self.assertEqual(
+            QUICKSTART,
+            tuple(_marked_fence(self.japanese, "quickstart-ja", "sh").splitlines()),
+        )
+        japanese_demo = _marked_fence(self.japanese, "demo-output-ja", "json")
+        english_demo = _marked_fence(self.english, "demo-output", "json")
+        self.assertEqual(english_demo, japanese_demo)
+        self.assertEqual(
+            (GENERATED / "demo-output.json").read_text("utf-8").rstrip("\n"),
+            japanese_demo,
+        )
+
+    def test_cross_language_machine_facts_are_identical(self) -> None:
+        for fact in (
+            "Python 3.12+",
+            "0.2.0",
+            "frontdoor-task",
+            "governance-handoff",
+            "router-manifest",
+            "observation-snapshot",
+            "authority_effect: false",
+            "execution_effect: false",
+            "claude-code-agent",
+            "codex-cli",
+            "ollama-local",
+        ):
+            with self.subTest(fact=fact):
+                self.assertIn(fact, self.english)
+                self.assertIn(fact, self.japanese)
+        for companion in (
+            "https://github.com/UMEBOSHIISAN/agent-frontdoor",
+            "https://github.com/UMEBOSHIISAN/workflow-governance-model",
+            "https://github.com/UMEBOSHIISAN/mothership-router",
+            "https://github.com/UMEBOSHIISAN/secretary-tui",
+        ):
+            self.assertIn(companion, self.japanese)
+        positions = [self.japanese.index(kind) for kind in (
+            "frontdoor-task",
+            "governance-handoff",
+            "router-manifest",
+            "observation-snapshot",
+        )]
+        self.assertEqual(sorted(positions), positions)
+
+    def test_japanese_guide_preserves_claim_limits(self) -> None:
+        for phrase in (
+            "モデルを呼び出しません",
+            "権限を与えません",
+            "自動インストールしません",
+            "合成コーパス",
+            "本番精度ではありません",
+        ):
+            self.assertIn(phrase, self.japanese)
+        self.assertNotIn("/Users/", self.japanese)
+        self.assertNotIn("/" + "private/", self.japanese)
+        self.assertNotIn("file://", self.japanese.casefold())
+
+
 if __name__ == "__main__":
     unittest.main()
