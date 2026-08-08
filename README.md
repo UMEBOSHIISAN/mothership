@@ -12,7 +12,7 @@
   <img src="assets/mothership-banner.png" alt="A whale-shaped mothership travelling through a dark star field" width="100%">
 </p>
 
-[日本語で読む](docs/ja/README.md) · [Architecture](docs/architecture.md) · [Installation](docs/installation.md) · [Security model](docs/security.md)
+[日本語で読む](docs/ja/README.md) · [Architecture](docs/architecture.md) · [Installation](docs/installation.md) · [Security model](docs/security.md) · [Composition guide](docs/composition.md) · [Ecosystem roadmap](docs/ecosystem-roadmap.md)
 
 Mothership is a local, reviewable foundation for building an AI coding environment that can be recreated across machines. It gives Codex CLI, Claude Code, and Ollama Local a common safety layer: closed contracts, fail-closed validation, advisory routing, approval-ledger primitives, local diagnostics, and configuration templates.
 
@@ -215,6 +215,8 @@ No. [Agent Frontdoor](https://github.com/UMEBOSHIISAN/agent-frontdoor), [Secreta
 | Understand components and boundaries | [Architecture](docs/architecture.md) |
 | Install, verify, update, or remove Mothership | [Installation and lifecycle](docs/installation.md) |
 | Review credential and authority boundaries | [Security model](docs/security.md) |
+| Compose Mothership with independent companion repositories | [Composition guide](docs/composition.md) |
+| See released and planned ecosystem work | [Ecosystem roadmap](docs/ecosystem-roadmap.md) |
 | Read a concise Japanese introduction | [日本語ガイド](docs/ja/README.md) |
 | Check release contents | [Release checklist](RELEASE_CHECKLIST.md) and [checksum manifest](SHA256SUMS) |
 
