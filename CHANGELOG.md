@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 - 2026-08-08
+
+- Linked the released Workflow Governance Model as an optional governance layer.
+- Clarified that its candidate recommendation remains advisory and non-executing.
+
 ## 0.1.1 - 2026-08-08
 
 - Added composition guidance and the planned governance roadmap. Companion

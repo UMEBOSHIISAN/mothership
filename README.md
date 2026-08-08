@@ -142,6 +142,7 @@ Mothership is stronger when combined with other focused tools. These projects ar
 ```mermaid
 flowchart LR
     frontdoor[Agent Frontdoor\npreflight task cards] --> mothership[Mothership\nportable control plane]
+    governance[Workflow Governance Model\nevidence and authority validation] --> mothership
     mothership --> secretary[Secretary TUI\nread-only observability]
     vibes[Git Vibes\noptional human ritual] -.-> mothership
     garden[Toygarden\nadjacent creative toolkit] -.-> mothership
@@ -153,6 +154,7 @@ flowchart LR
 | Role | Repository | How it composes |
 | --- | --- | --- |
 | **Preflight boundary** | [Agent Frontdoor](https://github.com/UMEBOSHIISAN/agent-frontdoor) | Turns an informal request into a bounded, fail-closed task card before any downstream system acts |
+| **Governance layer** | [Workflow Governance Model](https://github.com/UMEBOSHIISAN/workflow-governance-model) | Validates portable evidence and authority trails; its candidate recommender is advisory and never executes work |
 | **Portable control plane** | **Mothership** | Holds the common contracts, advisory routing, diagnostics, and authority boundary |
 | **Read-only observability** | [Secretary TUI](https://github.com/UMEBOSHIISAN/secretary-tui) | Presents local operational state without changing it |
 | **Human-friendly rituals** | [Git Vibes](https://github.com/UMEBOSHIISAN/git-vibes) | Adds non-blocking commit feedback outside the control plane |
