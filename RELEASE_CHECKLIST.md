@@ -26,6 +26,17 @@ not publish, deploy, install, or otherwise distribute Mothership.
 ## Verification and integrity
 
 - [ ] Run `PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3 -m unittest discover -s tests -v`.
+- [ ] Build exactly one wheel and one source distribution in a clean temporary
+  source copy.
+- [ ] Inspect the wheel manifest, metadata, package resources, and runtime
+  dependency set with `tests.test_distribution`.
+- [ ] Install the wheel without dependencies in a fresh environment and run
+  the console-script and `python -m mothership` forms outside the repository.
+- [ ] Install the source tree in editable mode in a separate fresh environment
+  and compare all read-only command bytes with the wheel installation.
+- [ ] Repeat the clone-first regression suite without installing Mothership.
+- [ ] Verify `mothership verify` passes from the installed wheel and that its
+  packaged resource inventory is complete.
 - [ ] Generate `SHA256SUMS` after all package files are finalized.
 - [ ] Verify the manifest with `shasum -a 256 -c SHA256SUMS`.
 - [ ] Record the exact commands and results in the delivery report.
