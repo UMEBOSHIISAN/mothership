@@ -1,6 +1,6 @@
 # Mothership 日本語ガイド
 
-[English README](../../README.md) · [設計](../architecture.md) · [導入と更新](../installation.md) · [安全モデル](../security.md)
+[English README](../../README.md) · [設計](../architecture.md) · [導入と更新](../installation.md) · [安全モデル](../security.md) · [構成ガイド](../composition.md)
 
 Mothership は、Codex CLI・Claude Code・Ollama Local などをまたぐ AI 開発環境のための、**安全第一の共通コントロール基盤**です。閉じた契約、失敗時に止まる検証、助言的ルーティング、承認ログの部品、ローカル診断、設定テンプレートを提供します。Codex 専用ではありません。
 
@@ -28,6 +28,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 - トークン、認証情報、個人情報、端末固有のパスを Git に入れないでください。
 - 外部操作・実行・承認は Mothership の外で、必ず人が判断してください。
 
-詳しい構成は [Architecture](../architecture.md)、導入・更新・削除は [Installation and lifecycle](../installation.md)、秘密情報と権限境界は [Security model](../security.md) を参照してください。
+詳しい構成は [Architecture](../architecture.md)、導入・更新・削除は [Installation and lifecycle](../installation.md)、秘密情報と権限境界は [Security model](../security.md) を参照してください。他の公開リポジトリと人が確認しながら組み合わせる場合は、[構成ガイド](../composition.md) を参照してください。
 
 英語 README には、機能一覧、移植できるもの／ローカルに残すもの、他 OSS との組み合わせ方、FAQ をまとめています：[README](../../README.md#capabilities)。
