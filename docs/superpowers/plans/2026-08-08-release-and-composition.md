@@ -25,7 +25,7 @@
 - [ ] Create `docs/composition.md` with four sections: Mothership alone; Agent Frontdoor then Mothership; Mothership then Secretary TUI; optional Git Vibes and Toygarden. Each section explicitly says repositories are installed, configured, and reviewed separately.
 - [ ] Create `docs/ecosystem-roadmap.md` with a released Mothership row and a planned, clean-room Workflow Governance Model row. Describe Decision Record Gate, Authority Boundary Framework, and Context & Memory Trust Patterns as future generic templates requiring anonymization and independent verification.
 - [ ] Link both files from the English README; add the composition-guide link to the Japanese guide.
-- [ ] Run `rg -n '/Users/|/private/|ssh |cron|launchd|discord|woocommerce|ghp_|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' docs/composition.md docs/ecosystem-roadmap.md` and expect no findings.
+- [ ] Run a scan for private absolute paths, operational-service names, tokens, and private-key markers in both new documents; expect no findings.
 - [ ] Commit with `git add README.md docs/composition.md docs/ecosystem-roadmap.md docs/ja/README.md && git commit -m "docs: add composition and ecosystem guidance"`.
 
 ### Task 2: Prepare reproducible release metadata
