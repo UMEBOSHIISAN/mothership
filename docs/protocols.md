@@ -64,6 +64,24 @@ observed system.
 The bundled fixtures share one fictional task identifier and capability. `mothership demo` validates each schema, the
 ordered edges, continuity, and non-escalating effects. Its only claim is `protocol-composition-only`.
 
+## Development companion audit
+
+`tools/check_companion_conformance.py` audits source owners before Mothership records compatibility. It requires four
+explicit, normalized repository roots in protocol order and rejects symbolic links, traversal, missing artifacts, wrong
+owners, stale commits, schema drift, example drift, and effect escalation. It never searches the filesystem for a
+repository.
+
+```text
+python tools/check_companion_conformance.py \
+  --frontdoor-root /abs/path/to/agent-frontdoor \
+  --wgm-root /abs/path/to/workflow-governance-model \
+  --router-root /abs/path/to/mothership-router \
+  --secretary-root /abs/path/to/secretary-tui
+```
+
+Success is one canonical, path-free JSON report. The command pins the exact commit set listed in
+[Compatibility](compatibility.md); a different commit fails closed until the suite is reviewed and deliberately updated.
+
 ## Schema update procedure
 
 1. The semantic owner publishes and documents a versioned schema.

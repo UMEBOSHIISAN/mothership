@@ -186,6 +186,10 @@ registryは次の順序を固定します。
 Mothershipはcomposition snapshotを所有しますが、各domain semanticsはowner側に残ります。schema変更時はowner release、
 bundled snapshot、digest、fixture、compatibility table、conformance testを同時に更新します。
 
+開発用companion auditは4つのrepository rootを明示的に受け取り、exact commit、owner schema bytes、public example、
+chain continuityを検証します。repositoryを自動探索しません。今回検証したcommitは
+[互換性matrix](../compatibility.md)に固定しており、remoteから到達可能になるまではpublication pendingです。
+
 ## 互換性
 
 - 対応宣言: Python 3.12+
