@@ -63,11 +63,13 @@ class PackageEntrypointTests(unittest.TestCase):
 
     def test_main_accepts_explicit_argv(self) -> None:
         from mothership.cli import main
+        from mothership.verify import verify_installation
+        from orchestration.lib.canonical import canonical_json_bytes
 
         with mock.patch("sys.stdout", new_callable=StringIO) as stdout:
-            self.assertEqual(1, main(["verify"]))
+            self.assertEqual(0, main(["verify"]))
         self.assertEqual(
-            '{"command":"verify","status":"not_implemented"}\n',
+            canonical_json_bytes(verify_installation()).decode("utf-8") + "\n",
             stdout.getvalue(),
         )
 
