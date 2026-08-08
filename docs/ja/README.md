@@ -2,7 +2,9 @@
 
 [English README](../../README.md) · [設計](../architecture.md) · [導入と更新](../installation.md) · [安全モデル](../security.md)
 
-Mothership は、AI 支援の開発ハーネスを安全に確認・配布するためのローカル基盤です。契約の検証、助言的なルーティング、ローカル診断、設定テンプレートを提供しますが、実行権限を与えたり、外部操作を自動で行ったりはしません。
+Mothership は、Codex CLI・Claude Code・Ollama Local などをまたぐ AI 開発環境のための、**安全第一の共通コントロール基盤**です。閉じた契約、失敗時に止まる検証、助言的ルーティング、承認ログの部品、ローカル診断、設定テンプレートを提供します。Codex 専用ではありません。
+
+自分の Mac、別の Mac、チームメンバー、専用 mini 機へ環境の土台を再現するときに、「共有すべき構造」と「各マシンに残すべき秘密情報・実行権限」を分けられます。Mothership 自体は実行権限を与えず、モデル呼び出しや外部操作も自動では行いません。
 
 ![暗い星空を進むクジラ型の母船](../../assets/mothership-banner.png)
 
@@ -27,3 +29,5 @@ python3 -m unittest discover -s tests -v
 - 外部操作・実行・承認は Mothership の外で、必ず人が判断してください。
 
 詳しい構成は [Architecture](../architecture.md)、導入・更新・削除は [Installation and lifecycle](../installation.md)、秘密情報と権限境界は [Security model](../security.md) を参照してください。
+
+英語 README には、機能一覧、移植できるもの／ローカルに残すもの、他 OSS との組み合わせ方、FAQ をまとめています：[README](../../README.md#capabilities)。
