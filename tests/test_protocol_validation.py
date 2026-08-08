@@ -164,6 +164,14 @@ class ProtocolValidationTests(unittest.TestCase):
             "bool_integer": ("governance-handoff", {**VALID["governance-handoff"], "token_budget": True}),
             "minimum": ("governance-handoff", {**VALID["governance-handoff"], "token_budget": 0}),
             "enum": ("governance-handoff", {**VALID["governance-handoff"], "risk": "urgent"}),
+            "governance_unc_task": (
+                "governance-handoff",
+                {**VALID["governance-handoff"], "task_id": r"\\server\share\private"},
+            ),
+            "governance_control": (
+                "governance-handoff",
+                {**VALID["governance-handoff"], "capability": "code\nreview"},
+            ),
             "pattern": ("router-manifest", {**VALID["router-manifest"], "registry_sha256": "BAD"}),
             "router_path_task": (
                 "router-manifest",
@@ -171,7 +179,7 @@ class ProtocolValidationTests(unittest.TestCase):
             ),
             "router_path_capability": (
                 "router-manifest",
-                {**VALID["router-manifest"], "capability": "~/private.json"},
+                {**VALID["router-manifest"], "capability": "../private.json"},
             ),
             "router_path_alias": (
                 "router-manifest",
@@ -179,7 +187,7 @@ class ProtocolValidationTests(unittest.TestCase):
             ),
             "router_path_reason": (
                 "router-manifest",
-                {**VALID["router-manifest"], "reasons": ["/private/reason"]},
+                {**VALID["router-manifest"], "reasons": [r"\\?\C:\private"]},
             ),
             "one_of": ("router-manifest", {**VALID["router-manifest"], "task_id": 1}),
             "authority": ("router-manifest", {**VALID["router-manifest"], "authority_effect": True}),
@@ -189,7 +197,7 @@ class ProtocolValidationTests(unittest.TestCase):
             ),
             "observation_path_task": (
                 "observation-snapshot",
-                {**VALID["observation-snapshot"], "task_id": "/Users/example/private.json"},
+                {**VALID["observation-snapshot"], "task_id": "private/path.json"},
             ),
         }
         for name, (kind, document) in cases.items():

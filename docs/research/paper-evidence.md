@@ -56,6 +56,36 @@ The labeled-corpus outcomes asserted by that suite were:
 
 The fixture bytes and metric test were verified to be identical between the measured checkout and that public commit. These results are exact agreement on an internal, synthetic, labeled corpus. They are not estimates of performance on naturally occurring user requests.
 
+## Reproducible four-repository conformance measurements
+
+Mothership's explicit companion auditor was run against four isolated local
+checkouts pinned to exact commits:
+
+| Owner | Tested commit | Native verification |
+| --- | --- | --- |
+| Agent Frontdoor | `296c49be801b6573abf54daa81b828df95e8e84f` | 628/628 pytest cases passed |
+| Workflow Governance Model | `49804f7854dfe03d7aaa07c4400b909571a17a38` | 15/15 unittest cases passed |
+| Mothership Router | `d129171eb20bdde5ce6a834e31cceb933c7af87d` | 17/17 unittest cases passed |
+| Secretary TUI | `18eeaefd21791584e3439b803ad2a9c675195eef` | 18/18 top-level Go tests passed; race, vet, and build passed |
+
+The closed audit result was:
+
+| Measurement | Result | Denominator and meaning |
+| --- | ---: | --- |
+| Owner manifests accepted | 4/4 | Every pinned repository supplied the exact closed Mothership 0.2 manifest |
+| Owner schema digests matched | 4/4 | Every manifest digest matched its owner schema bytes |
+| Bundled schema byte identity | 4/4 | Every Mothership schema snapshot was byte-identical to its owner |
+| Public examples accepted | 4/4 | Every pinned owner example validated against its declared protocol |
+| Cross-repository chain | passed | Router input matched its owner example and shared task identity/capability/status remained consistent |
+| Authority effects | 0/4 true | All four owner manifests explicitly reported `false` |
+| Execution effects | 0/4 true | All four owner manifests explicitly reported `false` |
+
+The audit requires four explicit normalized roots, exact repository order, and
+exact commit identity; it does not discover repositories. Its success report is
+canonical, path-free JSON. These measurements establish compatibility for the
+four listed local commits only. They do not establish that those commits have
+been pushed, tagged, released, or independently reproduced.
+
 ## Candidate paper claims
 
 The evidence currently supports these bounded claims:
