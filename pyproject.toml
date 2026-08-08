@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mothership-control-plane"
+dynamic = ["version"]
+description = "Portable, safety-first control-plane primitives for AI coding environments"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = []
+
+[project.scripts]
+mothership = "mothership.cli:main"
+
+[tool.setuptools.dynamic]
+version = {file = ["VERSION"]}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mothership*", "orchestration*", "frontdoor*", "safety*", "evidence*"]
+
+[tool.setuptools.package-data]
+mothership = ["resources/*.json", "resources/**/*.json"]
