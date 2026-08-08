@@ -1,50 +1,59 @@
 # Composition guide
 
-Mothership can stand on its own or sit beside other focused tools. The
-companion repositories are independent projects: install, configure, and
-review each repository separately. This guide describes human-led adoption
-choices, not package dependencies, automatic setup, runtime integrations,
-shared credentials, or cross-repository authority.
+Mothership is the **installable hub**; Agent Frontdoor, Workflow Governance Model, Mothership Router, and Secretary TUI
+are **independently adoptable** companions. Composition means exchanging explicitly supplied, versioned metadata. It
+does not mean automatic installation, process invocation, shared credentials, or authority transfer.
+
+## Ordered handoff
+
+| Stage | Protocol | Owner | Meaning |
+| ---: | --- | --- | --- |
+| 1 | `frontdoor-task` | Agent Frontdoor | bounded task intake |
+| 2 | `governance-handoff` | Workflow Governance Model | portable evidence relationship |
+| 3 | `router-manifest` | Mothership Router | approval-bound dry-run recommendation |
+| 4 | `observation-snapshot` | Secretary TUI | sanitized read-only display data |
+
+The Router and observation documents carry `authority_effect: false` and `execution_effect: false`. A successful
+Mothership demo labels its claim `protocol-composition-only`.
 
 ## Mothership alone
 
-Use Mothership alone when you want a portable, reviewable control plane for a
-local AI coding environment. Start by reviewing its contracts, templates,
-diagnostics, and tests; then make any local configuration choices yourself.
+Install and verify Mothership without any companion. You can inspect public APIs, validate your own explicit protocol
+documents, and run fixed diagnostics. This is the recommended first adoption step.
 
-Mothership is installed, configured, and reviewed separately from every other
-repository. It does not require a companion repository, install one, or make
-configuration or execution choices on its behalf.
+## One companion
 
-## Agent Frontdoor, then Mothership
+Install the chosen project separately, review its own boundary, and export only its documented public interchange
+object. Validate that file with Mothership before passing it onward. No project scans the machine for another checkout.
 
-[Agent Frontdoor](https://github.com/UMEBOSHIISAN/agent-frontdoor) can provide
-a preflight task-card boundary before you use Mothership's portable contracts
-and local review surface. A human can first inspect the task card, then decide
-whether and how to use Mothership locally.
+## Full synthetic chain
 
-Agent Frontdoor and Mothership are installed, configured, and reviewed
-separately. Their order in this recipe does not create a dependency, automatic
-handoff, shared configuration, or authority transfer.
+`mothership demo` reads only the bundled fictional fixtures. It checks schema versions, protocol adjacency, identifier
+and capability continuity, and non-escalating effect fields. It does not call companion commands or perform real work.
 
-## Mothership, then Secretary TUI
+## Responsibility map
 
-After using Mothership to establish and review local control-plane boundaries,
-you may use [Secretary TUI](https://github.com/UMEBOSHIISAN/secretary-tui) to
-observe local operational state. Secretary TUI remains an observability tool;
-it does not change Mothership configuration or grant execution authority.
+- [Agent Frontdoor](https://github.com/UMEBOSHIISAN/agent-frontdoor) owns `intake.v0` task-card semantics.
+- [Workflow Governance Model](https://github.com/UMEBOSHIISAN/workflow-governance-model) owns public handoff semantics.
+- [Mothership Router](https://github.com/UMEBOSHIISAN/mothership-router) owns dry-run recommendation semantics.
+- [Secretary TUI](https://github.com/UMEBOSHIISAN/secretary-tui) owns read-only presentation semantics.
+- Mothership owns the frozen suite registry, snapshots, digests, fixtures, and compatibility checks.
 
-Mothership and Secretary TUI are installed, configured, and reviewed
-separately. The sequence is a human workflow, not an automatic connection,
-data transfer, or shared credential arrangement.
+## Human-led real workflow
 
-## Optional Git Vibes and Toygarden
+For a real task, a human decides whether to run each independent tool and which explicit output may cross the next
+boundary. The human also owns any later command that obtains credentials or executes work. No schema-valid document
+can substitute for that decision.
 
-[Git Vibes](https://github.com/UMEBOSHIISAN/git-vibes) can add optional,
-non-blocking human feedback around commits. [Toygarden](https://github.com/UMEBOSHIISAN/toygarden)
-is an adjacent terminal-native creative toolkit for exploring agent-facing
-visualization and composition ideas. Neither is a required control-plane gate.
+## Updating one stage
 
-Git Vibes, Toygarden, and Mothership are installed, configured, and reviewed
-separately. Choosing either optional tool does not enable automatic setup,
-execution, shared credentials, or authority across repositories.
+A schema change is coordinated, not inferred:
+
+1. the semantic owner releases and documents the new schema;
+2. Mothership adds a reviewed snapshot without overwriting unrelated versions;
+3. the registry digest and compatibility table change together;
+4. valid, invalid, transition, and privacy fixtures are updated;
+5. every affected repository runs its conformance suite;
+6. publication remains a separate explicit action.
+
+See [Protocol reference](protocols.md) for the exact v0.2 snapshot.
