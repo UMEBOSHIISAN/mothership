@@ -7,13 +7,13 @@ authority between repositories.
 | Item | Status | Scope |
 | --- | --- | --- |
 | [Mothership](../README.md) | Released | A portable, safety-first control plane with public contracts, local diagnostics, and reviewable configuration templates. |
-| Workflow Governance Model | Planned | A clean-room set of generic governance templates, to be developed only after careful anonymization and independent verification. |
+| [Workflow Governance Model](https://github.com/UMEBOSHIISAN/workflow-governance-model) | Released | A clean-room, fail-closed library for validating workflow evidence and authority trails, with non-executing candidate recommendation. |
 
-## Planned: Workflow Governance Model
+## Released: Workflow Governance Model
 
-The Workflow Governance Model is a future clean-room extraction target, not a
-released component or an integration with Mothership. It may offer generic
-templates for the following patterns:
+The Workflow Governance Model is a clean-room public component. It remains
+independently installable and has no runtime integration with Mothership. It
+provides portable validation and reference patterns for:
 
 - **Decision Record Gate**: a reviewable template for recording a decision,
   its evidence, and its required human approval.
@@ -22,7 +22,7 @@ templates for the following patterns:
 - **Context & Memory Trust Patterns**: templates for describing what context
   may be relied on, what must be re-verified, and how uncertainty is surfaced.
 
-Any future template must be anonymized before publication and independently
-verified for accuracy, safety, and portability. It must contain no private
+Future additions must be anonymized before publication and independently
+verified for accuracy, safety, and portability. They must contain no private
 operational material, business data, credentials, machine-specific details, or
 claims of authority over another repository.
