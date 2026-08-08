@@ -1,0 +1,173 @@
+{
+  "schema_version": "mothership.protocol-evaluation-corpus.v1",
+  "cases": [
+    {
+      "id": "frontdoor-valid",
+      "kind": "frontdoor-task",
+      "fixture": "01-frontdoor-task.json",
+      "expected": "accepted",
+      "mutation": null
+    },
+    {
+      "id": "frontdoor-missing-request-id",
+      "kind": "frontdoor-task",
+      "fixture": "01-frontdoor-task.json",
+      "expected": "rejected",
+      "mutation": {"op": "delete", "path": ["request_id"]}
+    },
+    {
+      "id": "frontdoor-unsupported-version",
+      "kind": "frontdoor-task",
+      "fixture": "01-frontdoor-task.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["schema_version"], "value": "intake.v999"}
+    },
+    {
+      "id": "frontdoor-unknown-field",
+      "kind": "frontdoor-task",
+      "fixture": "01-frontdoor-task.json",
+      "expected": "rejected",
+      "mutation": {"op": "add", "path": ["unexpected"], "value": "x"}
+    },
+    {
+      "id": "frontdoor-invalid-gate",
+      "kind": "frontdoor-task",
+      "fixture": "01-frontdoor-task.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["human_gate"], "value": "AUTO"}
+    },
+    {
+      "id": "frontdoor-empty-actions",
+      "kind": "frontdoor-task",
+      "fixture": "01-frontdoor-task.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["allowed_actions"], "value": []}
+    },
+    {
+      "id": "governance-valid",
+      "kind": "governance-handoff",
+      "fixture": "02-governance-handoff.json",
+      "expected": "accepted",
+      "mutation": null
+    },
+    {
+      "id": "governance-missing-task-id",
+      "kind": "governance-handoff",
+      "fixture": "02-governance-handoff.json",
+      "expected": "rejected",
+      "mutation": {"op": "delete", "path": ["task_id"]}
+    },
+    {
+      "id": "governance-unsupported-version",
+      "kind": "governance-handoff",
+      "fixture": "02-governance-handoff.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["schema_version"], "value": "999"}
+    },
+    {
+      "id": "governance-unknown-field",
+      "kind": "governance-handoff",
+      "fixture": "02-governance-handoff.json",
+      "expected": "rejected",
+      "mutation": {"op": "add", "path": ["unexpected"], "value": "x"}
+    },
+    {
+      "id": "governance-boolean-budget",
+      "kind": "governance-handoff",
+      "fixture": "02-governance-handoff.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["token_budget"], "value": true}
+    },
+    {
+      "id": "governance-empty-evidence",
+      "kind": "governance-handoff",
+      "fixture": "02-governance-handoff.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["evidence_references"], "value": []}
+    },
+    {
+      "id": "router-valid",
+      "kind": "router-manifest",
+      "fixture": "03-router-manifest.json",
+      "expected": "accepted",
+      "mutation": null
+    },
+    {
+      "id": "router-missing-task-id",
+      "kind": "router-manifest",
+      "fixture": "03-router-manifest.json",
+      "expected": "rejected",
+      "mutation": {"op": "delete", "path": ["task_id"]}
+    },
+    {
+      "id": "router-unsupported-version",
+      "kind": "router-manifest",
+      "fixture": "03-router-manifest.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["schema_version"], "value": "999"}
+    },
+    {
+      "id": "router-unknown-field",
+      "kind": "router-manifest",
+      "fixture": "03-router-manifest.json",
+      "expected": "rejected",
+      "mutation": {"op": "add", "path": ["unexpected"], "value": "x"}
+    },
+    {
+      "id": "router-authority-escalation",
+      "kind": "router-manifest",
+      "fixture": "03-router-manifest.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["authority_effect"], "value": true}
+    },
+    {
+      "id": "router-invalid-registry-digest",
+      "kind": "router-manifest",
+      "fixture": "03-router-manifest.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["registry_sha256"], "value": "invalid"}
+    },
+    {
+      "id": "observation-valid",
+      "kind": "observation-snapshot",
+      "fixture": "04-observation-snapshot.json",
+      "expected": "accepted",
+      "mutation": null
+    },
+    {
+      "id": "observation-missing-status",
+      "kind": "observation-snapshot",
+      "fixture": "04-observation-snapshot.json",
+      "expected": "rejected",
+      "mutation": {"op": "delete", "path": ["status"]}
+    },
+    {
+      "id": "observation-unsupported-version",
+      "kind": "observation-snapshot",
+      "fixture": "04-observation-snapshot.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["schema_version"], "value": "999"}
+    },
+    {
+      "id": "observation-unknown-field",
+      "kind": "observation-snapshot",
+      "fixture": "04-observation-snapshot.json",
+      "expected": "rejected",
+      "mutation": {"op": "add", "path": ["unexpected"], "value": "x"}
+    },
+    {
+      "id": "observation-execution-escalation",
+      "kind": "observation-snapshot",
+      "fixture": "04-observation-snapshot.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["execution_effect"], "value": true}
+    },
+    {
+      "id": "observation-control-character",
+      "kind": "observation-snapshot",
+      "fixture": "04-observation-snapshot.json",
+      "expected": "rejected",
+      "mutation": {"op": "set", "path": ["summary", 0], "value": "unsafe\nline"}
+    }
+  ]
+}

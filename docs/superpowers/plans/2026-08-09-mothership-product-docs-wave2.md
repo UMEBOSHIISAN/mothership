@@ -21,6 +21,43 @@
 
 ---
 
+### Task 0: Add reproducible quantitative evidence without inflating claims
+
+**Files:**
+- Create: `evaluation/corpus/protocol-validation.v1.json`
+- Create: `evaluation/results/mothership-0.2.0.json`
+- Create: `tools/run_evaluation.py`
+- Create: `tests/test_evaluation.py`
+- Create: `docs/research/paper-evidence.md`
+
+- [ ] **Step 1: Write a failing evaluation contract test**
+
+Require one deterministic JSON result that reports valid protocol acceptance, invalid protocol rejection, demo byte determinism, installed-resource integrity, and non-escalating authority/execution effects as separate measurements.
+
+- [ ] **Step 2: Freeze a synthetic conformance corpus**
+
+Cover all four protocol kinds with one valid case and five named invalid mutations each. Record the corpus SHA-256 in the result. The corpus is synthetic and must not contain user data, credentials, private paths, or real task outcomes.
+
+- [ ] **Step 3: Implement a read-only evaluator**
+
+`python tools/run_evaluation.py` reads only tracked corpus and packaged resources, prints one canonical JSON object, and performs no network, model, companion discovery, approval, or execution action. Run the demo across eight controlled process environments and require one distinct output.
+
+- [ ] **Step 4: Record paper-ready evidence with explicit limits**
+
+Separate Mothership conformance measurements from the Agent Frontdoor labeled-fixture measurements. Call corpus results internal or synthetic; never present them as production accuracy, external validity, user adoption, or a security certification.
+
+- [ ] **Step 5: Test and commit**
+
+```sh
+python3 -m unittest tests.test_evaluation -v
+python3 tools/run_evaluation.py
+git diff --check
+git add evaluation tools/run_evaluation.py tests/test_evaluation.py docs/research/paper-evidence.md
+git commit -m "feat: add reproducible control-plane evaluation"
+```
+
+---
+
 ### Task 1: Lock the executable README contract before rewriting prose
 
 **Files:**
