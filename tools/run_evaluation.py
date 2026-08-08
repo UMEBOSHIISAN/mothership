@@ -82,7 +82,7 @@ def _load_corpus() -> dict[str, object]:
         identifiers.add(identifier)
         if kind not in KINDS or case["fixture"] != FIXTURES[kind]:
             raise EvaluationError("evaluation case protocol mapping is invalid")
-        if expected not in {"accepted", "rejected"}:
+        if type(expected) is not str or expected not in {"accepted", "rejected"}:
             raise EvaluationError("evaluation case expectation is invalid")
         if expected == "accepted" and case["mutation"] is not None:
             raise EvaluationError("accepted evaluation case cannot be mutated")
@@ -102,7 +102,12 @@ def _mutate(document: object, mutation: object) -> object:
         raise EvaluationError("evaluation mutation shape is invalid")
     operation = mutation.get("op")
     path = mutation.get("path")
-    if operation not in {"add", "delete", "set"} or type(path) is not list or not path:
+    if (
+        type(operation) is not str
+        or operation not in {"add", "delete", "set"}
+        or type(path) is not list
+        or not path
+    ):
         raise EvaluationError("evaluation mutation instruction is invalid")
     if operation == "delete" and set(mutation) != {"op", "path"}:
         raise EvaluationError("delete mutation shape is invalid")

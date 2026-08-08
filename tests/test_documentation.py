@@ -164,7 +164,7 @@ class ReadmeContractTests(unittest.TestCase):
 
     def test_claims_and_rendering_structure_are_closed(self) -> None:
         lowered = self.text.casefold()
-        self.assertIn("tests-211%20passing", self.text)
+        self.assertIn("tests-212%20passing", self.text)
         for forbidden in (
             "production ready",
             "production-ready",

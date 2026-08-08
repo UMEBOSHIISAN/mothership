@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
+from unittest import mock
+
+from tools import run_evaluation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,6 +123,30 @@ class EvaluationTests(unittest.TestCase):
             "open('w",
         ):
             self.assertNotIn(forbidden, source)
+
+    def test_malformed_enum_fields_fail_closed_without_a_traceback(self) -> None:
+        original = json.loads(CORPUS.read_text("utf-8"))
+        corruptions = {
+            "expected-array": ("expected", []),
+            "mutation-op-array": ("mutation", {"op": [], "path": ["request_id"]}),
+        }
+        for name, (field, value) in corruptions.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                corpus = json.loads(json.dumps(original))
+                corpus["cases"][1][field] = value
+                path = Path(directory) / "corpus.json"
+                path.write_text(json.dumps(corpus), encoding="utf-8")
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with (
+                    mock.patch.object(run_evaluation, "CORPUS", path),
+                    contextlib.redirect_stdout(stdout),
+                    contextlib.redirect_stderr(stderr),
+                ):
+                    exit_code = run_evaluation.main()
+                self.assertEqual(1, exit_code)
+                self.assertEqual("", stdout.getvalue())
+                self.assertEqual("evaluation failed closed\n", stderr.getvalue())
 
 
 if __name__ == "__main__":
