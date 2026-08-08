@@ -10,7 +10,7 @@
   <img alt="Python 3.12 or newer" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
   <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20dependencies-0-16A34A">
   <img alt="Offline verification" src="https://img.shields.io/badge/verification-offline-7C3AED">
-  <img alt="Test suite passing" src="https://img.shields.io/badge/tests-199%20passing-16A34A">
+  <img alt="Test suite passing" src="https://img.shields.io/badge/tests-203%20passing-16A34A">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0F172A">
 </p>
 
@@ -202,12 +202,13 @@ coordinated owner release, bundled schema, digest, fixture, compatibility table,
 
 ## Compatibility
 
-- Declared Python support: 3.12 or newer.
+- Declared Python support: Python 3.12+.
 - Runtime dependencies: zero.
 - File-boundary implementation: POSIX regular-file, descriptor, and no-follow semantics.
 - Measured Wave 1 environment: Python 3.14.6 on macOS.
 - Diagnostic aliases: `claude-code-agent`, `codex-cli`, and `ollama-local`.
 - Frozen suite protocols: four, all non-authorizing and non-executing.
+- Effect constants: `authority_effect: false` and `execution_effect: false`.
 
 See the [compatibility matrix](docs/compatibility.md) before assuming support for an unmeasured platform.
 
