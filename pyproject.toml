@@ -11,6 +11,9 @@ requires-python = ">=3.12"
 license = "MIT"
 dependencies = []
 
+[project.optional-dependencies]
+test = ["build>=1.2", "setuptools>=77"]
+
 [project.scripts]
 mothership = "mothership.cli:main"
 
