@@ -1,0 +1,16 @@
+{
+  "schema_version": "intake.v0",
+  "request_id": "demo-review-001",
+  "human_request": "Review the supplied fictional change",
+  "task_class": "CODE_REVIEW",
+  "risk_tags": [],
+  "allowed_actions": ["read supplied files", "report findings"],
+  "forbidden_actions": ["modify files", "execute commands"],
+  "required_evidence": ["review findings"],
+  "required_manifest": null,
+  "human_gate": "NONE",
+  "predicted_worker_capability": "code-review",
+  "unknowns": [],
+  "assumptions": ["the supplied change is fictional"],
+  "next_safe_step": "Inspect the fictional change"
+}
