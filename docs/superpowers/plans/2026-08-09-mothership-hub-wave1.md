@@ -131,7 +131,7 @@ from orchestration.lib import ledger, paths
 self.assertIs(scope.prepare_scope, paths.prepare_scope)
 self.assertIs(scope.validate_relative_path, paths.validate_relative_path)
 self.assertIs(approval.make_binding, ledger.make_binding)
-self.assertIs(approval.start_attempt, ledger.start_attempt)
+self.assertIs(approval.consume_approval_and_start, ledger.consume_approval_and_start)
 self.assertIs(adapters.doctor_adapter, old_adapters.doctor_adapter)
 ```
 
