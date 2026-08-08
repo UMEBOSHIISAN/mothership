@@ -29,10 +29,10 @@ The diagnostic checks the local availability and documented options of fixed ada
 ## Verify the checkout
 
 ```sh
-python3 -m unittest discover -s tests -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 ```
 
-All tests should pass. If Python reports missing language features such as `datetime.UTC` or `zip(..., strict=True)`, switch to Python 3.12+ and run the command again.
+All tests should pass. The environment variable keeps Python from creating local bytecode files while the package-integrity checks run. If Python reports missing language features such as `datetime.UTC` or `zip(..., strict=True)`, switch to Python 3.12+ and run the command again.
 
 ## Review local configuration
 
