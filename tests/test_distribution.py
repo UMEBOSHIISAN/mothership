@@ -93,6 +93,17 @@ class BuiltDistributionTests(unittest.TestCase):
             self.assertIn("orchestration/lib/paths.py", names)
             self.assertIn("frontdoor/route.py", names)
             self.assertIn("safety/policy.py", names)
+            compatibility_resources = (
+                "evidence/contracts/approval-event.schema.json",
+                "frontdoor/contracts/decision.schema.json",
+                "frontdoor/contracts/task.schema.json",
+                "orchestration/config/executors.json",
+                "orchestration/contracts/executor-registry.schema.json",
+                "orchestration/contracts/invocation-request.schema.json",
+                "safety/contracts/assessment.schema.json",
+            )
+            for resource in compatibility_resources:
+                self.assertIn(resource, names)
             inventory = json.loads(archive.read("mothership/resources/inventory.json"))
             for entry in inventory["resources"]:
                 self.assertIn(f"mothership/resources/{entry['path']}", names)
@@ -181,6 +192,51 @@ class BuiltDistributionTests(unittest.TestCase):
         entry = self._run([str(console), *arguments], self.root)
         self.assertEqual(0, module.returncode, module.stderr)
         self.assertEqual(module.stdout, entry.stdout)
+
+    def test_wheel_compatibility_apis_load_their_bundled_contracts(self) -> None:
+        _environment, binary = self._environment("wheel-contracts", editable=False)
+        script = b"""
+from mothership.contracts import validate_contract
+from safety.policy import assess
+
+task = {
+    \"schema_version\": \"0.1.0\",
+    \"task_id\": \"installed-contract-test\",
+    \"caller_id\": \"distribution-test\",
+    \"invocation_id\": \"installed-contract-test\",
+    \"requested_action\": \"advisory\",
+    \"risk_class\": \"low\",
+    \"required_capabilities\": [\"read-only\"],
+    \"cost_ceiling_usd_micros\": 0,
+    \"context_files\": [],
+    \"max_context_files\": 1,
+    \"max_context_bytes\": 1,
+    \"prompt_file\": \"prompt.md\",
+    \"mutation_class\": \"none\",
+    \"retry\": {\"enabled\": False},
+    \"fallback\": {\"enabled\": False},
+    \"max_attempts\": 1,
+}
+validate_contract(\"task\", task)
+result = assess(task, \"dry-run\", None, 0, None)
+assert result[\"classification\"] == \"unclassified\"
+"""
+        completed = subprocess.run(
+            [str(binary), "-I", "-c", script],
+            cwd=self.root,
+            env={
+                "HOME": str(self.root),
+                "LANG": "C",
+                "LC_ALL": "C",
+                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+                "PYTHONDONTWRITEBYTECODE": "1",
+            },
+            input=b"",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr.decode("utf-8", "replace"))
 
     def test_editable_install_matches_wheel_for_read_only_commands(self) -> None:
         wheel_environment, wheel_binary = self._environment("wheel-compare", editable=False)
