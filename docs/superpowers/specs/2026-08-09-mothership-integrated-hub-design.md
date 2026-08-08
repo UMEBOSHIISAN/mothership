@@ -1,7 +1,7 @@
 # Mothership Integrated Hub Design
 
 **Date:** 2026-08-09
-**Status:** HUMAN-SELECTED DESIGN
+**Status:** HUMAN-SELECTED DESIGN, REVIEW-CORRECTED
 **Selected approach:** Mothership becomes the installable integration hub while companion repositories remain independently adoptable.
 **Scope:** Public Mothership ecosystem only. Private operations, credentials, deployment, schedulers, and machine-specific configuration are excluded.
 
@@ -108,6 +108,8 @@ It prints one closed JSON result and exits non-zero on any mismatch. It does not
 
 Exposes the existing fixed diagnostic behavior for `codex-cli`, `claude-code-agent`, and `ollama-local`. It may run only the documented version and help/list probes in a sanitized child environment. It does not invoke a model, authenticate, install software, or edit settings.
 
+The Ollama detail probe is `ollama list`. The sanitized environment removes endpoint overrides, but an installed Ollama CLI may contact its default loopback daemon. The guarantee is therefore no Mothership-directed external network access, not zero local IPC or loopback traffic for this explicit diagnostic command.
+
 ### 5.3 `mothership protocol`
 
 `list` prints the bundled protocol kinds, owner repositories, versions, schema identifiers, and SHA-256 digests.
@@ -213,7 +215,7 @@ The integrated hub preserves the strictest existing boundary:
 
 - no model or agent invocation;
 - no automatic companion installation;
-- no network access at runtime;
+- no Mothership-directed external network access at runtime; the explicit `doctor ollama-local` diagnostic may query Ollama's default loopback daemon through `ollama list`;
 - no retry or fallback;
 - no scheduler, daemon, hook, or background service;
 - no credential or environment-file access;
@@ -223,7 +225,7 @@ The integrated hub preserves the strictest existing boundary:
 - no recommendation promoted to selection or execution;
 - no Secretary display promoted to freshness or operational truth.
 
-Installation through `pip` is an attended user action. Runtime commands remain read-only except for the existing explicitly called scope-staging and output APIs used by a programmer in their own code; the default CLI does not expose those mutation-capable library operations.
+Installation through `pip` is an attended user action. The new `mothership` CLI is read-only with respect to user and repository state. Existing library APIs may write only when a programmer explicitly supplies a target for scope staging, bounded output creation, or approval-ledger events. The preserved `orchestration/bin/llm-seat approve` command also appends an explicitly requested approval event. These mutation-capable APIs and the legacy approval command are not exposed as implicit side effects of `mothership verify`, `doctor`, `protocol`, or `demo`.
 
 ## 11. Compatibility and Migration
 
