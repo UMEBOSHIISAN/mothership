@@ -263,5 +263,141 @@ class ReadmeContractTests(unittest.TestCase):
                 self.assertEqual((GENERATED / generated).read_bytes(), completed.stdout)
 
 
+class SupportingDocumentationTests(unittest.TestCase):
+    FILES = {
+        "architecture": ROOT / "docs/architecture.md",
+        "installation": ROOT / "docs/installation.md",
+        "composition": ROOT / "docs/composition.md",
+        "protocols": ROOT / "docs/protocols.md",
+        "security": ROOT / "docs/security.md",
+        "compatibility": ROOT / "docs/compatibility.md",
+        "roadmap": ROOT / "docs/ecosystem-roadmap.md",
+        "contributing": ROOT / "CONTRIBUTING.md",
+        "reporting": ROOT / "SECURITY.md",
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.documents = {
+            name: path.read_text("utf-8")
+            for name, path in cls.FILES.items()
+        }
+
+    def test_canonical_terms_and_non_authorizing_chain_agree(self) -> None:
+        for name in ("architecture", "composition", "protocols", "compatibility"):
+            text = self.documents[name]
+            with self.subTest(document=name):
+                self.assertIn("installable hub", text)
+                self.assertIn("independently adoptable", text)
+                self.assertIn("authority_effect", text)
+                self.assertIn("execution_effect", text)
+                positions = [text.index(kind) for kind in (
+                    "frontdoor-task",
+                    "governance-handoff",
+                    "router-manifest",
+                    "observation-snapshot",
+                )]
+                self.assertEqual(sorted(positions), positions)
+        for name in ("architecture", "composition", "protocols"):
+            self.assertIn("protocol-composition-only", self.documents[name])
+
+        all_text = "\n".join(self.documents.values()).casefold()
+        for contradiction in (
+            "validation grants approval",
+            "automatically installs companions",
+            "automatically routes work",
+            "invokes a model automatically",
+        ):
+            self.assertNotIn(contradiction, all_text)
+
+    def test_architecture_documents_modules_resources_and_write_boundaries(self) -> None:
+        text = self.documents["architecture"]
+        for term in (
+            "mothership.scope",
+            "mothership.approval",
+            "mothership.adapters",
+            "mothership.contracts",
+            "mothership.protocols",
+            "immutable packaged resources",
+            "read-only CLI",
+            "explicit caller-supplied target",
+            "legacy compatibility",
+        ):
+            self.assertIn(term, text)
+
+    def test_installation_covers_every_lifecycle_and_side_effect(self) -> None:
+        text = self.documents["installation"]
+        for heading in (
+            "## Clone-first install",
+            "## Wheel install",
+            "## Editable development install",
+            "## Verify",
+            "## Update",
+            "## Uninstall",
+        ):
+            self.assertIn(heading, text)
+        for forbidden in ("sudo ", "install a hook", "shell startup file"):
+            self.assertNotIn(forbidden, text.casefold())
+        self.assertIn("Installation is the only package-changing step", text)
+
+    def test_protocol_reference_has_owner_source_version_and_failure_contract(self) -> None:
+        text = self.documents["protocols"]
+        for source in (
+            "src/frontdoor/schema/intake.v0.json",
+            "schemas/workflow-handoff.schema.json",
+            "src/mothership_router/schema/router-manifest.1.0.schema.json",
+            "schemas/observation-snapshot.1.0.schema.json",
+        ):
+            self.assertIn(source, text)
+        self.assertIn("mothership protocol validate KIND ABSOLUTE_FILE", text)
+        self.assertIn("unknown kind is rejected before file access", text)
+        self.assertIn("schema update procedure", text.casefold())
+
+    def test_security_threat_model_and_residual_risks_are_explicit(self) -> None:
+        text = self.documents["security"]
+        for threat in (
+            "duplicate keys",
+            "malformed UTF-8",
+            "symbolic links",
+            "special files",
+            "oversized input",
+            "terminal control",
+            "stale protocol snapshot",
+            "loopback",
+            "Residual risks",
+        ):
+            self.assertIn(threat, text)
+
+    def test_compatibility_contribution_reporting_and_roadmap_are_bounded(self) -> None:
+        compatibility = self.documents["compatibility"]
+        self.assertIn("Python 3.12+", compatibility)
+        self.assertIn("0.2.0", compatibility)
+        self.assertIn("Measured, not universal", compatibility)
+
+        contributing = self.documents["contributing"]
+        for term in ("TDD", "python3 -m unittest", "schema owner", "SHA-256"):
+            self.assertIn(term, contributing)
+
+        reporting = self.documents["reporting"]
+        self.assertIn("GitHub Security Advisory", reporting)
+        self.assertIn(
+            "https://github.com/UMEBOSHIISAN/mothership/security/advisories/new",
+            reporting,
+        )
+        self.assertIn("Do not open a public issue", reporting)
+
+        roadmap = self.documents["roadmap"]
+        for heading in ("## Shipped in 0.2.0", "## Next candidates", "## Not planned"):
+            self.assertIn(heading, roadmap)
+        for excluded in (
+            "automatic companion installation",
+            "model or agent execution",
+            "retry or fallback engine",
+            "credential management",
+            "background service",
+        ):
+            self.assertIn(excluded, roadmap)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,7 @@
   <img alt="Python 3.12 or newer" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
   <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20dependencies-0-16A34A">
   <img alt="Offline verification" src="https://img.shields.io/badge/verification-offline-7C3AED">
-  <img alt="Test suite passing" src="https://img.shields.io/badge/tests-193%20passing-16A34A">
+  <img alt="Test suite passing" src="https://img.shields.io/badge/tests-199%20passing-16A34A">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0F172A">
 </p>
 
