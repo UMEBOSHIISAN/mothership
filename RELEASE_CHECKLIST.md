@@ -25,7 +25,7 @@ not publish, deploy, install, or otherwise distribute Mothership.
 
 ## Verification and integrity
 
-- [ ] Run `PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3 -m unittest discover -s tests -v`.
+- [ ] Run `PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v`.
 - [ ] Build exactly one wheel and one source distribution in a clean temporary
   source copy.
 - [ ] Inspect the wheel manifest, metadata, package resources, and runtime
