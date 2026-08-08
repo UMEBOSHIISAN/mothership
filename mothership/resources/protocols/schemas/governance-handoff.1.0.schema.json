@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/UMEBOSHIISAN/workflow-governance-model/schemas/workflow-handoff.schema.json",
+  "title": "Workflow Governance Model public handoff",
+  "description": "Portable metadata only. Never include credentials, prompts, outputs, private paths, or execution permission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "capability", "risk", "token_budget", "evidence_references"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "task_id": {"type": "string", "minLength": 1},
+    "capability": {"type": "string", "minLength": 1},
+    "risk": {"enum": ["low", "medium", "high"]},
+    "token_budget": {"type": "integer", "minimum": 1},
+    "evidence_references": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  }
+}
