@@ -175,6 +175,13 @@ class BuiltDistributionTests(unittest.TestCase):
         self.assertEqual(1, invalid_doctor.returncode)
         self.assertEqual("invalid_alias_selection", json.loads(invalid_doctor.stdout)["error"])
 
+        fixture = self.source / "mothership/resources/golden-path/02-governance-handoff.json"
+        arguments = ("protocol", "validate", "governance-handoff", str(fixture))
+        module = self._run([str(binary), "-m", "mothership", *arguments], self.root)
+        entry = self._run([str(console), *arguments], self.root)
+        self.assertEqual(0, module.returncode, module.stderr)
+        self.assertEqual(module.stdout, entry.stdout)
+
     def test_editable_install_matches_wheel_for_read_only_commands(self) -> None:
         wheel_environment, wheel_binary = self._environment("wheel-compare", editable=False)
         editable_environment, editable_binary = self._environment("editable-env", editable=True)

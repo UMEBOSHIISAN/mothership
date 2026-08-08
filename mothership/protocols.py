@@ -17,7 +17,8 @@ from orchestration.lib.jsonio import loads_strict
 
 _MAX_BYTES = 1_048_576
 _CHUNK_BYTES = 65_536
-_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+_NOFOLLOW = getattr(os, "O_NOFOLLOW", None)
+_DIRECTORY = getattr(os, "O_DIRECTORY", None)
 _NONBLOCK = getattr(os, "O_NONBLOCK", 0)
 _CLOEXEC = getattr(os, "O_CLOEXEC", 0)
 _RESOURCE_PACKAGE = "mothership.resources"
@@ -335,7 +336,7 @@ def _validate_node(value: object, schema: dict[str, object], path: str) -> None:
         properties = schema.get("properties", {})
         unknown = sorted(set(value) - set(properties))
         if schema.get("additionalProperties") is False and unknown:
-            raise _error(f"{path}.{unknown[0]}", "unknown field is not permitted")
+            raise _error(f"{path}.*", "unknown field is not permitted")
         for name in sorted(value):
             if name in properties:
                 _validate_node(value[name], properties[name], f"{path}.{name}")
@@ -359,10 +360,18 @@ def _normalized_key(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
 
 
+def _child_path(path: str, name: str) -> str:
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
+        return f"{path}.*"
+    return f"{path}.{name}"
+
+
 def _scan_safe_metadata(value: object, path: str = "$") -> None:
     if type(value) is dict:
+        if any(type(name) is not str for name in value):
+            raise _error(f"{path}.*", "object keys must be strings")
         for name in sorted(value):
-            child_path = f"{path}.{name}"
+            child_path = _child_path(path, name)
             if _normalized_key(name) in _FORBIDDEN_KEYS:
                 raise _error(child_path, "forbidden sensitive or raw-content key")
             _scan_safe_metadata(value[name], child_path)
@@ -397,13 +406,15 @@ def validate_protocol(kind: str, document: object) -> dict[str, object]:
 
 
 def _open_directory(name: str, parent: int | None = None) -> int:
+    if _NOFOLLOW is None or _DIRECTORY is None:
+        raise _error("$", "no-follow protocol file access is unavailable")
     if _COMPONENT_OPEN_HOOK is not None:
         _COMPONENT_OPEN_HOOK(name)
     descriptor: int | None = None
     try:
         descriptor = os.open(
             name,
-            os.O_RDONLY | os.O_DIRECTORY | _NOFOLLOW | _CLOEXEC,
+            os.O_RDONLY | _DIRECTORY | _NOFOLLOW | _CLOEXEC,
             dir_fd=parent,
         )
         if not stat.S_ISDIR(os.fstat(descriptor).st_mode):
@@ -416,6 +427,8 @@ def _open_directory(name: str, parent: int | None = None) -> int:
 
 
 def _load_protocol_file(path: Path) -> object:
+    if _NOFOLLOW is None:
+        raise _error("$", "no-follow protocol file access is unavailable")
     if not isinstance(path, Path):
         raise _error("$", "protocol path must be a pathlib.Path")
     text = os.fspath(path)
