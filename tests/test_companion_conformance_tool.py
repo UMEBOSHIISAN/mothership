@@ -17,8 +17,8 @@ RESOURCE_ROOT = ROOT / "mothership/resources"
 COMMITS = {
     "agent-frontdoor": "296c49be801b6573abf54daa81b828df95e8e84f",
     "workflow-governance-model": "dbc030a28e13a3b4d46ef0f9fe037901e4455634",
-    "mothership-router": "b740a24f664adca2bdf8144fb99053bd2d3daf64",
-    "secretary-tui": "95b5af84ab3485097d96739f2ed17f63427acf50",
+    "mothership-router": "d53d41961a99908f24a470737a3f49c88a53e28f",
+    "secretary-tui": "cbf524e8fe078eb7b71c1f781183a30b81225d07",
 }
 OWNERS = (
     {

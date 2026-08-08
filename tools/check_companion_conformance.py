@@ -87,7 +87,7 @@ OWNERS = (
         schema_path="src/mothership_router/schema/router-manifest.1.0.schema.json",
         bundled_schema_path="protocols/schemas/router-manifest.1.0.schema.json",
         example_path="examples/router-manifest.json",
-        commit="b740a24f664adca2bdf8144fb99053bd2d3daf64",
+        commit="d53d41961a99908f24a470737a3f49c88a53e28f",
     ),
     Owner(
         repository="secretary-tui",
@@ -96,7 +96,7 @@ OWNERS = (
         schema_path="schemas/observation-snapshot.1.0.schema.json",
         bundled_schema_path="protocols/schemas/observation-snapshot.1.0.schema.json",
         example_path="examples/observation-snapshot.json",
-        commit="95b5af84ab3485097d96739f2ed17f63427acf50",
+        commit="cbf524e8fe078eb7b71c1f781183a30b81225d07",
     ),
 )
 

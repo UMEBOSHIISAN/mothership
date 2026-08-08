@@ -165,11 +165,31 @@ class ProtocolValidationTests(unittest.TestCase):
             "minimum": ("governance-handoff", {**VALID["governance-handoff"], "token_budget": 0}),
             "enum": ("governance-handoff", {**VALID["governance-handoff"], "risk": "urgent"}),
             "pattern": ("router-manifest", {**VALID["router-manifest"], "registry_sha256": "BAD"}),
+            "router_path_task": (
+                "router-manifest",
+                {**VALID["router-manifest"], "task_id": "/Users/example/private.json"},
+            ),
+            "router_path_capability": (
+                "router-manifest",
+                {**VALID["router-manifest"], "capability": "~/private.json"},
+            ),
+            "router_path_alias": (
+                "router-manifest",
+                {**VALID["router-manifest"], "recommended_alias": r"C:\Users\example"},
+            ),
+            "router_path_reason": (
+                "router-manifest",
+                {**VALID["router-manifest"], "reasons": ["/private/reason"]},
+            ),
             "one_of": ("router-manifest", {**VALID["router-manifest"], "task_id": 1}),
             "authority": ("router-manifest", {**VALID["router-manifest"], "authority_effect": True}),
             "control": (
                 "observation-snapshot",
                 {**VALID["observation-snapshot"], "summary": ["unsafe\nline"]},
+            ),
+            "observation_path_task": (
+                "observation-snapshot",
+                {**VALID["observation-snapshot"], "task_id": "/Users/example/private.json"},
             ),
         }
         for name, (kind, document) in cases.items():

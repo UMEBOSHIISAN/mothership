@@ -56,8 +56,8 @@ branch.
 | --- | --- | --- | --- | --- | --- |
 | `agent-frontdoor` | `0.1.0` | `frontdoor-task` `intake.v0` | `296c49be801b6573abf54daa81b828df95e8e84f` | `6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e` | passed; local-only / publication pending |
 | `workflow-governance-model` | `0.2.1` | `governance-handoff` `1.0` | `dbc030a28e13a3b4d46ef0f9fe037901e4455634` | `d8a2cac7ef6884c3b45630a6752b1766dabfcbc7a1dc3bffb75391cd98202ce0` | passed; local-only / publication pending |
-| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `b740a24f664adca2bdf8144fb99053bd2d3daf64` | `2f1c244ca62ef68d2bcb5ea8531002991be812c5d7b31e101990500d5df8ffa5` | passed; local-only / publication pending |
-| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `95b5af84ab3485097d96739f2ed17f63427acf50` | `f86e5ec5ccd407752557e9930def9ab8096449d330df1b2707e1d11ef41b4a3a` | passed; local-only / publication pending |
+| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `d53d41961a99908f24a470737a3f49c88a53e28f` | `d3246cd4e554b61ad219de4743a91f4222fd53453373f4e003b616d665509066` | passed; local-only / publication pending |
+| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `cbf524e8fe078eb7b71c1f781183a30b81225d07` | `9c0b654c500f9a42a77f22e7a81fadd8efacccec13d2d901ec697b7c8788555a` | passed; local-only / publication pending |
 
 The report verified four owner manifests, four schema digests, byte identity with all four bundled schemas, four public
 examples, the Secretary copy of the Router input, shared task ID/capability/status fields, and false authority/execution
