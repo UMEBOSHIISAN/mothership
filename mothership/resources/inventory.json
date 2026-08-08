@@ -23,13 +23,13 @@
     },
     {
       "path": "golden-path/03-router-manifest.json",
-      "size": 380,
-      "sha256": "f0518bcb52e895cac9a8f8238f1473fc4da9de734a080685667f25911ce48e69"
+      "size": 403,
+      "sha256": "a5758ff6512676bab92be6d5c554bb1b7cb39c22254e7d297ddc198463b20e64"
     },
     {
       "path": "golden-path/04-observation-snapshot.json",
-      "size": 405,
-      "sha256": "0929e0f1a5b6e0080e1f181fdfd5922e04931a8dc8b2e4eb7f14e7c60a6766f8"
+      "size": 409,
+      "sha256": "c754972b0029b25f092c4ee5aea959fb3bac3f3dc56cb4ccac03e4fccd6a9967"
     },
     {
       "path": "golden-path/expected-summary.json",
