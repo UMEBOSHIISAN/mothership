@@ -78,7 +78,7 @@ OWNERS = (
         schema_path="schemas/workflow-handoff.schema.json",
         bundled_schema_path="protocols/schemas/governance-handoff.1.0.schema.json",
         example_path="examples/handoff.valid.json",
-        commit="b31784d9b2d81c770d1b71d241dcb80bbb8bab17",
+        commit="dbc030a28e13a3b4d46ef0f9fe037901e4455634",
     ),
     Owner(
         repository="mothership-router",

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_ROOT = ROOT / "mothership/resources"
 COMMITS = {
     "agent-frontdoor": "296c49be801b6573abf54daa81b828df95e8e84f",
-    "workflow-governance-model": "b31784d9b2d81c770d1b71d241dcb80bbb8bab17",
+    "workflow-governance-model": "dbc030a28e13a3b4d46ef0f9fe037901e4455634",
     "mothership-router": "b740a24f664adca2bdf8144fb99053bd2d3daf64",
     "secretary-tui": "95b5af84ab3485097d96739f2ed17f63427acf50",
 }

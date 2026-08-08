@@ -20,7 +20,7 @@
       "owner_repository": "UMEBOSHIISAN/workflow-governance-model",
       "upstream_source_path": "schemas/workflow-handoff.schema.json",
       "bundled_schema_path": "protocols/schemas/governance-handoff.1.0.schema.json",
-      "schema_sha256": "e59784d4da3368e97fcf7dd104d713169057bbad59047ad9d61f4bba572305d0",
+      "schema_sha256": "d8a2cac7ef6884c3b45630a6752b1766dabfcbc7a1dc3bffb75391cd98202ce0",
       "predecessors": ["frontdoor-task"],
       "successors": ["router-manifest"],
       "authority_capable": false,
