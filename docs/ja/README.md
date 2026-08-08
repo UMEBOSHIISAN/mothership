@@ -17,7 +17,7 @@ git clone https://github.com/UMEBOSHIISAN/mothership.git
 cd mothership
 python3 --version
 ./bootstrap/doctor.sh
-python3 -m unittest discover -s tests -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 ```
 
 `doctor.sh` は、固定されたローカルアダプターの利用可否を確認するだけです。ソフトウェアの導入、認証、モデル呼び出し、設定変更、フックの追加は行いません。アダプターが未導入なら診断は非ゼロ終了になりますが、それは診断結果です。

@@ -103,7 +103,7 @@ python3 --version
 ### 3. Verify the foundation
 
 ```sh
-python3 -m unittest discover -s tests -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 ```
 
 Run the suite before adapting the package to a machine. A green test run proves the shipped foundation; it does not authorize any later external action.
