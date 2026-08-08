@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 from importlib import resources
 import math
@@ -300,9 +301,11 @@ def _matches_type(value: object, declared: str) -> bool:
     if declared == "string":
         return type(value) is str
     if declared == "integer":
-        return type(value) is int
+        return type(value) is int or (
+            type(value) is float and math.isfinite(value) and value.is_integer()
+        )
     if declared == "number":
-        return type(value) in (int, float) and type(value) is not bool and math.isfinite(value)
+        return type(value) is int or (type(value) is float and math.isfinite(value))
     if declared == "boolean":
         return type(value) is bool
     if declared == "null":
@@ -329,6 +332,8 @@ def _validate_node(value: object, schema: dict[str, object], path: str) -> None:
         raise _error(path, "value has the wrong type")
 
     if type(value) is dict:
+        if any(type(name) is not str for name in value):
+            raise _error(f"{path}.*", "object keys must be strings")
         required = schema.get("required", [])
         for name in required:
             if name not in value:
@@ -400,9 +405,9 @@ def validate_protocol(kind: str, document: object) -> dict[str, object]:
         raise _error("$", "protocol document must be an object")
     if document.get("schema_version") != entry["schema_version"]:
         raise _error("$.schema_version", "protocol version is unsupported")
-    _scan_safe_metadata(document)
     _validate_node(document, schema, "$")
-    return dict(document)
+    _scan_safe_metadata(document)
+    return copy.deepcopy(document)
 
 
 def _open_directory(name: str, parent: int | None = None) -> int:

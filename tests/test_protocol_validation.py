@@ -98,6 +98,46 @@ class ProtocolValidationTests(unittest.TestCase):
                 self.assertEqual(document, result)
                 self.assertIsNot(document, result)
 
+    def test_integer_schema_accepts_integral_json_number(self) -> None:
+        from mothership.protocols import validate_protocol
+
+        document = {
+            **VALID["governance-handoff"],
+            "token_budget": 4000.0,
+        }
+        self.assertEqual(
+            document,
+            validate_protocol("governance-handoff", document),
+        )
+
+    def test_validated_result_is_recursively_detached(self) -> None:
+        from mothership.protocols import validate_protocol
+
+        document = {
+            **VALID["governance-handoff"],
+            "evidence_references": ["evidence:demo-change-v1"],
+        }
+        result = validate_protocol("governance-handoff", document)
+
+        document["evidence_references"][0] = "/" + "private/changed-after-validation"
+
+        self.assertEqual(["evidence:demo-change-v1"], result["evidence_references"])
+        self.assertIsNot(document["evidence_references"], result["evidence_references"])
+
+    def test_deep_unknown_metadata_fails_closed_without_recursion_error(self) -> None:
+        from mothership.protocols import ProtocolError, validate_protocol
+
+        nested: object = 0
+        for _ in range(2_000):
+            nested = {"x": nested}
+        document = {
+            **VALID["governance-handoff"],
+            "meta": nested,
+        }
+
+        with self.assertRaisesRegex(ProtocolError, "unknown field"):
+            validate_protocol("governance-handoff", document)
+
     def test_unknown_kind_and_version_fail_before_other_validation(self) -> None:
         from mothership.protocols import ProtocolError, validate_protocol
 
