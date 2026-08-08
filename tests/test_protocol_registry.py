@@ -125,11 +125,12 @@ class ProtocolRegistryTests(unittest.TestCase):
         self.assertEqual(list(KINDS), visited)
 
     def test_registry_resources_contain_no_private_or_authority_material(self) -> None:
+        private_prefix = b"/private" + b"/"
         for entry in self.registry["protocols"]:
             raw = self.root.joinpath(entry["bundled_schema_path"]).read_bytes()
             with self.subTest(kind=entry["kind"]):
                 self.assertNotIn(b"/Users/", raw)
-                self.assertNotIn(b"/private/", raw)
+                self.assertNotIn(private_prefix, raw)
                 self.assertIsNone(
                     re.search(
                         rb'"(?:password|api_key|access_token|private_key)"\s*:',

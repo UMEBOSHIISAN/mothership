@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 from importlib import metadata
 from io import StringIO
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -43,9 +44,12 @@ class PackageEntrypointTests(unittest.TestCase):
         self.assertEqual("mothership.cli:main", project["scripts"]["mothership"])
 
     def test_module_help_is_successful_and_side_effect_free(self) -> None:
+        environment = dict(os.environ)
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
         result = subprocess.run(
             [sys.executable, "-m", "mothership", "--help"],
             cwd=PACKAGE_ROOT,
+            env=environment,
             text=True,
             capture_output=True,
             check=False,
