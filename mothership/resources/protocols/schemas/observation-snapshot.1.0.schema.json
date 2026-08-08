@@ -20,7 +20,7 @@
     "task_id": {
       "oneOf": [
         {"type": "null"},
-        {"type": "string", "minLength": 1}
+        {"type": "string", "minLength": 1, "pattern": "^(?!/|~/|[A-Za-z]:[\\\\/]).+$"}
       ]
     },
     "source_kind": {"enum": ["governance-handoff", "router-manifest"]},
