@@ -246,7 +246,7 @@ schema bytes with Mothership's snapshots, validates each public example, and che
 repositories automatically. See the [measured compatibility matrix](docs/compatibility.md) for the exact local commits;
 those commits are reachable from their public main branches.
 
-## The wider constellation
+### The wider constellation
 
 The four protocols above are the frozen, versioned surface. They sit inside a larger set of small, independently
 adoptable projects that share one rule rather than a dependency.
