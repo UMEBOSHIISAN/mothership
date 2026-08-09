@@ -188,7 +188,7 @@ bundled snapshot、digest、fixture、compatibility table、conformance testを�
 
 開発用companion auditは4つのrepository rootを明示的に受け取り、exact commit、owner schema bytes、public example、
 chain continuityを検証します。repositoryを自動探索しません。今回検証したcommitは
-[互換性matrix](../compatibility.md)に固定しており、remoteから到達可能になるまではpublication pendingです。
+[互換性matrix](../compatibility.md)に固定しており、各repositoryのpublic main branchから到達可能です。
 
 ## 互換性
 

@@ -48,20 +48,18 @@ snapshots; it does not auto-upgrade them.
 
 ## Exact companion conformance audit
 
-The development audit passed against the following exact local commits. Every row is **local-only / publication
-pending**: the commit was tested in an isolated worktree but is not yet claimed reachable from a public tag or remote
-branch.
+The development audit passed against the following exact commits. Each tested commit is reachable from its repository's public `main` branch through the measured conformance merge commit below.
 
-| Repository | Owner version | Protocol | Tested commit | Schema SHA-256 | Result |
-| --- | --- | --- | --- | --- | --- |
-| `agent-frontdoor` | `0.1.0` | `frontdoor-task` `intake.v0` | `4bcfcb6c1868a87076502999a38127e28e275e70` | `6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e` | passed; local-only / publication pending |
-| `workflow-governance-model` | `0.2.1` | `governance-handoff` `1.1` | `98576b4f3f755aceccc657bc83df7c94260d4fc0` | `75f96909fa31a8bcf65d74d243aeea0e8b43185b13974f19f60f47cf769125c7` | passed; local-only / publication pending |
-| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `a23f4b651e1a8baf39a1266a66188bec21c3265c` | `273b1def57ec35957750c4979c737480c4cbb7f4db2294993dd5475b54fc673b` | passed; local-only / publication pending |
-| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `f3cb61e61bc88e7c4cfd09efe93006c812258fe9` | `587ef29c693a834ffada7789b28b2b76cbefbad819386b91507a510def3facb2` | passed; local-only / publication pending |
+| Repository | Owner version | Protocol | Tested commit | Conformance merge commit | Schema SHA-256 | Result |
+| --- | --- | --- | --- | --- | --- | --- |
+| `agent-frontdoor` | `0.1.0` | `frontdoor-task` `intake.v0` | `4bcfcb6c1868a87076502999a38127e28e275e70` | `c76a516477241eef7509855ebf22af0821168df3` | `6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e` | passed; reachable from public `main` |
+| `workflow-governance-model` | `0.2.1` | `governance-handoff` `1.1` | `98576b4f3f755aceccc657bc83df7c94260d4fc0` | `452210d520721a4616dc72646b96dd28d587a197` | `75f96909fa31a8bcf65d74d243aeea0e8b43185b13974f19f60f47cf769125c7` | passed; reachable from public `main` |
+| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `a23f4b651e1a8baf39a1266a66188bec21c3265c` | `22db307e169f919d2d5855ca7b6bf17b6973b71f` | `273b1def57ec35957750c4979c737480c4cbb7f4db2294993dd5475b54fc673b` | passed; reachable from public `main` |
+| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `f3cb61e61bc88e7c4cfd09efe93006c812258fe9` | `8cbdb5f0f0960441e9986468641e431e4441b026` | `587ef29c693a834ffada7789b28b2b76cbefbad819386b91507a510def3facb2` | passed; reachable from public `main` |
 
 The report verified four owner manifests, four schema digests, byte identity with all four bundled schemas, four public
 examples, the Secretary copy of the Router input, shared task ID/capability/status fields, and false authority/execution
-effects. This is conformance evidence for those commits, not a claim about newer commits or remote publication.
+effects. This is conformance evidence for those commits, not a claim about newer commits, tags, or releases.
 
 ## Evidence
 
