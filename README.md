@@ -78,6 +78,24 @@ artifacts, machine-specific values leaking into shared configuration, and
 verified changes never reaching durable history. Mothership turns those lessons
 into contracts that can be inspected and tested.
 
+### Every boundary here is a scar
+
+<p align="center">
+  <img src="assets/incident-lineage.svg" alt="Six real incidents, what each one taught, and the contract it became in this repository" width="100%">
+</p>
+
+Each row on the left is an incident in the workspace this package came out of, not a summary of the literature. The
+contract on the right exists because the row on the left cost something.
+
+Two are worth stating in full. A human reviewed a list of 21 files and approved deleting them; the command that ran
+re-expanded the pattern and deleted 94. The approval was real — the *set* it applied to was never frozen. That is why
+the contracts here are closed: an undocumented field is rejected rather than absorbed, because absorbing input the
+reviewer never saw is the exact shape of that failure. Separately, a tool call failed, the failure was not checked, and
+the summary reported success with plausible invented results. The lesson was not "be more careful" but that a label is
+not evidence — which is why validation fails closed instead of degrading into permissive prose.
+
+> 左の列は仮想の攻撃ではない。どれも実際に起きた事故であり、右の契約はその代償として残っているもの。
+
 ## The Mothership answer
 
 Mothership makes those distinctions executable and reviewable:
@@ -160,6 +178,18 @@ For the public `mothership` CLI surface:
 Existing library APIs can write only when a programmer explicitly supplies a target for bounded staging or approval
 ledger events. Those calls are not implicit side effects of the default CLI. See the [security model](docs/security.md).
 
+### Diagnostics report presence, never permission
+
+<p align="center">
+  <img src="assets/available-vs-allowed.svg" alt="The probe reports only that a binary exists; authentication, trust, and policy stay named as unknowns" width="100%">
+</p>
+
+`mothership doctor` answers exactly one question: whether a fixed adapter command exists on this machine. It does not
+answer whether you are authenticated, whether that binary is trustworthy, or whether a managed policy permits its use.
+Those three stay named in `limitations` rather than being quietly assumed away, and every result carries
+`authority_effect: false`. A diagnostic that upgraded "found it" into "go ahead" would be the most dangerous thing in
+the package.
+
 ## What Mothership is not
 
 - Not an autonomous agent runtime.
@@ -215,6 +245,22 @@ The development-only companion audit takes four explicit repository roots, pins 
 schema bytes with Mothership's snapshots, validates each public example, and checks chain continuity. It never discovers
 repositories automatically. See the [measured compatibility matrix](docs/compatibility.md) for the exact local commits;
 those commits are reachable from their public main branches.
+
+## The wider constellation
+
+The four protocols above are the frozen, versioned surface. They sit inside a larger set of small, independently
+adoptable projects that share one rule rather than a dependency.
+
+<p align="center">
+  <img src="assets/constellation.svg" alt="The wider constellation: control-plane, device, and workshop projects sharing one safety boundary" width="100%">
+</p>
+
+**This diagram describes an architectural relationship — not a dependency, an installer, or an automatic integration.**
+Nothing here is discovered, installed, or invoked by Mothership. Adopt any single project and ignore the rest.
+
+The workshop row is not decoration. A control plane whose only feeling is *restriction* gets abandoned, so the same rule
+points at your mood as well as your machine: `git-vibes` cannot block a commit even if it crashes. That is the boundary
+again, not an exception to it.
 
 ## Compatibility
 

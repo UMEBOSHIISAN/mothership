@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620" role="img" aria-label="The doctor probe answers only whether a binary exists; authentication, trust, and policy stay named as unknowns instead of being assumed">
+  <defs>
+    <linearGradient id="avbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1024"/>
+      <stop offset="100%" stop-color="#101d40"/>
+    </linearGradient>
+    <marker id="ava" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5fd3d3"/>
+    </marker>
+    <marker id="avr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e0a0a0"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="620" fill="url(#avbg)"/>
+  <g fill="#ffffff" opacity="0.45">
+    <circle cx="110" cy="58" r="1.2"/><circle cx="1105" cy="82" r="1"/><circle cx="620" cy="24" r="1"/>
+    <circle cx="1150" cy="574" r="1.1"/><circle cx="48" cy="548" r="1"/><circle cx="300" cy="40" r="0.9"/>
+  </g>
+
+  <g font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+    <text x="600" y="44" text-anchor="middle" font-size="25" font-weight="700" fill="#e8eef7">“available” answers one question — and names the three it cannot.</text>
+    <text x="600" y="71" text-anchor="middle" font-size="13.5" fill="#8fa4c8">「使える」と「動かしていい」は違う。この診断はその2つを混ぜず、未知を未知のまま出力に残す。</text>
+
+    <!-- probe -->
+    <rect x="330" y="94" width="540" height="104" rx="10" fill="#132449" stroke="#2c4a86"/>
+    <text x="600" y="122" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" font-weight="700" fill="#e8eef7">mothership doctor</text>
+    <text x="600" y="146" text-anchor="middle" font-size="11.5" fill="#8fa4c8">probes a fixed set of adapter commands in a sanitized environment</text>
+    <text x="600" y="168" text-anchor="middle" font-size="11.5" fill="#6fb5b5">nothing installed · nothing authenticated · nothing launched · no network request</text>
+    <text x="600" y="188" text-anchor="middle" font-size="11" fill="#7f93b8">終了コードは「診断結果」であって、何かを入れろという要求ではない</text>
+
+    <line x1="470" y1="204" x2="380" y2="240" stroke="#5fd3d3" stroke-width="2" marker-end="url(#ava)"/>
+    <line x1="730" y1="204" x2="820" y2="240" stroke="#e0a0a0" stroke-width="2" marker-end="url(#avr)"/>
+
+    <!-- answered -->
+    <rect x="44" y="246" width="524" height="252" rx="12" fill="#0d1733" stroke="#2f7d7d"/>
+    <text x="70" y="276" font-size="15" font-weight="700" fill="#9de8e8">What it actually observed</text>
+    <text x="70" y="296" font-size="11.5" fill="#6fb5b5">one fact, reported as one field</text>
+    <line x1="70" y1="308" x2="542" y2="308" stroke="#2c4a86"/>
+
+    <rect x="70" y="322" width="472" height="70" rx="9" fill="#0f2f33" stroke="#2f7d7d"/>
+    <text x="86" y="346" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" font-weight="700" fill="#9de8e8">"status": "available"</text>
+    <text x="86" y="370" font-size="12" fill="#cdd9ee">the binary exists on this machine</text>
+    <text x="86" y="386" font-size="11.5" fill="#6fb5b5">このマシンにそのバイナリが在る、という事実だけ</text>
+
+    <rect x="70" y="404" width="472" height="76" rx="9" fill="#132449" stroke="#2c4a86"/>
+    <text x="86" y="428" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12.5" fill="#cdd9ee">"version_sha256": "c92d556fba6736…"</text>
+    <text x="86" y="450" font-size="11.5" fill="#8fa4c8">a checksum of what was found — so “the same tool”</text>
+    <text x="86" y="468" font-size="11.5" fill="#8fa4c8">on two machines is a claim you can check, not assume</text>
+
+    <!-- unanswered -->
+    <rect x="632" y="246" width="524" height="252" rx="12" fill="#0d1733" stroke="#7d6320"/>
+    <text x="658" y="276" font-size="15" font-weight="700" fill="#ffe0a0">What stays unknown — on purpose</text>
+    <text x="658" y="296" font-size="11.5" fill="#c9b183">printed as <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">limitations</tspan>, not quietly assumed away</text>
+    <line x1="658" y1="308" x2="1130" y2="308" stroke="#2c4a86"/>
+
+    <rect x="658" y="322" width="472" height="46" rx="8" fill="#2c2213" stroke="#7d6320"/>
+    <text x="674" y="342" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12.5" font-weight="700" fill="#ffe0a0">authentication-external</text>
+    <text x="674" y="360" font-size="11.5" fill="#c9b183">are you logged in? this probe never asked</text>
+
+    <rect x="658" y="374" width="472" height="46" rx="8" fill="#2c2213" stroke="#7d6320"/>
+    <text x="674" y="394" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12.5" font-weight="700" fill="#ffe0a0">binary-trust-external</text>
+    <text x="674" y="412" font-size="11.5" fill="#c9b183">present is not the same as trustworthy</text>
+
+    <rect x="658" y="426" width="472" height="46" rx="8" fill="#2c2213" stroke="#7d6320"/>
+    <text x="674" y="446" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12.5" font-weight="700" fill="#ffe0a0">managed-policy-external</text>
+    <text x="674" y="464" font-size="11.5" fill="#c9b183">your org may forbid what your disk allows</text>
+
+    <!-- bottom -->
+    <rect x="44" y="508" width="1112" height="96" rx="10" fill="#180f22" stroke="#6b4a8a"/>
+    <text x="68" y="536" font-size="14" font-weight="700" fill="#d8bff0">Every result this package emits carries <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">"authority_effect": "none"</tspan>. There is no code path that emits anything else.</text>
+    <text x="68" y="559" font-size="12" fill="#a894c0">A diagnostic that quietly upgraded “found it” into “go ahead” would be the most useful — and the most dangerous — thing in the package.</text>
+    <text x="68" y="577" font-size="12" fill="#a894c0">So the three unknowns keep their own field, and permission is never inferred from presence.</text>
+    <text x="68" y="596" font-size="12" fill="#a894c0">「見つけた」を「やっていい」に静かに昇格させないこと。未知は未知の欄に残し、存在から権限を推論しない。</text>
+  </g>
+</svg>

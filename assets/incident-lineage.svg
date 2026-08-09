@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" role="img" aria-label="How real operational incidents became the contracts in this repository">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1024"/>
+      <stop offset="100%" stop-color="#111d3f"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a90d9"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="760" fill="url(#bg2)"/>
+  <g fill="#ffffff" opacity="0.4">
+    <circle cx="80" cy="710" r="1.2"/><circle cx="1130" cy="60" r="1.3"/><circle cx="600" cy="26" r="1"/>
+    <circle cx="1160" cy="700" r="1"/><circle cx="40" cy="120" r="1"/>
+  </g>
+
+  <text x="600" y="46" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#e8eef7">Every boundary here is a scar.</text>
+  <text x="600" y="74" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="14" fill="#8fa4c8">この境界線は設計思想ではなく、実際に壊れた記録から引かれている</text>
+
+  <!-- column headers -->
+  <g font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="1">
+    <text x="46" y="122" fill="#e06a6a">WHAT ACTUALLY BROKE</text>
+    <text x="484" y="122" fill="#f0a04b">WHAT IT TAUGHT</text>
+    <text x="856" y="122" fill="#5fd3d3">WHAT IT BECAME HERE</text>
+  </g>
+  <line x1="40" y1="134" x2="1160" y2="134" stroke="#2c4a86" stroke-width="1"/>
+
+  <g font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+
+    <!-- row 1 -->
+    <g transform="translate(0,152)">
+      <rect x="40" y="0" width="420" height="78" rx="8" fill="#2a1218" stroke="#7d2f3a"/>
+      <text x="58" y="26" font-size="15" font-weight="700" fill="#ffb3b3">A human approved deleting 21 files.</text>
+      <text x="58" y="48" font-size="15" font-weight="700" fill="#ffb3b3">94 were deleted.</text>
+      <text x="58" y="67" font-size="12" fill="#c98d94">the glob at execution time was wider than the glob at review time</text>
+      <line x1="466" y1="39" x2="500" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="506" y="34" font-size="13.5" fill="#ffd9b0">A decision covers a set, not a pattern.</text>
+      <text x="506" y="54" font-size="12" fill="#c69a72">the approved set must be frozen before it is acted on</text>
+      <line x1="826" y1="39" x2="856" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="862" y="8" width="298" height="62" rx="8" fill="#0f2f33" stroke="#2f7d7d"/>
+      <text x="878" y="30" font-size="13" font-weight="600" fill="#9de8e8">Closed contracts</text>
+      <text x="878" y="50" font-size="11.5" fill="#6fb5b5">task.schema.json rejects undocumented fields</text>
+    </g>
+
+    <!-- row 2 -->
+    <g transform="translate(0,250)">
+      <rect x="40" y="0" width="420" height="78" rx="8" fill="#2a1218" stroke="#7d2f3a"/>
+      <text x="58" y="26" font-size="15" font-weight="700" fill="#ffb3b3">A tool call failed. The report said</text>
+      <text x="58" y="48" font-size="15" font-weight="700" fill="#ffb3b3">it succeeded — with invented results.</text>
+      <text x="58" y="67" font-size="12" fill="#c98d94">the failure was silent, so the summary filled the gap with fiction</text>
+      <line x1="466" y1="39" x2="500" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="506" y="34" font-size="13.5" fill="#ffd9b0">A label is not evidence.</text>
+      <text x="506" y="54" font-size="12" fill="#c69a72">success needs exit code + artifact + an actual read</text>
+      <line x1="826" y1="39" x2="856" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="862" y="8" width="298" height="62" rx="8" fill="#0f2f33" stroke="#2f7d7d"/>
+      <text x="878" y="30" font-size="13" font-weight="600" fill="#9de8e8">Fail-closed validation</text>
+      <text x="878" y="50" font-size="11.5" fill="#6fb5b5">malformed input stops; it never degrades to allow</text>
+    </g>
+
+    <!-- row 3 -->
+    <g transform="translate(0,348)">
+      <rect x="40" y="0" width="420" height="78" rx="8" fill="#2a1218" stroke="#7d2f3a"/>
+      <text x="58" y="26" font-size="15" font-weight="700" fill="#ffb3b3">148+ private addresses leaked into</text>
+      <text x="58" y="48" font-size="15" font-weight="700" fill="#ffb3b3">git across 11 repositories.</text>
+      <text x="58" y="67" font-size="12" fill="#c98d94">not an attack — just &quot;a concrete value reads better than a placeholder&quot;</text>
+      <line x1="466" y1="39" x2="500" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="506" y="34" font-size="13.5" fill="#ffd9b0">Convenience leaks topology.</text>
+      <text x="506" y="54" font-size="12" fill="#c69a72">the shipped config must be unusable until a human fills it</text>
+      <line x1="826" y1="39" x2="856" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="862" y="8" width="298" height="62" rx="8" fill="#0f2f33" stroke="#2f7d7d"/>
+      <text x="878" y="30" font-size="13" font-weight="600" fill="#9de8e8">Blank-by-default config</text>
+      <text x="878" y="50" font-size="11.5" fill="#6fb5b5">executors.example.json ships empty command arrays</text>
+    </g>
+
+    <!-- row 4 -->
+    <g transform="translate(0,446)">
+      <rect x="40" y="0" width="420" height="78" rx="8" fill="#2a1218" stroke="#7d2f3a"/>
+      <text x="58" y="26" font-size="15" font-weight="700" fill="#ffb3b3">The ledger said COMMITTED.</text>
+      <text x="58" y="48" font-size="15" font-weight="700" fill="#ffb3b3">The change was still in the work tree.</text>
+      <text x="58" y="67" font-size="12" fill="#c98d94">real fix, real verification — only persistence was skipped, three times</text>
+      <line x1="466" y1="39" x2="500" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="506" y="34" font-size="13.5" fill="#ffd9b0">VERIFIED is not COMMITTED.</text>
+      <text x="506" y="54" font-size="12" fill="#c69a72">state must be measured, never remembered</text>
+      <line x1="826" y1="39" x2="856" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="862" y="8" width="298" height="62" rx="8" fill="#0f2f33" stroke="#2f7d7d"/>
+      <text x="878" y="30" font-size="13" font-weight="600" fill="#9de8e8">Approval-event primitives</text>
+      <text x="878" y="50" font-size="11.5" fill="#6fb5b5">approval as durable, inspectable data — not hidden state</text>
+    </g>
+
+    <!-- row 5 -->
+    <g transform="translate(0,544)">
+      <rect x="40" y="0" width="420" height="78" rx="8" fill="#2a1218" stroke="#7d2f3a"/>
+      <text x="58" y="26" font-size="15" font-weight="700" fill="#ffb3b3">A multi-step prompt injection tried</text>
+      <text x="58" y="48" font-size="15" font-weight="700" fill="#ffb3b3">to exfiltrate customer data.</text>
+      <text x="58" y="67" font-size="12" fill="#c98d94">caught before any egress — zero actual impact, but it was a real attempt</text>
+      <line x1="466" y1="39" x2="500" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="506" y="34" font-size="13.5" fill="#ffd9b0">Content is not instruction.</text>
+      <text x="506" y="54" font-size="12" fill="#c69a72">an agent that can reach the network is an exfiltration path</text>
+      <line x1="826" y1="39" x2="856" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="862" y="8" width="298" height="62" rx="8" fill="#0f2f33" stroke="#2f7d7d"/>
+      <text x="878" y="30" font-size="13" font-weight="600" fill="#9de8e8">No network. No execution.</text>
+      <text x="878" y="50" font-size="11.5" fill="#6fb5b5">nothing to hijack, because nothing can act</text>
+    </g>
+
+    <!-- row 6 -->
+    <g transform="translate(0,642)">
+      <rect x="40" y="0" width="420" height="78" rx="8" fill="#2a1218" stroke="#7d2f3a"/>
+      <text x="58" y="26" font-size="15" font-weight="700" fill="#ffb3b3">The mothership machine was retired.</text>
+      <text x="58" y="48" font-size="15" font-weight="700" fill="#ffb3b3">The setup could not be described.</text>
+      <text x="58" y="67" font-size="12" fill="#c98d94">it worked perfectly — on exactly one computer, in one person's head</text>
+      <line x1="466" y1="39" x2="500" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="506" y="34" font-size="13.5" fill="#ffd9b0">An environment you can't hand over</text>
+      <text x="506" y="54" font-size="13.5" fill="#ffd9b0">is an environment you don't own.</text>
+      <line x1="826" y1="39" x2="856" y2="39" stroke="#4a90d9" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="862" y="8" width="298" height="62" rx="8" fill="#0f2f33" stroke="#2f7d7d"/>
+      <text x="878" y="30" font-size="13" font-weight="600" fill="#9de8e8">This repository</text>
+      <text x="878" y="50" font-size="11.5" fill="#6fb5b5">the portable part of that setup, minus the machine</text>
+    </g>
+  </g>
+
+  <text x="600" y="744" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12.5" fill="#6b7fa3">Incidents are from one operator's real multi-agent workflow, 2026. Every one of them was recorded before it was designed around.</text>
+</svg>
