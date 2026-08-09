@@ -155,6 +155,18 @@ process-group bounds; they are not imported by the Frontdoor classifier. No find
 model work, installation, authentication, scheduler or service mutation, deployment, retry persistence, or network
 discovery.
 
+## Original-checkout isolation
+
+Final status checks found all five implementation worktrees clean at the exact Mothership and companion commits
+recorded above. The pre-existing WGM and Router main checkouts remained clean at their baseline HEADs
+`1d8cebcacca3cdd4cab9cabd0e52fe2274dac4c2` and `6f760f43d200d2f13ac0db864ce23974cde5b529`.
+
+The pre-existing Frontdoor and Secretary main checkouts were also clean at closeout, but other concurrent work had
+advanced them from their recorded baselines to `d75a006efacaf9ff18a631b83a9b40d8a31721a5` and
+`03d0d3aeac90418b39b2de5a5bdd9033dcb755f5`. This record therefore does not claim those two original checkouts were
+byte-for-byte unchanged during the elapsed period. Mothership conformance work used only the separately registered
+companion worktrees and did not clean, stage, or commit either original checkout.
+
 ## Claim and handoff boundary
 
 This evidence supports a local artifact-paper candidate about fail-closed protocol composition and authority as
