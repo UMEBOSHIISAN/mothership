@@ -45,12 +45,4 @@ jobs:
           mothership verify > /dev/null || { echo "::error::mothership verify failed"; exit 1; }
           out="$(mothership demo)" || { echo "::error::mothership demo failed"; exit 1; }
           echo "$out"
-          echo "$out" | python -c 'import json,sys
-d = json.load(sys.stdin)
-assert d["status"] == "passed", d["status"]
-assert d["authority_effect"] is False, "authority_effect must be false"
-assert d["execution_effect"] is False, "execution_effect must be false"
-kinds = [stage["kind"] for stage in d["stages"]]
-assert kinds == ["frontdoor-task", "governance-handoff", "router-manifest", "observation-snapshot"], kinds
-assert all(stage["valid"] for stage in d["stages"]), "every stage must be valid"
-print("ok: four protocol stages composed with both effect flags false")'
+          echo "$out" | python -c "import json,sys; d=json.load(sys.stdin); assert d['status']=='passed', d['status']; assert d['authority_effect'] is False, 'authority_effect must be false'; assert d['execution_effect'] is False, 'execution_effect must be false'; kinds=[s['kind'] for s in d['stages']]; assert kinds==['frontdoor-task','governance-handoff','router-manifest','observation-snapshot'], kinds; assert all(s['valid'] for s in d['stages']), 'every stage must be valid'; print('ok: four protocol stages composed with both effect flags false')"
