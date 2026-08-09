@@ -71,6 +71,13 @@ The hard part is not moving binaries. It is preserving the distinction between:
 - what needs explicit human authority;
 - what evidence proves the handoff stayed inside those boundaries.
 
+These boundaries were not invented as an abstract safety exercise. They were
+extracted from recurring failure classes in a real multi-agent workspace:
+reviewed scope expanding before execution, success labels surviving without
+artifacts, machine-specific values leaking into shared configuration, and
+verified changes never reaching durable history. Mothership turns those lessons
+into contracts that can be inspected and tested.
+
 ## The Mothership answer
 
 Mothership makes those distinctions executable and reviewable:
@@ -84,6 +91,10 @@ Mothership makes those distinctions executable and reviewable:
 - a reproducible evaluation corpus with explicit claim limits.
 
 The governing rule is simple: **share structure; keep credentials, selection, and execution authority local.**
+
+<p align="center">
+  <img src="assets/boundary-map.svg" alt="Boundary map separating portable control-plane structure from local authority" width="100%">
+</p>
 
 ## Architecture
 
@@ -241,10 +252,32 @@ result is [`evaluation/results/mothership-0.2.0.json`](evaluation/results/mother
 | Follow ecosystem direction | [Roadmap](docs/ecosystem-roadmap.md) |
 | Read the complete Japanese guide | [日本語ガイド](docs/ja/README.md) |
 
+### FAQ
+
+**Does Mothership run agents?** No. The default CLI verifies packaged or
+explicitly supplied local data. It does not launch models or workers.
+
+**Is this another agent framework?** No. It is a control-plane foundation that
+can sit beside one. Execution remains in separately configured systems.
+
+**Does a passing demo prove production safety?** No. It proves only that four
+synthetic, versioned interchange documents compose under the frozen local suite.
+
+**Is it portable everywhere?** The package declares Python 3.12+, while the
+file-boundary implementation is POSIX-oriented and the measured Wave 1 platform
+is macOS. Unmeasured platforms remain unclaimed.
+
 ## Contributing
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md). Changes to protocols require coordination with the semantic owner. New
 behavior starts with a failing test, and public claims must point to an executable check or a bounded evidence record.
+
+### Built by the system it describes
+
+The design, implementation, and review were iterated by multiple AI coding tools
+under human-held approval authority. That provenance is useful evidence that the
+contracts can support multi-agent work; it is not evidence that autonomous
+operation is safe, and Mothership does not claim that.
 
 ## Security
 
