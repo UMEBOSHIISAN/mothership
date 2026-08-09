@@ -5,7 +5,7 @@
   "capability": "code-review",
   "stages": [
     {"kind": "frontdoor-task", "schema_version": "intake.v0", "valid": true},
-    {"kind": "governance-handoff", "schema_version": "1.0", "valid": true},
+    {"kind": "governance-handoff", "schema_version": "1.1", "valid": true},
     {"kind": "router-manifest", "schema_version": "1.0", "valid": true},
     {"kind": "observation-snapshot", "schema_version": "1.0", "valid": true}
   ],

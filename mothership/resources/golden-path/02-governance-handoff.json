@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "task_id": "demo-review-001",
   "capability": "code-review",
   "risk": "low",

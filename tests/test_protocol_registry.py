@@ -34,7 +34,7 @@ EXPECTED = {
         ("governance-handoff",),
     ),
     "governance-handoff": (
-        "1.0",
+        "1.1",
         "UMEBOSHIISAN/workflow-governance-model",
         ("frontdoor-task",),
         ("router-manifest",),

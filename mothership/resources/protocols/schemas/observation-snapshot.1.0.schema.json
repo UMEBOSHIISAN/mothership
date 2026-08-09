@@ -20,7 +20,7 @@
     "task_id": {
       "oneOf": [
         {"type": "null"},
-        {"type": "string", "minLength": 1, "pattern": "^[^/\\\\\\u0000-\\u001f\\u007f]+$"}
+        {"type": "string", "minLength": 1, "pattern": "^(?![A-Za-z]:)[A-Za-z0-9][A-Za-z0-9._:-]*(?![\\s\\S])"}
       ]
     },
     "source_kind": {"enum": ["governance-handoff", "router-manifest"]},
@@ -32,7 +32,7 @@
       "items": {
         "type": "string",
         "minLength": 1,
-        "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+        "pattern": "^[\\u0020-\\u007e]*(?![\\s\\S])"
       }
     },
     "authority_effect": {"const": false},

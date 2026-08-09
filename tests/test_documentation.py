@@ -345,7 +345,7 @@ class SupportingDocumentationTests(unittest.TestCase):
         text = self.documents["protocols"]
         for source in (
             "src/frontdoor/schema/intake.v0.json",
-            "schemas/workflow-handoff.schema.json",
+            "schemas/workflow-handoff.1.1.schema.json",
             "src/mothership_router/schema/router-manifest.1.0.schema.json",
             "schemas/observation-snapshot.1.0.schema.json",
         ):

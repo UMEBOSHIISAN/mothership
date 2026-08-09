@@ -39,7 +39,7 @@ Availability is observational. It is not execution permission or a promise that 
 | Kind | Version | `authority_effect` | `execution_effect` |
 | --- | --- | --- | --- |
 | `frontdoor-task` | `intake.v0` | not capable | not capable |
-| `governance-handoff` | `1.0` | not capable | not capable |
+| `governance-handoff` | `1.1` | not capable | not capable |
 | `router-manifest` | `1.0` | false | false |
 | `observation-snapshot` | `1.0` | false | false |
 
@@ -55,9 +55,9 @@ branch.
 | Repository | Owner version | Protocol | Tested commit | Schema SHA-256 | Result |
 | --- | --- | --- | --- | --- | --- |
 | `agent-frontdoor` | `0.1.0` | `frontdoor-task` `intake.v0` | `296c49be801b6573abf54daa81b828df95e8e84f` | `6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e` | passed; local-only / publication pending |
-| `workflow-governance-model` | `0.2.1` | `governance-handoff` `1.0` | `49804f7854dfe03d7aaa07c4400b909571a17a38` | `c3e45e320d141e4364f465de86cb0af88d7a9034b62dd8fc05b87a3ab07d4c53` | passed; local-only / publication pending |
-| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `d129171eb20bdde5ce6a834e31cceb933c7af87d` | `de2183b6ca51afc5da53fd335e3131f403a50d039e17de6fbaa9e538d2233c91` | passed; local-only / publication pending |
-| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `18eeaefd21791584e3439b803ad2a9c675195eef` | `01ae28e560a85a1927eb8c2eaf46a4101c2f97caa0ca490ff5cfb23767a01534` | passed; local-only / publication pending |
+| `workflow-governance-model` | `0.2.1` | `governance-handoff` `1.1` | `faec3725781547cc64e58b3eb14177885bd315f6` | `75f96909fa31a8bcf65d74d243aeea0e8b43185b13974f19f60f47cf769125c7` | passed; local-only / publication pending |
+| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `e4669fb9534bf97030134d4305caa492c87f7ed3` | `273b1def57ec35957750c4979c737480c4cbb7f4db2294993dd5475b54fc673b` | passed; local-only / publication pending |
+| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `bd933d5dee7dbe4b9ca8057f7848c2ef70261b2d` | `587ef29c693a834ffada7789b28b2b76cbefbad819386b91507a510def3facb2` | passed; local-only / publication pending |
 
 The report verified four owner manifests, four schema digests, byte identity with all four bundled schemas, four public
 examples, the Secretary copy of the Router input, shared task ID/capability/status fields, and false authority/execution

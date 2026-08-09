@@ -64,9 +64,9 @@ checkouts pinned to exact commits:
 | Owner | Tested commit | Native verification |
 | --- | --- | --- |
 | Agent Frontdoor | `296c49be801b6573abf54daa81b828df95e8e84f` | 628/628 pytest cases passed |
-| Workflow Governance Model | `49804f7854dfe03d7aaa07c4400b909571a17a38` | 15/15 unittest cases passed |
-| Mothership Router | `d129171eb20bdde5ce6a834e31cceb933c7af87d` | 17/17 unittest cases passed |
-| Secretary TUI | `18eeaefd21791584e3439b803ad2a9c675195eef` | 18/18 top-level Go tests passed; race, vet, and build passed |
+| Workflow Governance Model | `faec3725781547cc64e58b3eb14177885bd315f6` | 17/17 unittest cases passed |
+| Mothership Router | `e4669fb9534bf97030134d4305caa492c87f7ed3` | 19/19 unittest cases passed |
+| Secretary TUI | `bd933d5dee7dbe4b9ca8057f7848c2ef70261b2d` | 20/20 top-level Go tests passed; race, vet, and build passed |
 
 The closed audit result was:
 

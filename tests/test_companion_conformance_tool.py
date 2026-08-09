@@ -16,9 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_ROOT = ROOT / "mothership/resources"
 COMMITS = {
     "agent-frontdoor": "296c49be801b6573abf54daa81b828df95e8e84f",
-    "workflow-governance-model": "49804f7854dfe03d7aaa07c4400b909571a17a38",
-    "mothership-router": "d129171eb20bdde5ce6a834e31cceb933c7af87d",
-    "secretary-tui": "18eeaefd21791584e3439b803ad2a9c675195eef",
+    "workflow-governance-model": "faec3725781547cc64e58b3eb14177885bd315f6",
+    "mothership-router": "e4669fb9534bf97030134d4305caa492c87f7ed3",
+    "secretary-tui": "bd933d5dee7dbe4b9ca8057f7848c2ef70261b2d",
 }
 OWNERS = (
     {
@@ -33,9 +33,9 @@ OWNERS = (
     {
         "repository": "workflow-governance-model",
         "kind": "governance-handoff",
-        "version": "1.0",
-        "schema_path": "schemas/workflow-handoff.schema.json",
-        "snapshot": "protocols/schemas/governance-handoff.1.0.schema.json",
+        "version": "1.1",
+        "schema_path": "schemas/workflow-handoff.1.1.schema.json",
+        "snapshot": "protocols/schemas/governance-handoff.1.1.schema.json",
         "example_path": "examples/handoff.valid.json",
         "fixture": "golden-path/02-governance-handoff.json",
     },
