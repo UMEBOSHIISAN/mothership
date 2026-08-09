@@ -18,6 +18,7 @@ from .protocols import ProtocolError, list_protocols, validate_protocol_file
 from .verify import verify_installation
 
 
+_DIAGNOSTIC_TIMEOUT_SECONDS = 5
 _PROTOCOL_KINDS = frozenset(
     {
         "frontdoor-task",
@@ -66,6 +67,7 @@ def _runner(argv: tuple[str, ...]) -> subprocess.CompletedProcess[bytes]:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
+        timeout=_DIAGNOSTIC_TIMEOUT_SECONDS,
     )
 
 

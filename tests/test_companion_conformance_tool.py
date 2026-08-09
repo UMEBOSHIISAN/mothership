@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 from io import StringIO
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -65,6 +67,14 @@ class CompanionConformanceToolTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name).resolve()
+        self.real_commit_reader = tool._read_commit_file
+        commit_reader = mock.patch.object(
+            tool,
+            "_read_commit_file",
+            side_effect=lambda root, _commit, path: tool._read_regular_file(root, path),
+        )
+        commit_reader.start()
+        self.addCleanup(commit_reader.stop)
         self.roots: list[Path] = []
         for owner in OWNERS:
             repository_root = self.root / owner["repository"]
@@ -180,6 +190,53 @@ class CompanionConformanceToolTests(unittest.TestCase):
         with mock.patch.object(tool, "_git_head", return_value="0" * 40):
             with self.assertRaises(tool.ConformanceError):
                 tool.audit_companions(tuple(self.roots))
+
+    def test_commit_reader_binds_bytes_to_the_pinned_commit(self) -> None:
+        repository = self.root / "commit-reader"
+        repository.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+        subprocess.run(["git", "config", "user.name", "Mothership Test"], cwd=repository, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "mothership-test@example.invalid"],
+            cwd=repository,
+            check=True,
+        )
+        artifact = repository / "examples/input.json"
+        self._write(artifact, b'{"value":"committed"}\n')
+        subprocess.run(["git", "add", "examples/input.json"], cwd=repository, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "fixture"], cwd=repository, check=True)
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        artifact.write_bytes(b'{"value":"dirty"}\n')
+        self.assertEqual(
+            b'{"value":"committed"}\n',
+            self.real_commit_reader(repository, commit, "examples/input.json"),
+        )
+
+    def test_regular_file_reader_rejects_leaf_symlink_swap(self) -> None:
+        root = self.root / "reader-root"
+        root.mkdir()
+        inside = root / "inside.json"
+        outside = self.root / "outside.json"
+        inside.write_bytes(b"inside")
+        outside.write_bytes(b"outside")
+        original_resolve = Path.resolve
+
+        def resolve_and_swap(path: Path, *args: object, **kwargs: object) -> Path:
+            resolved = original_resolve(path, *args, **kwargs)
+            if path == inside:
+                inside.unlink()
+                inside.symlink_to(outside)
+            return resolved
+
+        with mock.patch.object(Path, "resolve", resolve_and_swap):
+            self.assertEqual(b"inside", tool._read_regular_file(root, "inside.json"))
 
     def test_symlink_root_fails_closed(self) -> None:
         link = self.root / "frontdoor-link"
