@@ -164,7 +164,9 @@ class ReadmeContractTests(unittest.TestCase):
 
     def test_claims_and_rendering_structure_are_closed(self) -> None:
         lowered = self.text.casefold()
-        self.assertIn("tests-221%20passing", self.text)
+        self.assertIn("tests-225%20passing", self.text)
+        self.assertIn("reachable from their public main branches", lowered)
+        self.assertNotIn("publication-pending", lowered)
         for forbidden in (
             "production ready",
             "production-ready",
@@ -374,6 +376,8 @@ class SupportingDocumentationTests(unittest.TestCase):
         self.assertIn("Python 3.12+", compatibility)
         self.assertIn("0.2.0", compatibility)
         self.assertIn("Measured, not universal", compatibility)
+        self.assertIn("reachable from its repository's public `main` branch", compatibility)
+        self.assertNotIn("publication pending", compatibility.casefold())
 
         contributing = self.documents["contributing"]
         for term in ("TDD", "python3 -m unittest", "schema owner", "SHA-256"):
@@ -491,6 +495,8 @@ class JapaneseGuideTests(unittest.TestCase):
         self.assertNotIn("/Users/", self.japanese)
         self.assertNotIn("/" + "private/", self.japanese)
         self.assertNotIn("file://", self.japanese.casefold())
+        self.assertIn("public main branchから到達可能", self.japanese)
+        self.assertNotIn("publication pending", self.japanese.casefold())
 
 
 if __name__ == "__main__":
