@@ -219,6 +219,26 @@ class CompanionConformanceToolTests(unittest.TestCase):
             self.real_commit_reader(repository, commit, "examples/input.json"),
         )
 
+        subprocess.run(["git", "add", "examples/input.json"], cwd=repository, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "replacement"], cwd=repository, check=True)
+        replacement = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        subprocess.run(["git", "replace", commit, replacement], cwd=repository, check=True)
+        self.assertEqual(
+            b'{"value":"committed"}\n',
+            self.real_commit_reader(repository, commit, "examples/input.json"),
+        )
+
+    def test_git_reads_disable_replacements_and_lazy_fetches(self) -> None:
+        environment = tool._git_environment()
+        self.assertEqual("1", environment["GIT_NO_REPLACE_OBJECTS"])
+        self.assertEqual("1", environment["GIT_NO_LAZY_FETCH"])
+
     def test_regular_file_reader_rejects_leaf_symlink_swap(self) -> None:
         root = self.root / "reader-root"
         root.mkdir()
