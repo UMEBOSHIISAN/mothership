@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "task_id": "demo-review-001",
+  "capability": "code-review",
+  "status": "approval_required",
+  "recommended_alias": "fictional-code-reviewer",
+  "registry_sha256": "ff5701e11298c8d020044a6d16f712be8d5ea46960b57b19ada66bafe72a74c0",
+  "reasons": [
+    "manifest_only",
+    "manual_execution_not_implemented"
+  ],
+  "authority_effect": false,
+  "execution_effect": false
+}
