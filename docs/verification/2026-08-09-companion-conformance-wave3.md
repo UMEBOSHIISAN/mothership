@@ -2,13 +2,15 @@
 
 Date: 2026-08-09
 
-Subject: unreleased Mothership 0.2.0 candidate and four pinned companion candidates
+Subject: Mothership 0.2.0 release candidate and four pinned companion candidates
 
 Mothership code HEAD measured by this evidence record: `332b45170c4b5627462dd1fff2fb378362998166`
 
-This is a local verification record. No branch was pushed, no tag or GitHub Release was created, no package was
-uploaded, and no system was deployed. The measurements below describe synthetic conformance and packaging behavior;
-they are not production-accuracy or generalization claims.
+Final release-artifact source commit: `638b3fe530b4e8c0c40dcf17081cffd5a9f8ee60`
+
+The initial measurements in this record were completed before any branch push, tag, or GitHub Release. Later public
+reachability is recorded separately below. No package-index upload or system deployment is claimed. The measurements
+describe synthetic conformance and packaging behavior; they are not production-accuracy or generalization claims.
 
 ## Closed-suite result
 
@@ -25,6 +27,21 @@ The auditor accepted 4/4 owner manifests, matched 4/4 owner schema digests, conf
 byte-identical to their owners, and accepted 4/4 public examples. The synthetic chain preserved task identity,
 `code-review` capability, Router status, and Secretary observation continuity. All four owner manifests and the final
 chain reported `authority_effect: false` and `execution_effect: false`.
+
+## Public companion reachability
+
+GitHub comparison endpoints subsequently measured each tested commit as an ancestor of its repository's public
+`main` branch (`behind_by: 0`). The measured public `main` heads were:
+
+| Owner | Tested commit | Conformance merge | Measured public `main` head |
+| --- | --- | --- | --- |
+| Agent Frontdoor | `4bcfcb6c1868a87076502999a38127e28e275e70` | `c76a516477241eef7509855ebf22af0821168df3` | `c76a516477241eef7509855ebf22af0821168df3` |
+| Workflow Governance Model | `98576b4f3f755aceccc657bc83df7c94260d4fc0` | `452210d520721a4616dc72646b96dd28d587a197` | `85868bfcdecf9a07cbee35d26cf99c6edc809a73` |
+| Mothership Router | `a23f4b651e1a8baf39a1266a66188bec21c3265c` | `22db307e169f919d2d5855ca7b6bf17b6973b71f` | `5e8952574dcade29afd8429a6e817254dd668ad9` |
+| Secretary TUI | `f3cb61e61bc88e7c4cfd09efe93006c812258fe9` | `8cbdb5f0f0960441e9986468641e431e4441b026` | `8cbdb5f0f0960441e9986468641e431e4441b026` |
+
+This proves public commit reachability for the pinned revisions. It does not convert conformance into a production,
+adoption, or security claim.
 
 The audit was run with:
 
@@ -60,6 +77,9 @@ calls `git ls-files`; the archive has no `.git` metadata. No product assertion w
 same suite in a depth-one clone restored the required tracked-file inventory. The final depth-one clone at
 `332b45170c4b5627462dd1fff2fb378362998166` passed all 225 tests in 18.395 seconds.
 
+After the public-reachability documentation correction, a second depth-one clone at
+`638b3fe530b4e8c0c40dcf17081cffd5a9f8ee60` passed all 225 tests in 18.102 seconds.
+
 ## Synthetic evaluation
 
 `PYTHONDONTWRITEBYTECODE=1 python3 tools/run_evaluation.py` reproduced the tracked result:
@@ -88,11 +108,13 @@ Exactly one Mothership wheel and one source distribution were built from the cle
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `mothership_control_plane-0.2.0-py3-none-any.whl` | `7efcdac1a5f995b2dda32d7e1c16ca28c6cf8a596ae5169a6494a644e0711ebc` |
-| `mothership_control_plane-0.2.0.tar.gz` | `63041e4d87fb62efe02fbca3f7753d4761349e0a96b5e6b1b381810888cf8063` |
+| `mothership_control_plane-0.2.0-py3-none-any.whl` | `d3ee7fa746eab4f9721b4e16a48c9d0ac1c78579cea5efcf733d19ba50911e92` |
+| `mothership_control_plane-0.2.0.tar.gz` | `d2dbbb82a9bed34cb7a4c78e63a8d8c861d72ea6c549d7ec6df0fe9abbf15aa9` |
 
-The wheel was installed with `--no-deps` into a fresh environment and exercised outside every repository. The console
-script and `python -m mothership` forms passed for `verify`, `protocol list`, and `demo`. A separate editable
+These final artifacts were built exactly once from the clean depth-one clone at
+`638b3fe530b4e8c0c40dcf17081cffd5a9f8ee60`. The wheel was installed with `--no-deps` into a fresh environment and
+exercised outside every repository. The console script and `python -m mothership` forms passed for `verify`, `protocol
+list`, and `demo`. A separate editable
 installation produced byte-identical output for all three read-only commands. The output SHA-256 values were:
 
 | Command | SHA-256 |
@@ -172,4 +194,6 @@ companion worktrees and did not clean, stage, or commit either original checkout
 This evidence supports a local artifact-paper candidate about fail-closed protocol composition and authority as
 versioned data. It does not support claims of production accuracy, formal verification, universal attack prevention,
 causal productivity improvement, or external adoption. Publication, push, tag, release, package upload, deployment,
-and companion-repository publication remain separate human-authorized decisions.
+and companion-repository publication require separate human authority. This tracked report does not, by itself,
+establish a Mothership tag or GitHub Release; those remote effects must be measured after merge. Package-index upload
+and deployment remain outside this release task.
