@@ -150,6 +150,25 @@ class CliTests(unittest.TestCase):
                 self.assertEqual("invalid_alias_selection", result["error"])
                 runner.assert_not_called()
 
+    def test_default_doctor_runner_has_a_fixed_timeout_and_fails_closed(self) -> None:
+        from mothership import cli
+
+        completed = subprocess.CompletedProcess(("codex", "--version"), 0, b"codex 1\n", b"")
+        with mock.patch.object(cli.subprocess, "run", return_value=completed) as run:
+            self.assertIs(completed, cli._runner(("codex", "--version")))
+        self.assertEqual(5, run.call_args.kwargs["timeout"])
+
+        with mock.patch.object(
+            cli.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(("codex", "--version"), 5),
+        ):
+            exit_code, result = cli.command_doctor(("codex-cli",))
+        self.assertEqual(1, exit_code)
+        self.assertEqual("unavailable", result["results"][0]["status"])
+        self.assertIs(False, result["authority_effect"])
+        self.assertIs(False, result["execution_effect"])
+
     def test_unavailable_diagnostic_is_exit_one_not_authority(self) -> None:
         from mothership.cli import command_doctor
 

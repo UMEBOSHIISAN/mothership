@@ -28,6 +28,11 @@ from orchestration.lib.jsonio import loads_strict
 RESOURCE_ROOT = ROOT / "mothership/resources"
 MANIFEST_PATH = "suite/mothership-0.2-conformance.json"
 MAX_ARTIFACT_BYTES = 1_048_576
+CHUNK_BYTES = 65_536
+NOFOLLOW = getattr(os, "O_NOFOLLOW", None)
+DIRECTORY = getattr(os, "O_DIRECTORY", None)
+NONBLOCK = getattr(os, "O_NONBLOCK", 0)
+CLOEXEC = getattr(os, "O_CLOEXEC", 0)
 MANIFEST_KEYS = frozenset(
     {
         "schema_version",
@@ -134,21 +139,124 @@ def _safe_root(root: object) -> Path:
 
 def _read_regular_file(root: Path, relative_path: object) -> bytes:
     safe = _safe_relative_path(relative_path)
-    candidate = root.joinpath(*PurePosixPath(safe).parts)
+    safe_root = _safe_root(root)
+    if NOFOLLOW is None or DIRECTORY is None:
+        raise ConformanceError("no-follow artifact access is unavailable")
+    parent: int | None = None
+    descriptor: int | None = None
     try:
-        if candidate.resolve(strict=True) != candidate:
-            raise ConformanceError("artifact path contains a symbolic link")
-        info = candidate.stat()
+        parent = os.open(
+            os.fspath(safe_root),
+            os.O_RDONLY | DIRECTORY | NOFOLLOW | CLOEXEC,
+        )
+        if not stat.S_ISDIR(os.fstat(parent).st_mode):
+            raise ConformanceError("artifact root is not a real directory")
+        parts = PurePosixPath(safe).parts
+        for component in parts[:-1]:
+            child = os.open(
+                component,
+                os.O_RDONLY | DIRECTORY | NOFOLLOW | CLOEXEC,
+                dir_fd=parent,
+            )
+            if not stat.S_ISDIR(os.fstat(child).st_mode):
+                os.close(child)
+                raise ConformanceError("artifact path contains a non-directory component")
+            os.close(parent)
+            parent = child
+        descriptor = os.open(
+            parts[-1],
+            os.O_RDONLY | NOFOLLOW | NONBLOCK | CLOEXEC,
+            dir_fd=parent,
+        )
+        info = os.fstat(descriptor)
         if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_ARTIFACT_BYTES:
             raise ConformanceError("artifact is not a bounded regular file")
-        data = candidate.read_bytes()
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            block = os.read(descriptor, min(CHUNK_BYTES, MAX_ARTIFACT_BYTES + 1 - total))
+            if not block:
+                break
+            chunks.append(block)
+            total += len(block)
+            if total > MAX_ARTIFACT_BYTES:
+                raise ConformanceError("artifact exceeds the byte limit")
+        final = os.fstat(descriptor)
+        if (info.st_dev, info.st_ino, info.st_size) != (
+            final.st_dev,
+            final.st_ino,
+            final.st_size,
+        ):
+            raise ConformanceError("artifact changed while being read")
     except ConformanceError:
         raise
-    except OSError:
+    except (OSError, TypeError, ValueError):
         raise ConformanceError("artifact is unavailable") from None
-    if len(data) > MAX_ARTIFACT_BYTES:
-        raise ConformanceError("artifact exceeds the byte limit")
-    return data
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        if parent is not None:
+            os.close(parent)
+    return b"".join(chunks)
+
+
+def _git_environment() -> dict[str, str]:
+    return {
+        "GIT_OPTIONAL_LOCKS": "0",
+        "HOME": os.environ.get("HOME", ""),
+        "LANG": "C",
+        "LC_ALL": "C",
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+    }
+
+
+def _run_git(root: Path, arguments: tuple[str, ...]) -> subprocess.CompletedProcess[bytes]:
+    try:
+        return subprocess.run(
+            ["git", "-C", os.fspath(root), *arguments],
+            check=False,
+            input=b"",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10,
+            env=_git_environment(),
+        )
+    except (OSError, subprocess.SubprocessError):
+        raise ConformanceError("companion commit artifact is unavailable") from None
+
+
+def _read_commit_file(root: Path, commit: object, relative_path: object) -> bytes:
+    safe_root = _safe_root(root)
+    safe = _safe_relative_path(relative_path)
+    if type(commit) is not str or COMMIT_PATTERN.fullmatch(commit) is None:
+        raise ConformanceError("companion commit is unavailable")
+    listing = _run_git(safe_root, ("ls-tree", "-z", commit, "--", safe))
+    if listing.returncode != 0 or not listing.stdout.endswith(b"\0"):
+        raise ConformanceError("companion commit artifact is unavailable")
+    records = listing.stdout[:-1].split(b"\0")
+    if len(records) != 1 or b"\t" not in records[0]:
+        raise ConformanceError("companion commit artifact is unavailable")
+    identity, path = records[0].split(b"\t", 1)
+    fields = identity.split(b" ")
+    if (
+        len(fields) != 3
+        or fields[0] not in {b"100644", b"100755"}
+        or fields[1] != b"blob"
+        or path != safe.encode("utf-8")
+    ):
+        raise ConformanceError("companion commit artifact is not a regular file")
+    oid = fields[2].decode("ascii", "strict")
+    size_result = _run_git(safe_root, ("cat-file", "-s", oid))
+    try:
+        size = int(size_result.stdout.strip())
+    except ValueError:
+        raise ConformanceError("companion commit artifact is unavailable") from None
+    if size_result.returncode != 0 or size < 0 or size > MAX_ARTIFACT_BYTES:
+        raise ConformanceError("companion commit artifact exceeds the byte limit")
+    content = _run_git(safe_root, ("cat-file", "blob", oid))
+    if content.returncode != 0 or len(content.stdout) != size:
+        raise ConformanceError("companion commit artifact is unavailable")
+    return content.stdout
 
 
 def _read_document(root: Path, relative_path: object) -> dict[str, object]:
@@ -161,14 +269,21 @@ def _read_document(root: Path, relative_path: object) -> dict[str, object]:
     return document
 
 
+def _read_commit_document(
+    root: Path,
+    commit: str,
+    relative_path: object,
+) -> dict[str, object]:
+    try:
+        document = loads_strict(_read_commit_file(root, commit, relative_path))
+    except ContractError:
+        raise ConformanceError("artifact JSON is invalid") from None
+    if type(document) is not dict:
+        raise ConformanceError("artifact JSON must be an object")
+    return document
+
+
 def _git_head(root: Path) -> str:
-    environment = {
-        "GIT_OPTIONAL_LOCKS": "0",
-        "HOME": os.environ.get("HOME", ""),
-        "LANG": "C",
-        "LC_ALL": "C",
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-    }
     try:
         result = subprocess.run(
             ["git", "-C", os.fspath(root), "rev-parse", "--verify", "HEAD"],
@@ -176,7 +291,7 @@ def _git_head(root: Path) -> str:
             capture_output=True,
             text=True,
             timeout=10,
-            env=environment,
+            env=_git_environment(),
         )
     except (OSError, subprocess.SubprocessError):
         raise ConformanceError("companion commit is unavailable") from None
@@ -189,8 +304,9 @@ def _git_head(root: Path) -> str:
 def _validate_manifest(
     root: Path,
     owner: Owner,
+    commit: str,
 ) -> tuple[dict[str, object], bytes, dict[str, object]]:
-    manifest = _read_document(root, MANIFEST_PATH)
+    manifest = _read_commit_document(root, commit, MANIFEST_PATH)
     if set(manifest) != MANIFEST_KEYS:
         raise ConformanceError("conformance manifest shape drifted")
     expected = {
@@ -211,14 +327,14 @@ def _validate_manifest(
     if type(digest) is not str or DIGEST_PATTERN.fullmatch(digest) is None:
         raise ConformanceError("conformance schema digest is invalid")
 
-    owner_schema = _read_regular_file(root, manifest["schema_path"])
+    owner_schema = _read_commit_file(root, commit, manifest["schema_path"])
     if hashlib.sha256(owner_schema).hexdigest() != digest:
         raise ConformanceError("owner schema digest drifted")
     bundled_schema = _read_regular_file(RESOURCE_ROOT, owner.bundled_schema_path)
     if owner_schema != bundled_schema:
         raise ConformanceError("owner schema differs from the frozen snapshot")
 
-    example = _read_document(root, manifest["example_path"])
+    example = _read_commit_document(root, commit, manifest["example_path"])
     try:
         validated = validate_protocol(owner.protocol_kind, example)
     except ProtocolError:
@@ -230,6 +346,8 @@ def _validate_chain(
     documents: tuple[dict[str, object], ...],
     secretary_root: Path,
     router_root: Path,
+    secretary_commit: str,
+    router_commit: str,
 ) -> dict[str, object]:
     frontdoor, governance, router, observation = documents
     task_id = frontdoor.get("request_id")
@@ -257,8 +375,12 @@ def _validate_chain(
     ):
         raise ConformanceError("effect escalation detected")
 
-    secretary_router = _read_regular_file(secretary_root, "examples/router-manifest.json")
-    owner_router = _read_regular_file(router_root, OWNERS[2].example_path)
+    secretary_router = _read_commit_file(
+        secretary_root,
+        secretary_commit,
+        "examples/router-manifest.json",
+    )
+    owner_router = _read_commit_file(router_root, router_commit, OWNERS[2].example_path)
     if secretary_router != owner_router:
         raise ConformanceError("Secretary Router input differs from the owner example")
     summary = observation.get("summary")
@@ -289,7 +411,7 @@ def audit_companions(roots: tuple[Path, ...]) -> dict[str, object]:
         head = _git_head(root)
         if head != owner.commit:
             raise ConformanceError("companion commit does not match the frozen suite")
-        manifest, owner_schema, document = _validate_manifest(root, owner)
+        manifest, owner_schema, document = _validate_manifest(root, owner, head)
         reports.append(
             {
                 "repository": owner.repository,
@@ -307,6 +429,8 @@ def audit_companions(roots: tuple[Path, ...]) -> dict[str, object]:
         tuple(documents),
         secretary_root=safe_roots[3],
         router_root=safe_roots[2],
+        secretary_commit=OWNERS[3].commit,
+        router_commit=OWNERS[2].commit,
     )
     return {
         "schema_version": "mothership.companion-conformance.v1",
