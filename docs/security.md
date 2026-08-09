@@ -1,23 +1,73 @@
 # Security model
 
-Mothership is designed to make the safe boundary visible rather than hide it behind automation.
+Mothership reduces accidental authority and packaging drift by making boundaries inspectable. It is not a sandbox,
+secret manager, formal proof, or security certification.
 
-## No shipped secrets
+## Assets and trust zones
 
-The repository contains no access tokens, credentials, endpoints, personal paths, or usable command arrays. Configuration examples are placeholders only. Before publishing a fork or a change, scan it for secrets and machine-specific data.
+| Zone | Treatment |
+| --- | --- |
+| immutable package resources | accept only after inventory and digest verification |
+| explicit local protocol input | untrusted; cross strict file, JSON, schema, and metadata checks |
+| diagnostic process output | untrusted observation; sanitize and reduce to closed fields |
+| operator credentials and commands | outside Mothership; never package or infer them |
+| companion output | untrusted until its frozen protocol snapshot validates |
 
-## Local configuration belongs to the operator
+## Local JSON threats
 
-If you adapt `config/executors.example.json`, treat the result as local configuration owned and reviewed by you. Keep it out of public commits unless every value is safe to disclose. Supply credentials only through your own local environment and never paste them into issues, commits, or configuration examples.
+The protocol loader rejects duplicate keys, non-finite numbers, malformed UTF-8, unsupported versions, unknown fields,
+and oversized input above 1 MiB. It rejects secret-like keys and private absolute paths. A terminal control character is
+also rejected where the schema permits displayed text.
 
-## Non-authorizing by design
+Validation errors use static reasons and JSON paths. They do not echo the input value or explicit source path.
 
-Mothership can validate data, create an advisory result, or report local adapter availability. It cannot grant approval, choose an executor, invoke a model, deploy software, or make an external request. A valid local result never substitutes for a human decision.
+## File-system threats
 
-## No ambient mutation
+Explicit protocol paths must be absolute and normalized. Mothership opens each path component without following
+symbolic links, accepts regular files only, and rejects directories, FIFOs, sockets, and other special files. It checks
+file identity and size before and after reading to detect relevant substitution or growth.
 
-The package does not install hooks, modify Codex or editor settings, write scheduler entries, or update a user's environment. Any integration beyond the repository requires an explicit, separately reviewed action by the user.
+These checks depend on POSIX descriptor features. See [Compatibility](compatibility.md).
 
-## Reporting a concern
+## Packaged-resource threats
 
-Do not include secrets, private paths, or personal information in a public report. Provide the smallest reproducible example that demonstrates the behavior, with sensitive values removed.
+`mothership verify` rejects missing, extra, duplicate, unsafe, resized, or digest-mismatched inventory entries. The
+registry separately binds each protocol schema to a SHA-256. A stale protocol snapshot remains possible when an owner
+releases a change that Mothership has not frozen; the compatibility table makes that lag visible.
+
+## Diagnostic subprocess threats
+
+`doctor` resolves fixed aliases and runs only documented version, help, or list probes under a sanitized environment.
+It does not pass credentials or endpoint overrides. An installed Ollama CLI may contact its default loopback daemon for
+`ollama list`; the guarantee is no Mothership-directed external network target, not zero local IPC.
+
+Diagnostics report availability only. A discovered command is not approval to use it.
+
+## Authority boundary
+
+Protocol validation never grants authority. The initial protocol registry declares no authority-capable or
+execution-capable entry. Router and observation fixtures require `authority_effect: false` and
+`execution_effect: false`.
+
+The default CLI is read-only. Explicit library calls for staging or ledger evidence can write only to a caller-supplied
+target. Those APIs cannot make an external action approved merely by recording data.
+
+## Installation boundary
+
+Pip and Git are external tools with their own side effects and supply-chain risks. Review the source or wheel, verify
+its digest, use an isolated environment, and run `mothership verify` after installation. Verification cannot prove the
+interpreter, operating system, installer, or host is uncompromised.
+
+## Residual risks
+
+- A compromised interpreter or operating system can bypass application checks.
+- A malicious dependency used only during build can affect an artifact; prefer reviewed, pinned build tooling.
+- A valid document can contain misleading but schema-conforming statements.
+- A diagnostic executable found on `PATH` may not be the program the operator intended.
+- Time-of-check/time-of-use risk exists after Mothership returns data to another process.
+- Synthetic conformance results do not estimate real-world attack prevalence or protection rates.
+
+## Vulnerability reporting
+
+Follow [SECURITY.md](../SECURITY.md). Do not include credentials, personal data, private paths, or live exploit details
+in a public issue.

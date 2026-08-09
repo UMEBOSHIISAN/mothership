@@ -1,349 +1,297 @@
 <p align="center">
-  <img src="assets/mothership-banner.png" alt="A whale-shaped mothership travelling through a dark star field" width="100%">
+  <img src="assets/mothership-logo.png" alt="Mothership whale logo" width="180">
 </p>
 
-<h1 align="center">Mothership</h1>
+# Mothership
+
+<p align="center"><strong>The portable, safety-first control plane for AI coding environments.</strong></p>
 
 <p align="center">
-  <b>Ship your AI coding cockpit — not your secrets.</b><br>
-  <sub>AIコーディング環境の「操縦席」だけを持ち運ぶ。鍵は置いていく。</sub>
+  <img alt="Python 3.12 or newer" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
+  <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20dependencies-0-16A34A">
+  <img alt="Offline verification" src="https://img.shields.io/badge/verification-offline-7C3AED">
+  <img alt="Test suite passing" src="https://img.shields.io/badge/tests-225%20passing-16A34A">
+  <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0F172A">
 </p>
 
-<p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-0.1.2-4a90d9">
-  <img alt="python" src="https://img.shields.io/badge/python-3.12%2B-3776ab">
-  <img alt="tests" src="https://img.shields.io/badge/tests-132%20passing-16a34a">
-  <img alt="dependencies" src="https://img.shields.io/badge/dependencies-stdlib%20only-5fd3d3">
-  <img alt="network" src="https://img.shields.io/badge/network-none-e06a6a">
-  <img alt="license" src="https://img.shields.io/badge/license-MIT-f0a04b">
-</p>
+<p align="center"><strong>Move the control plane. Keep secrets and authority local.</strong></p>
 
-<p align="center">
-  <a href="docs/ja/README.md">日本語</a> ·
-  <a href="docs/architecture.md">Architecture</a> ·
-  <a href="docs/installation.md">Installation</a> ·
-  <a href="docs/security.md">Security model</a> ·
-  <a href="docs/composition.md">Composition</a> ·
-  <a href="docs/ecosystem-roadmap.md">Roadmap</a>
-</p>
+Mothership packages the contracts, protocol snapshots, integrity checks, and local diagnostics that make an AI coding
+setup inspectable across machines. It does not invoke a model, select an executor, or turn a recommendation into
+permission.
 
----
-
-You built a good AI coding setup. Claude Code here, Codex CLI there, a local model on a second machine, a hook you wrote at 2 a.m. that you now depend on.
-
-Then you get a new laptop.
-
-**Copying your home directory is fast and unsafe. Rebuilding from memory is safe and slow.** Mothership is the third option: package the contracts, diagnostics, and evidence shapes that make an environment *intelligible* — and leave the credentials, paths, and execution authority where they belong.
-
-> あなたの AI 開発環境は、たぶん一台のマシンと、あなたの頭の中にしか存在しない。丸ごとコピーすれば速いが危険で、記憶から組み直せば安全だが遅い。Mothership はその間にある第三の選択肢 — 環境を「理解可能にしている構造」だけを配り、鍵と権限は手元に残す。
-
----
-
-## 30 seconds
-
-```sh
-git clone https://github.com/UMEBOSHIISAN/mothership.git
-cd mothership
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests   # 132 tests
-./bootstrap/doctor.sh | python3 -m json.tool
-```
-
-The diagnostic tells you what your machine actually has, without launching anything:
-
-```json
-[
-  {
-    "adapter_id": "claude-code-agent",
-    "status": "available",
-    "authority_effect": "none",
-    "local_model_present": null,
-    "limitations": ["authentication-external", "binary-trust-external", "managed-policy-external"],
-    "version_sha256": "c92d556fba6736…"
-  },
-  {
-    "adapter_id": "codex-cli",
-    "status": "unavailable",
-    "authority_effect": "none"
-  },
-  {
-    "adapter_id": "ollama-local",
-    "status": "unavailable",
-    "local_model_present": false
-  }
-]
-```
-
-Read that output carefully, because it is the whole philosophy in one payload:
-
-- `status: available` means **the binary exists**. It does not mean you are authenticated, that the binary is trustworthy, or that a policy allows it. Those three unknowns are named in `limitations` instead of being quietly assumed away.
-- `authority_effect: "none"` appears on **every** result Mothership produces. There is no code path that emits anything else.
-- Nothing was launched. Nothing hit the network. The exit status is a *diagnosis*, not a request to install something.
-
-> 「使える」と「動かしていい」は違う。この JSON はそれを混ぜない。`available` はバイナリの存在だけを意味し、認証・信頼・ポリシーの3つは未知のまま `limitations` に明示される。
-
----
-
-## Why this exists
-
-This is not a thought experiment about agent safety. It is the residue of running one.
-
-For most of 2026 I have operated a small e-commerce business where a fleet of AI agents does real work every day: drafting posts, watching the shipping queue, auditing repositories, reviewing each other's code. Claude Code, Codex CLI, and local models on a second Mac, coordinating across machines.
-
-Then the machine that ran all of it — the mothership — was retired.
-
-Everything worked. Nothing was writable down. The scheduler jobs, the approval conventions, the hooks, the "don't let it do that" rules I had learned the hard way — all of it lived in one computer and one person's head. Recreating it took far longer than it should have, and the parts I could not describe were exactly the parts that mattered.
-
-**An environment you cannot hand to someone else is an environment you do not actually own.**
-
-This repository is the portable half of that setup: the contracts, the boundaries, the diagnostics, the shapes that evidence has to take. Not the machine. Not the keys. Not the authority.
-
-> 2026年の大半、私は小さなEC事業を回しながら、複数のAIエージェントに毎日実務をさせてきた。投稿の下書き、発送キューの監視、リポジトリ監査、互いのコードレビュー。その全部を動かしていた母艦マシンが退役した時、**動いていたのに、書き出せなかった**。手順もフックも「これはやらせない」という規律も、一台のマシンと一人の頭の中にしかなかった。**他人に渡せない環境は、自分のものではない。** このリポジトリは、その環境の「渡せる側の半分」だ。
-
----
-
-## Every boundary here is a scar
-
-Most safety documentation is written before the accident. This one was written after six of them.
-
-<p align="center">
-  <img src="assets/incident-lineage.svg" alt="Six real incidents and the contracts they became" width="100%">
-</p>
-
-Read the left column again. None of those are hypothetical attacks by a sophisticated adversary. They are ordinary Tuesday failures:
-
-**A wider glob at execution time than at review time.** A human looked at a list of 21 files and said yes. The command that ran re-expanded the pattern and deleted 94. The approval was real; the *set* it applied to was not frozen. That is why the contracts in this repository are closed — an undocumented field is rejected rather than absorbed, because "absorbing input the reviewer never saw" is the exact shape of that failure.
-
-**A silent tool failure filled in with fiction.** A command failed, the failure was not checked, and the summary reported success with plausible invented results. The lesson is not "be more careful." It is that a *label* is not evidence — which is why validation here fails closed and never degrades into permissive prose.
-
-**148+ private network addresses committed across 11 repositories.** No attacker involved. Just the fact that a concrete value reads better in documentation than a placeholder does. Now the shipped config (`config/executors.example.json`) contains **empty command arrays on purpose**. It is unusable until a human fills it in, and that is the feature.
-
-**A ledger that said `COMMITTED` while the change sat in the work tree.** Three separate times. Real fix, real verification — only the persistence step was skipped, and the label outran the state. Approval events in this repo are durable inspectable data for exactly that reason.
-
-**A multi-step prompt injection aiming at customer data.** Caught before egress; zero actual impact. But it settled an argument: an agent that can reach the network *is* an exfiltration path, no matter how well-behaved it usually is. Mothership makes no network requests. There is nothing to hijack because there is nothing that can act.
-
-That last one deserves a number. In a separate internal experiment I ran 1,021 trials measuring when tool-augmented LLM agents violate a "propose only, do not act" instruction. **Without tool access: 3.6% violation. With tool access: 82.0%.** Tool availability dominated every other variable tested — model, temperature, prompt framing, authority phrasing. *(That study is not yet public, so treat the figure as an unverified internal result, not a citation.)*
-
-If a single switch moves boundary violation from 3.6% to 82%, the honest design response is not a better prompt. It is to not ship the switch. That is why this package has no execution path at all.
-
----
-
-## Share the structure. Keep the authority local.
-
-<p align="center">
-  <img src="assets/boundary-map.svg" alt="What travels with the package versus what stays with the operator" width="100%">
-</p>
-
-Every arrow in this system returns to a human. Mothership can validate, describe, and record bounded state. It deliberately cannot cross into execution or authority.
-
----
-
-## What you actually get
-
-| Capability | What it provides | Why it matters |
-| --- | --- | --- |
-| **Closed contracts** | Public JSON schemas for task, decision, executor-registry, invocation, assessment, and approval-event | Undocumented fields are rejected instead of silently drifting into meaning |
-| **Fail-closed validation** | Contract and path checks stop on malformed or unsafe input | A broken boundary never becomes an accidental permission grant |
-| **Advisory routing** | A local route can name an eligible alias while leaving selection and execution unset | Guidance stays structurally separate from authority |
-| **Approval-ledger primitives** | Durable event shapes for the approval and attempt lifecycle | Approval becomes inspectable data rather than hidden state |
-| **Adapter plans & diagnostics** | Fixed aliases, immutable plan helpers, one sanitized local probe | You can see what a machine has without launching a model |
-| **Blank config templates** | Deliberately empty examples plus checksum-backed release contents | You start from a review surface, not from someone else's machine |
-| **Local verification** | 132 standard-library tests, zero third-party dependencies | A rebuilt environment can prove its foundation before you trust it |
-
-### Compatibility surface
-
-These are **diagnostic and planning aliases**, not integrations and not launchers.
-
-| Alias | Local surface | What Mothership can do |
-| --- | --- | --- |
-| `claude-code-agent` | Claude Code | Build and validate a local plan; report documented command availability |
-| `codex-cli` | Codex CLI | Build and validate a local plan; report documented command availability |
-| `ollama-local` | Ollama | Build and validate a local plan; report documented command availability |
-
-No alias receives credentials, starts a model, or performs work merely because it appears in a result.
-
----
-
-## How the control plane fits together
-
-```mermaid
-flowchart LR
-    human["Human review<br/>and local authority"]
-    config["User-owned<br/>local configuration"]
-    contracts["Closed contracts<br/>and validators"]
-    route["Advisory routing"]
-    ledger["Approval-ledger<br/>primitives"]
-    adapters["Adapter plans<br/>and diagnostics"]
-    result["Inspectable<br/>local result"]
-
-    human --> config
-    config --> adapters
-    human --> contracts
-    contracts --> route
-    contracts --> ledger
-    route --> result
-    ledger --> result
-    adapters --> result
-    result --> human
-```
-
-There is no arrow leaving this diagram. That is not a simplification of the drawing — it is a property of the package.
-
----
+[日本語](docs/ja/README.md) · [Architecture](docs/architecture.md) · [Install](docs/installation.md) ·
+[Protocols](docs/protocols.md) · [Security](docs/security.md) · [Research evidence](docs/research/paper-evidence.md)
 
 ## Quick start
 
-Mothership requires **Python 3.12+** and has **no third-party dependencies**.
+From a Mothership source checkout, the complete first-run path is five commands:
 
-### 1. Clone
-
+<!-- quickstart:start -->
 ```sh
-git clone https://github.com/UMEBOSHIISAN/mothership.git
-cd mothership
-python3 --version
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
+mothership verify
+mothership demo
 ```
+<!-- quickstart:end -->
 
-### 2. Verify the foundation *first*
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
-```
-
-Expected: `Ran 132 tests … OK`.
-
-> If four `test_doctor` cases fail on a checkout you believe is clean, look for `__pycache__/` directories under `orchestration/`. The process-boundary tests assert an exact file inventory, so stray bytecode from any earlier Python invocation fails them. Removing those directories restores a green run — it is a stale artifact, not a defect in your clone.
->
-> 「きれいなはずの checkout で test_doctor が4件落ちる」場合は `orchestration/` 配下の `__pycache__/` を疑うこと。プロセス境界テストはファイル一覧の完全一致を検査するため、以前の Python 実行が残したバイトコードで落ちる。消せば緑に戻る。
-
-### 3. Inspect your local surface
-
-```sh
-./bootstrap/doctor.sh | python3 -m json.tool
-```
-
-`doctor.sh` probes fixed adapter commands in a sanitized environment. It does not install software, authenticate, edit settings, make a network request, or invoke a model. A non-zero exit means an adapter is unavailable locally — a diagnostic result, never a request to install anything.
-
-### 4. Build your own configuration, deliberately
-
-[`config/executors.example.json`](config/executors.example.json) ships with **empty command arrays**. It is a review template, not a launcher.
-
-1. Copy it somewhere you control.
-2. Review every command and path before adding it.
-3. Keep tokens, credentials, and machine-specific paths out of Git.
-4. Treat execution, deployment, and approval as separate human decisions.
-
-Full lifecycle: [Installation and lifecycle](docs/installation.md).
-
----
-
-## The constellation
-
-Mothership is the control plane at the center of a set of small, independently adoptable projects. **The diagram describes an architectural relationship — not a dependency, an installer, or an automatic integration.** You can use any single one of these and ignore the rest.
+Installation may obtain build tooling. The installed runtime has zero third-party dependencies, and `verify` plus
+`demo` run offline. A successful result validates the artifact; it grants no authority to execute work.
 
 <p align="center">
-  <img src="assets/constellation.svg" alt="The Mothership constellation of related repositories" width="100%">
+  <img src="assets/mothership-banner.png" alt="Whale-shaped Mothership crossing a dark star field" width="100%">
 </p>
 
-**Control plane** — the safety boundary itself
+## See the whole control plane in 60 seconds
 
-| Repository | Role |
+`mothership demo` validates one fictional document at every boundary and emits this deterministic result:
+
+<!-- demo-output:start -->
+```json
+{"authority_effect":false,"capability":"code-review","claim":"protocol-composition-only","execution_effect":false,"schema_version":"mothership.demo.v1","stages":[{"kind":"frontdoor-task","schema_version":"intake.v0","valid":true},{"kind":"governance-handoff","schema_version":"1.1","valid":true},{"kind":"router-manifest","schema_version":"1.0","valid":true},{"kind":"observation-snapshot","schema_version":"1.0","valid":true}],"status":"passed","task_id":"demo-review-001"}
+```
+<!-- demo-output:end -->
+
+That output means four versioned protocol documents composed successfully. It does not mean an agent ran, a human
+approved anything, or a real task completed.
+
+## The problem
+
+AI coding setups accrete invisible state: a CLI here, a local model there, a useful alias, a policy file, and one more
+machine-specific convention. Copying the whole home directory is quick but leaks too much. Rebuilding from memory is
+safer but loses the exact boundaries that made the setup trustworthy.
+
+The hard part is not moving binaries. It is preserving the distinction between:
+
+- what can be shared;
+- what must remain local;
+- what is only a recommendation;
+- what needs explicit human authority;
+- what evidence proves the handoff stayed inside those boundaries.
+
+These boundaries were not invented as an abstract safety exercise. They were
+extracted from recurring failure classes in a real multi-agent workspace:
+reviewed scope expanding before execution, success labels surviving without
+artifacts, machine-specific values leaking into shared configuration, and
+verified changes never reaching durable history. Mothership turns those lessons
+into contracts that can be inspected and tested.
+
+## The Mothership answer
+
+Mothership makes those distinctions executable and reviewable:
+
+- an installable Python package and one `mothership` command;
+- strict JSON contracts and fail-closed local file loading;
+- a frozen registry for four independently owned ecosystem protocols;
+- a deterministic synthetic chain that proves composition without execution;
+- resource digests and an offline installation-integrity check;
+- compatibility facades for scope, approval-ledger, adapter, and contract primitives;
+- a reproducible evaluation corpus with explicit claim limits.
+
+The governing rule is simple: **share structure; keep credentials, selection, and execution authority local.**
+
+<p align="center">
+  <img src="assets/boundary-map.svg" alt="Boundary map separating portable control-plane structure from local authority" width="100%">
+</p>
+
+## Architecture
+
+Mothership is the hub for installation, verification, and protocol compatibility. The focused companions stay useful on
+their own and retain their own release histories.
+
+```mermaid
+flowchart LR
+    H[Human request]
+    F[Agent Frontdoor<br/>bounded intake]
+    W[Workflow Governance Model<br/>evidence contract]
+    R[Mothership Router<br/>approval-bound recommendation]
+    S[Secretary TUI<br/>read-only observation]
+    M[(Mothership<br/>protocol registry + verification)]
+
+    H --> F --> W --> R --> S
+    W -. validate snapshot .-> M
+    M -. validate interchange .-> S
+```
+
+No arrow is an implicit process launch. Mothership neither discovers nor installs companions. It validates explicitly
+supplied data against frozen compatibility snapshots.
+
+| Layer | Owns | Never implies |
+| --- | --- | --- |
+| Agent Frontdoor | bounded task-card intake | worker invocation |
+| Workflow Governance Model | evidence and authority relationships | approval |
+| Mothership Router | human-gated dry-run recommendation | execution |
+| Secretary TUI | explicitly supplied local observation | freshness |
+| Mothership | package, protocols, integrity, composition | ambient authority |
+
+Read the full [architecture](docs/architecture.md) and [composition guide](docs/composition.md).
+
+## Choose your adoption path
+
+### 1. Mothership alone — recommended first step
+
+Install the hub, run `mothership verify`, inspect `mothership protocol list`, and use diagnostics intentionally. You get
+the portable control-plane primitives without requiring any companion.
+
+### 2. Add one focused companion
+
+Adopt Agent Frontdoor, Workflow Governance Model, Mothership Router, or Secretary TUI independently. Pass its explicit
+interchange document to `mothership protocol validate KIND FILE` when you want suite-level compatibility evidence.
+
+### 3. Validate the full synthetic chain
+
+Run `mothership demo` to validate all four bundled documents and their transitions. The chain remains synthetic and
+read-only; launching real work is deliberately outside this product.
+
+## Safety guarantees
+
+For the public `mothership` CLI surface:
+
+- `verify`, `protocol`, and `demo` are read-only and operate on packaged or explicitly named local data;
+- JSON rejects duplicate keys, non-finite numbers, malformed UTF-8, unknown fields, and unsupported versions;
+- explicit protocol files must be normalized absolute paths to bounded regular files with no symlink traversal;
+- valid documents do not become approval, selection, execution, or proof of task completion;
+- no command installs a companion, invokes a model, reads credentials, retries, or creates background services;
+- Mothership directs no external network traffic at runtime;
+- `doctor ollama-local` may query an already installed Ollama daemon on its default loopback interface.
+
+Existing library APIs can write only when a programmer explicitly supplies a target for bounded staging or approval
+ledger events. Those calls are not implicit side effects of the default CLI. See the [security model](docs/security.md).
+
+## What Mothership is not
+
+- Not an autonomous agent runtime.
+- Not a model router or model launcher.
+- Not a secret manager or home-directory copier.
+- Not a scheduler, hook installer, daemon, deployment system, or retry engine.
+- Not a claim that local diagnostics make an environment safe.
+- Not a replacement for human review of the command that eventually performs work.
+
+## How it compares
+
+| Question | Mothership | Copy a home directory | Agent framework | Model router |
+| --- | --- | --- | --- | --- |
+| Main job | portable control plane | duplicate machine state | run agent workflows | select model traffic |
+| Secrets included | no | often possible | configuration-dependent | configuration-dependent |
+| Grants authority | no | copies existing state | framework-dependent | usually no |
+| Executes work | no | copied tools may | commonly | sends inference requests |
+| Offline integrity | built in | manual | framework-dependent | service-dependent |
+
+These are category differences, not a universal ranking. Mothership can sit beside an agent framework or model router
+when the operator wants an explicit local control boundary around them.
+
+## Public API
+
+The compatibility modules keep current implementations authoritative while providing stable import paths:
+
+| Module | Purpose |
 | --- | --- |
-| [agent-frontdoor](https://github.com/UMEBOSHIISAN/agent-frontdoor) | Turns an informal request into a bounded, fail-closed task card *before* anything downstream acts |
-| [workflow-governance-model](https://github.com/UMEBOSHIISAN/workflow-governance-model) | Validates the evidence → claim → approval → receipt → verification trail; stale references are rejected, not accepted |
-| **Mothership** | Portable contracts, advisory routing, diagnostics, and the authority boundary |
-| [mothership-router](https://github.com/UMEBOSHIISAN/mothership-router) | Human-gated dry-run selection bound to a registry digest that expires |
-| [secretary-tui](https://github.com/UMEBOSHIISAN/secretary-tui) | Read-only terminal dashboard — shows local operational state without changing it |
+| `mothership.scope` | bounded path validation, measurement, staging, and locking |
+| `mothership.approval` | single-use approval-bound attempt evidence |
+| `mothership.adapters` | immutable adapter plans and fixed diagnostics |
+| `mothership.contracts` | strict JSON, hashing, contract, and registry helpers |
+| `mothership.protocols` | inspect and validate ecosystem interchange documents |
 
-**Devices** — the same boundary, in hardware you can hold
+Mothership 0.2 keeps the legacy import paths available. A future removal would require a major-version decision.
 
-| Repository | Role |
+## Ecosystem protocols
+
+The registry freezes one ordered, non-authorizing chain:
+
+| Protocol kind | Version | Semantic owner |
+| --- | --- | --- |
+| `frontdoor-task` | `intake.v0` | [Agent Frontdoor](https://github.com/UMEBOSHIISAN/agent-frontdoor) |
+| `governance-handoff` | `1.1` | [Workflow Governance Model](https://github.com/UMEBOSHIISAN/workflow-governance-model) |
+| `router-manifest` | `1.0` | [Mothership Router](https://github.com/UMEBOSHIISAN/mothership-router) |
+| `observation-snapshot` | `1.0` | [Secretary TUI](https://github.com/UMEBOSHIISAN/secretary-tui) |
+
+Mothership owns the frozen composition snapshot, not each companion's domain semantics. Updating a protocol requires a
+coordinated owner release, bundled schema, digest, fixture, compatibility table, and conformance test. See the complete
+[protocol reference](docs/protocols.md).
+
+The development-only companion audit takes four explicit repository roots, pins their exact commits, compares owner
+schema bytes with Mothership's snapshots, validates each public example, and checks chain continuity. It never discovers
+repositories automatically. See the [measured compatibility matrix](docs/compatibility.md) for the exact local commits;
+those commits are reachable from their public main branches.
+
+## Compatibility
+
+- Declared Python support: Python 3.12+.
+- Runtime dependencies: zero.
+- File-boundary implementation: POSIX regular-file, descriptor, and no-follow semantics.
+- Measured Wave 1 environment: Python 3.14.6 on macOS.
+- Diagnostic aliases: `claude-code-agent`, `codex-cli`, and `ollama-local`.
+- Frozen suite protocols: four, all non-authorizing and non-executing.
+- Effect constants: `authority_effect: false` and `execution_effect: false`.
+
+See the [compatibility matrix](docs/compatibility.md) before assuming support for an unmeasured platform.
+
+### Measured artifact evidence
+
+The tracked evaluator reports 4/4 valid protocol cases accepted, 20/20 synthetic invalid mutations rejected, and one
+byte-identical demo output across eight controlled process environments. Agent Frontdoor's public labeled corpus reports
+31/31 positive cards valid, 41/41 negative cards with exact issue codes, 16/16 unsafe drift cases detected, and 4/4 safe
+controls preserved.
+
+These are internal synthetic-corpus results, not production accuracy. Reproduce them and read the denominators and
+limitations in [Paper evidence and claim boundaries](docs/research/paper-evidence.md). The Mothership machine-readable
+result is [`evaluation/results/mothership-0.2.0.json`](evaluation/results/mothership-0.2.0.json).
+
+## Documentation
+
+| Need | Document |
 | --- | --- |
-| [claude-cardputer-buddy](https://github.com/UMEBOSHIISAN/claude-cardputer-buddy) | Cardputer adaptation of Anthropic's BLE desk buddy — answer a permission prompt with a physical key |
-| [claude-egg](https://github.com/UMEBOSHIISAN/claude-egg) | A pet that grows from your Claude Code minutes. Aggregate counters only; transcripts never leave your machine |
-| [m5-agent-stars](https://github.com/UMEBOSHIISAN/m5-agent-stars) | M5StickC Plus companion for agent state |
-| [m5-cardputer-8bit-sequencer](https://github.com/UMEBOSHIISAN/m5-cardputer-8bit-sequencer) | Standalone 8-voice groovebox with an optional Ableton bridge |
-| [chiptune-notify](https://github.com/UMEBOSHIISAN/chiptune-notify) | Header-only chiptune melodies with no audio files and no hardware dependency |
+| Install, update, or remove | [Installation lifecycle](docs/installation.md) |
+| Understand trust boundaries | [Architecture](docs/architecture.md) |
+| Compose independent projects | [Composition guide](docs/composition.md) |
+| Inspect schemas and versions | [Protocol reference](docs/protocols.md) |
+| Review threats and residual risk | [Security model](docs/security.md) |
+| Check measured support | [Compatibility](docs/compatibility.md) |
+| Follow ecosystem direction | [Roadmap](docs/ecosystem-roadmap.md) |
+| Read the complete Japanese guide | [日本語ガイド](docs/ja/README.md) |
 
-**Workshop** — where the system stays fun
+### FAQ
 
-| Repository | Role |
-| --- | --- |
-| [toygarden](https://github.com/UMEBOSHIISAN/toygarden) | Zero-dependency TypeScript kit where terminal toys grow — even the demo GIFs render from code |
-| [rhythmkit](https://github.com/UMEBOSHIISAN/rhythmkit) | Falling-note game that hears your *real* instrument through the mic, down to bass E1 |
-| [git-vibes](https://github.com/UMEBOSHIISAN/git-vibes) | Pixel stamp on every commit. Never blocks, never checks, always `exit 0` |
-| [focus-cam-log](https://github.com/UMEBOSHIISAN/focus-cam-log) | Local-first webcam focus journal with Ollama — snapshots stay on your machine |
+**Does Mothership run agents?** No. The default CLI verifies packaged or
+explicitly supplied local data. It does not launch models or workers.
 
-The workshop projects are not decoration. A control plane whose only feeling is *restriction* gets abandoned. The rule that governs them is the same one that governs the contracts: **nothing acts without a human, and nothing that is supposed to be fun is allowed to become a gate.** `git-vibes` cannot block your commit even if it crashes. That is not laziness — it is the same boundary, pointed at your mood instead of your machine.
+**Is this another agent framework?** No. It is a control-plane foundation that
+can sit beside one. Execution remains in separately configured systems.
 
----
+**Does a passing demo prove production safety?** No. It proves only that four
+synthetic, versioned interchange documents compose under the frozen local suite.
 
-## What Mothership does not do
+**Is it portable everywhere?** The package declares Python 3.12+, while the
+file-boundary implementation is POSIX-oriented and the measured Wave 1 platform
+is macOS. Unmeasured platforms remain unclaimed.
 
-Being explicit here is a feature, not a limitation.
+## Contributing
 
-- It does not copy an environment from one machine to another.
-- It does not invoke Claude Code, Codex CLI, Ollama, or any model.
-- It does not choose a model, select an executor, or grant authority.
-- It does not create hooks, daemons, schedulers, deployments, or background services.
-- It does not read, store, transmit, or generate credentials.
-- It does not make network requests.
-- It does not replace your review of the commands your machine will actually run.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). Changes to protocols require coordination with the semantic owner. New
+behavior starts with a failing test, and public claims must point to an executable check or a bounded evidence record.
 
----
+### Built by the system it describes
 
-## Built by a fleet, not by a person
+The design, implementation, and review were iterated by multiple AI coding tools
+under human-held approval authority. That provenance is useful evidence that the
+contracts can support multi-agent work; it is not evidence that autonomous
+operation is safe, and Mothership does not claim that.
 
-One more thing that is true about this repository, and unusual enough to state plainly.
+## Security
 
-**Mothership was built by the system it describes.** The contracts were drafted, implemented, reviewed, and audited by multiple AI agents operating under exactly these boundaries — Claude Code on design and audit, Codex CLI on implementation, local models on classification passes, each one gated by a human who kept the approval authority and never delegated it.
+Read [SECURITY.md](SECURITY.md) before reporting a vulnerability. Use GitHub's private security-advisory flow; never put
+credentials, private paths, exploit details, or personal data in a public issue.
 
-That is not a marketing line. It is why the boundaries are shaped the way they are. Every rule here was proposed because something went wrong, written down because it went wrong *again*, and enforced because a human got tired of catching it manually. The failures in the lineage diagram above are the system's own failures, recorded by the system, before it was designed around them.
+## Roadmap
 
-If you want the short version: this is what a year of *actually* letting AI agents do real work — and refusing to let them have the keys — compiles down to.
+Version 0.2 focuses on the installable hub, frozen protocol chain, deterministic demo, evidence, and documentation.
+Candidate work is tracked separately from shipped behavior. Automatic execution, companion installation, credential
+management, retries, and background services are not planned within the current boundary.
 
-> Mothership は、Mothership が記述する体制そのものによって作られた。設計と監査は Claude Code、実装は Codex CLI、分類はローカルモデル、承認は常に人間。**上の系譜図に並んでいる失敗は、このシステム自身の失敗**であり、設計より先に記録されたものだ。
-
----
-
-## FAQ
-
-**Is this Codex-only?**
-No. The packaged aliases cover Claude Code, Codex CLI, and Ollama Local. It is a common local control foundation, not a vendor runtime.
-
-**Does it run my models or agents?**
-No. It validates a plan, produces an advisory result, or reports local availability. Launching anything is a separate decision outside this package.
-
-**Do secrets travel with the package?**
-No. The shipped configuration example contains no commands, paths, endpoints, or access material.
-
-**Is this an automatic environment copier?**
-No — that is the thing it was built to *replace*. It packages what should be shared and makes local-only responsibility explicit.
-
-**Are the companion repositories required?**
-No. Every project in the constellation is independently adoptable. The relationship is compositional.
-
-**Why Python 3.12+ with no dependencies?**
-Because a foundation you cannot audit in an afternoon is not a foundation. The whole thing is standard library, and the test suite runs without installing anything.
-
----
-
-## Explore further
-
-| Need | Start here |
-| --- | --- |
-| Components and boundaries | [Architecture](docs/architecture.md) |
-| Install, verify, update, remove | [Installation and lifecycle](docs/installation.md) |
-| Credential and authority boundaries | [Security model](docs/security.md) |
-| Compose with companion repositories | [Composition guide](docs/composition.md) |
-| Released and planned work | [Ecosystem roadmap](docs/ecosystem-roadmap.md) |
-| 日本語の概要 | [日本語ガイド](docs/ja/README.md) |
-| Release contents | [Release checklist](RELEASE_CHECKLIST.md) · [SHA256SUMS](SHA256SUMS) |
-
----
+See the [ecosystem roadmap](docs/ecosystem-roadmap.md) for shipped, candidate, and explicitly excluded work.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
-<p align="center">
-  <sub><b>authority_effect: false · execution_effect: false</b><br>on every result this package emits</sub>
-</p>
+Mothership is released under the [MIT License](LICENSE).

@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent Frontdoor Intake v0",
+  "description": "A bounded, reviewable task card produced before any worker acts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "human_request",
+    "task_class",
+    "risk_tags",
+    "allowed_actions",
+    "forbidden_actions",
+    "required_evidence",
+    "required_manifest",
+    "human_gate",
+    "predicted_worker_capability",
+    "unknowns",
+    "assumptions",
+    "next_safe_step"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "intake.v0"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "human_request": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_class": {
+      "type": "string",
+      "enum": [
+        "RESEARCH",
+        "DESIGN_REVIEW",
+        "IMPLEMENTATION",
+        "CODE_REVIEW",
+        "AUDIT",
+        "CONTENT_DRAFT",
+        "DATA_ANALYSIS",
+        "INSTALLATION",
+        "OPERATIONS",
+        "UNKNOWN"
+      ]
+    },
+    "risk_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "deploy",
+          "production",
+          "scheduler",
+          "secret",
+          "auth",
+          "billing",
+          "delete",
+          "destructive_cleanup",
+          "ssot_mutation",
+          "external_publish",
+          "authority_promotion",
+          "cleanup_adjacent",
+          "scope_drift",
+          "unknown"
+        ]
+      }
+    },
+    "allowed_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_manifest": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "human_gate": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "CONFIRM",
+        "BLOCKING"
+      ]
+    },
+    "predicted_worker_capability": {
+      "type": "string",
+      "enum": [
+        "research",
+        "design-review",
+        "implementation",
+        "code-review",
+        "audit",
+        "content-draft",
+        "data-analysis",
+        "installation",
+        "operations",
+        "none-until-clarified"
+      ]
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_safe_step": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

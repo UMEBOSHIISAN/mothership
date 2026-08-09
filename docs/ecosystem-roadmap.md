@@ -1,28 +1,38 @@
 # Ecosystem roadmap
 
-This roadmap distinguishes released public software from future exploration.
-It does not promise a bundled product, automatic setup, shared credentials, or
-authority between repositories.
+This roadmap separates shipped behavior from candidates. It does not promise dates, adoption, publication, or automatic
+integration.
 
-| Item | Status | Scope |
-| --- | --- | --- |
-| [Mothership](../README.md) | Released | A portable, safety-first control plane with public contracts, local diagnostics, and reviewable configuration templates. |
-| [Workflow Governance Model](https://github.com/UMEBOSHIISAN/workflow-governance-model) | Released | A clean-room, fail-closed library for validating workflow evidence and authority trails, with non-executing candidate recommendation. |
+## Shipped in 0.2.0
 
-## Released: Workflow Governance Model
+- Installable `mothership-control-plane` package with zero runtime dependencies.
+- Public `verify`, `doctor`, `protocol`, and `demo` commands.
+- Compatibility facades for scope, approval evidence, adapters, and contracts.
+- Frozen four-stage protocol registry and schema digests.
+- Deterministic `protocol-composition-only` golden path.
+- Synthetic evaluation corpus and machine-readable result.
+- English product page, research claim boundaries, and verification evidence.
 
-The Workflow Governance Model is a clean-room public component. It remains
-independently installable and has no runtime integration with Mothership. It
-provides portable validation and reference patterns for:
+## Next candidates
 
-- **Decision Record Gate**: a reviewable template for recording a decision,
-  its evidence, and its required human approval.
-- **Authority Boundary Framework**: a template for making scope, permissions,
-  and escalation limits explicit before work proceeds.
-- **Context & Memory Trust Patterns**: templates for describing what context
-  may be relied on, what must be re-verified, and how uncertainty is surfaced.
+- Companion-owned conformance manifests tied to exact public releases.
+- A standardized sanitized observation export in Secretary TUI.
+- Cross-platform replication for declared Python and operating-system combinations.
+- An independently authored or blinded request corpus for external evaluation.
+- Artifact-paper materials, baselines, ablations, and third-party reproduction.
 
-Future additions must be anonymized before publication and independently
-verified for accuracy, safety, and portability. They must contain no private
-operational material, business data, credentials, machine-specific details, or
-claims of authority over another repository.
+Candidates remain unshipped until implemented and verified. Companion projects stay independently adoptable; Mothership
+remains the installable hub.
+
+## Not planned
+
+- automatic companion installation;
+- model or agent execution;
+- retry or fallback engine;
+- credential management;
+- background service, daemon, scheduler, or hook manager;
+- automatic approval, executor selection, deployment, or external publishing;
+- inference that `authority_effect` or `execution_effect` became true from validation.
+
+Changing these exclusions requires a new design and explicit human decision. They are not TODO items hidden behind the
+current roadmap.

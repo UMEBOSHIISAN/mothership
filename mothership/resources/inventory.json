@@ -1,0 +1,70 @@
+{
+  "schema_version": "mothership.inventory.v1",
+  "resources": [
+    {
+      "path": "config/executors.example.json",
+      "size": 92,
+      "sha256": "73cb5f07c06bd4d29b827d1eb598cb43ad87d6942152aadcf2b344037863e554"
+    },
+    {
+      "path": "config/executors.json",
+      "size": 434,
+      "sha256": "7e14f22d0316aa53cff894ed1887d2cd60be7565a6daed7ba1366d4f92134b4d"
+    },
+    {
+      "path": "golden-path/01-frontdoor-task.json",
+      "size": 576,
+      "sha256": "6236cb63380c947708b34c88562a7e9a343a9bdb200ab27063b039286e20096d"
+    },
+    {
+      "path": "golden-path/02-governance-handoff.json",
+      "size": 188,
+      "sha256": "62ca5e176a737fe2f7905a90330990d582ebc91727d9a4e235f917d20ab043bd"
+    },
+    {
+      "path": "golden-path/03-router-manifest.json",
+      "size": 403,
+      "sha256": "a5758ff6512676bab92be6d5c554bb1b7cb39c22254e7d297ddc198463b20e64"
+    },
+    {
+      "path": "golden-path/04-observation-snapshot.json",
+      "size": 409,
+      "sha256": "c754972b0029b25f092c4ee5aea959fb3bac3f3dc56cb4ccac03e4fccd6a9967"
+    },
+    {
+      "path": "golden-path/expected-summary.json",
+      "size": 551,
+      "sha256": "86d7990e5b1b3d3c0a3fea715d4e3cf5ea95148a56f92898fe36207ea206e8f9"
+    },
+    {
+      "path": "protocols/registry.json",
+      "size": 2398,
+      "sha256": "cb5000ca90a1395c5efdf7362b5d9928fea70915a96af3c3b10542a7abbf0a14"
+    },
+    {
+      "path": "protocols/schemas/frontdoor-task.intake.v0.schema.json",
+      "size": 2862,
+      "sha256": "6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e"
+    },
+    {
+      "path": "protocols/schemas/governance-handoff.1.0.schema.json",
+      "size": 891,
+      "sha256": "e59784d4da3368e97fcf7dd104d713169057bbad59047ad9d61f4bba572305d0"
+    },
+    {
+      "path": "protocols/schemas/governance-handoff.1.1.schema.json",
+      "size": 1103,
+      "sha256": "75f96909fa31a8bcf65d74d243aeea0e8b43185b13974f19f60f47cf769125c7"
+    },
+    {
+      "path": "protocols/schemas/observation-snapshot.1.0.schema.json",
+      "size": 1270,
+      "sha256": "587ef29c693a834ffada7789b28b2b76cbefbad819386b91507a510def3facb2"
+    },
+    {
+      "path": "protocols/schemas/router-manifest.1.0.schema.json",
+      "size": 1832,
+      "sha256": "273b1def57ec35957750c4979c737480c4cbb7f4db2294993dd5475b54fc673b"
+    }
+  ]
+}
