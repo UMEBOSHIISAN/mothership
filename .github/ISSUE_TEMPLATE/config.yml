@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (report privately)
+    url: https://github.com/UMEBOSHIISAN/mothership/security/advisories/new
+    about: A boundary bypass, an unexpected write, or any unintended execution path. Do not open a public issue for these.
+  - name: Security policy
+    url: https://github.com/UMEBOSHIISAN/mothership/blob/main/SECURITY.md
+    about: What counts as a vulnerability here, and what to include in a private report.

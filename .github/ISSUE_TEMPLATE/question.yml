@@ -1,0 +1,23 @@
+name: Question or boundary clarification
+description: Ask what this project does, does not do, or refuses to do
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Boundary questions are welcome and are often more useful than bug reports —
+        if the documentation left you guessing about what this refuses to do, that is a
+        documentation defect worth fixing.
+
+        Please keep credentials, private paths, and personal data out of the question.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: What you already read
+      description: Which README section or document left the question open. This tells us where the documentation failed.
