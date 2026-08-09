@@ -1,0 +1,64 @@
+name: Bug report
+description: Something behaved differently from what the contract says
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you paste anything:** this project is usually pointed at real local files.
+        Sanitize first. Never include credentials, private paths, hostnames, internal endpoints,
+        customer data, or another person's information.
+
+        If the issue is a boundary bypass or an unintended execution path, close this form and
+        report it privately through the security advisory link instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: One or two sentences. State the behaviour, not the theory about its cause.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Exact command and output
+      description: |
+        The command you ran, verbatim, and what it printed — including the exit code.
+        A description of the output is not the output.
+      render: console
+      placeholder: |
+        $ <command>
+        <output>
+        $ echo $?
+        1
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: Point at the documented contract this contradicts, if you know which one.
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Minimal input that reproduces it
+      description: A fictional file, as small as you can make it. If a fictional input cannot reproduce the issue, describe the shape of the real one rather than pasting it.
+      render: json
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "macOS 15.5 · Python version (`python3 --version`) · commit abc1234"
+    validations:
+      required: true
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed credentials, private paths, hostnames, and personal data from everything above.
+          required: true
+        - label: This is not a security vulnerability (those go through the private advisory link).
+          required: true
