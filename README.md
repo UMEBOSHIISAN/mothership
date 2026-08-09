@@ -210,9 +210,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 
 Expected: `Ran 132 tests … OK`.
 
-> **Run the tests before the diagnostic.** `doctor.sh` writes `__pycache__/` directories, and the process-boundary test asserts an exact file inventory — so running the diagnostic first makes 4 tests fail on a perfectly healthy checkout. Clearing `__pycache__/` restores a green run. This ordering constraint is a known rough edge, not a defect in your clone.
+> If four `test_doctor` cases fail on a checkout you believe is clean, look for `__pycache__/` directories under `orchestration/`. The process-boundary tests assert an exact file inventory, so stray bytecode from any earlier Python invocation fails them. Removing those directories restores a green run — it is a stale artifact, not a defect in your clone.
 >
-> テストは診断より先に実行すること。`doctor.sh` が `__pycache__/` を生成し、プロセス境界テストがファイル一覧の完全一致を検査するため、順序を逆にすると健全な checkout でも4件失敗する。
+> 「きれいなはずの checkout で test_doctor が4件落ちる」場合は `orchestration/` 配下の `__pycache__/` を疑うこと。プロセス境界テストはファイル一覧の完全一致を検査するため、以前の Python 実行が残したバイトコードで落ちる。消せば緑に戻る。
 
 ### 3. Inspect your local surface
 
