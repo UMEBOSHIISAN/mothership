@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" role="img" aria-label="The Mothership constellation: control plane, devices, and workshop projects orbiting a shared safety boundary">
+  <defs>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7fe8e8" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#3d8fd4" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#1b3a6b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#080e20"/>
+      <stop offset="100%" stop-color="#0f1c3c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="660" fill="url(#bg3)"/>
+  <g fill="#ffffff" opacity="0.5">
+    <circle cx="150" cy="90" r="1.1"/><circle cx="420" cy="60" r="1"/><circle cx="760" cy="72" r="1.2"/>
+    <circle cx="1050" cy="120" r="1"/><circle cx="60" cy="580" r="1.1"/><circle cx="380" cy="628" r="1"/>
+    <circle cx="700" cy="618" r="1.2"/><circle cx="1010" cy="600" r="1"/><circle cx="1160" cy="400" r="1.1"/>
+    <circle cx="30" cy="260" r="1"/><circle cx="520" cy="120" r="0.9"/><circle cx="880" cy="600" r="0.9"/>
+  </g>
+
+  <text x="600" y="42" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="24" font-weight="700" fill="#e8eef7">One safety boundary. Fourteen ways in.</text>
+  <text x="600" y="68" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#8fa4c8">the whole constellation shares one rule — nothing acts without a human</text>
+
+  <!-- orbit guides -->
+  <g fill="none" stroke="#2c4a86" stroke-opacity="0.35">
+    <ellipse cx="600" cy="400" rx="210" ry="125"/>
+    <ellipse cx="600" cy="400" rx="370" ry="225"/>
+    <ellipse cx="600" cy="400" rx="505" ry="330" stroke-dasharray="4 6"/>
+  </g>
+
+  <!-- spokes -->
+  <g stroke="#4a90d9" stroke-opacity="0.30" stroke-width="1">
+    <line x1="600" y1="400" x2="600" y2="275"/><line x1="600" y1="400" x2="390" y2="400"/>
+    <line x1="600" y1="400" x2="810" y2="400"/><line x1="600" y1="400" x2="600" y2="525"/>
+    <line x1="600" y1="400" x2="280" y2="288"/><line x1="600" y1="400" x2="280" y2="512"/>
+    <line x1="600" y1="400" x2="920" y2="288"/><line x1="600" y1="400" x2="920" y2="512"/>
+    <line x1="600" y1="400" x2="600" y2="175"/>
+    <line x1="600" y1="400" x2="112" y2="315"/><line x1="600" y1="400" x2="112" y2="485"/>
+    <line x1="600" y1="400" x2="1088" y2="315"/><line x1="600" y1="400" x2="1088" y2="485"/>
+  </g>
+
+  <!-- core -->
+  <circle cx="600" cy="400" r="105" fill="url(#core)"/>
+  <circle cx="600" cy="400" r="52" fill="#0d2244" stroke="#5fd3d3" stroke-width="2"/>
+  <text x="600" y="394" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#9de8e8">MOTHER</text>
+  <text x="600" y="412" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#9de8e8">SHIP</text>
+  <text x="600" y="430" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="9" fill="#5f9dc4">v0.2.0</text>
+
+  <g font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" text-anchor="middle">
+
+    <!-- inner ring: control plane -->
+    <g fill="#5fd3d3">
+      <circle cx="600" cy="275" r="7" fill="#5fd3d3"/>
+      <circle cx="390" cy="400" r="7" fill="#5fd3d3"/>
+      <circle cx="810" cy="400" r="7" fill="#5fd3d3"/>
+      <circle cx="600" cy="525" r="7" fill="#5fd3d3"/>
+    </g>
+    <g font-size="12.5" font-weight="600" fill="#cdeaf2">
+      <text x="600" y="259">mothership-router</text>
+      <text x="360" y="381">agent-frontdoor</text>
+      <text x="848" y="381">workflow-governance-model</text>
+      <text x="600" y="549">secretary-tui</text>
+    </g>
+    <g font-size="10.5" fill="#6fa8c4">
+      <text x="600" y="244">human-gated dry run</text>
+      <text x="360" y="367">preflight task cards</text>
+      <text x="848" y="367">evidence → approval → receipt</text>
+      <text x="600" y="564">read-only observability</text>
+    </g>
+
+    <!-- middle ring: devices -->
+    <g>
+      <circle cx="280" cy="288" r="6.5" fill="#f0a04b"/>
+      <circle cx="280" cy="512" r="8.5" fill="#f0a04b"/>
+      <circle cx="920" cy="288" r="6.5" fill="#f0a04b"/>
+      <circle cx="920" cy="512" r="6.5" fill="#f0a04b"/>
+      <circle cx="600" cy="175" r="6" fill="#f0a04b"/>
+    </g>
+    <g font-size="12.5" font-weight="600" fill="#ffd9b0">
+      <text x="280" y="272">claude-egg</text>
+      <text x="280" y="494">claude-cardputer-buddy</text>
+      <text x="920" y="272">m5-cardputer-8bit-sequencer</text>
+      <text x="920" y="536">m5-agent-stars</text>
+      <text x="600" y="159">chiptune-notify</text>
+    </g>
+    <g font-size="10.5" fill="#c69a72">
+      <text x="280" y="257">a pet that eats your sessions</text>
+      <text x="280" y="479">the busiest door in the fleet</text>
+      <text x="920" y="257">8-voice groovebox</text>
+      <text x="920" y="551">desk companion</text>
+      <text x="600" y="144">audio-file-free chiptune</text>
+    </g>
+
+    <!-- outer ring: workshop -->
+    <g>
+      <circle cx="112" cy="315" r="5.5" fill="#a88fd0"/>
+      <circle cx="112" cy="485" r="5.5" fill="#a88fd0"/>
+      <circle cx="1088" cy="315" r="5.5" fill="#a88fd0"/>
+      <circle cx="1088" cy="485" r="5.5" fill="#a88fd0"/>
+    </g>
+    <g font-size="12" font-weight="600" fill="#dcd0f0">
+      <text x="112" y="299">toygarden</text>
+      <text x="112" y="509">rhythmkit</text>
+      <text x="1088" y="299">focus-cam-log</text>
+      <text x="1088" y="509">git-vibes</text>
+    </g>
+    <g font-size="10.5" fill="#9d8db8">
+      <text x="112" y="284">terminal toys</text>
+      <text x="112" y="524">real-instrument rhythm</text>
+      <text x="1088" y="284">local-first focus journal</text>
+      <text x="1088" y="524">non-blocking commit ritual</text>
+    </g>
+  </g>
+
+  <!-- legend -->
+  <g font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="11.5">
+    <circle cx="330" cy="626" r="6" fill="#5fd3d3"/><text x="344" y="630" fill="#8fa4c8">control plane — contracts, gates, observation</text>
+    <circle cx="672" cy="626" r="6" fill="#f0a04b"/><text x="686" y="630" fill="#8fa4c8">devices — the system you can hold</text>
+    <circle cx="928" cy="626" r="6" fill="#a88fd0"/><text x="942" y="630" fill="#8fa4c8">workshop — where it stays fun</text>
+  </g>
+</svg>
