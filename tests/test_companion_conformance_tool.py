@@ -15,10 +15,10 @@ from tools import check_companion_conformance as tool
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_ROOT = ROOT / "mothership/resources"
 COMMITS = {
-    "agent-frontdoor": "296c49be801b6573abf54daa81b828df95e8e84f",
-    "workflow-governance-model": "faec3725781547cc64e58b3eb14177885bd315f6",
-    "mothership-router": "e4669fb9534bf97030134d4305caa492c87f7ed3",
-    "secretary-tui": "bd933d5dee7dbe4b9ca8057f7848c2ef70261b2d",
+    "agent-frontdoor": "4bcfcb6c1868a87076502999a38127e28e275e70",
+    "workflow-governance-model": "98576b4f3f755aceccc657bc83df7c94260d4fc0",
+    "mothership-router": "a23f4b651e1a8baf39a1266a66188bec21c3265c",
+    "secretary-tui": "f3cb61e61bc88e7c4cfd09efe93006c812258fe9",
 }
 OWNERS = (
     {

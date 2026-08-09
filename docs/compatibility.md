@@ -54,10 +54,10 @@ branch.
 
 | Repository | Owner version | Protocol | Tested commit | Schema SHA-256 | Result |
 | --- | --- | --- | --- | --- | --- |
-| `agent-frontdoor` | `0.1.0` | `frontdoor-task` `intake.v0` | `296c49be801b6573abf54daa81b828df95e8e84f` | `6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e` | passed; local-only / publication pending |
-| `workflow-governance-model` | `0.2.1` | `governance-handoff` `1.1` | `faec3725781547cc64e58b3eb14177885bd315f6` | `75f96909fa31a8bcf65d74d243aeea0e8b43185b13974f19f60f47cf769125c7` | passed; local-only / publication pending |
-| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `e4669fb9534bf97030134d4305caa492c87f7ed3` | `273b1def57ec35957750c4979c737480c4cbb7f4db2294993dd5475b54fc673b` | passed; local-only / publication pending |
-| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `bd933d5dee7dbe4b9ca8057f7848c2ef70261b2d` | `587ef29c693a834ffada7789b28b2b76cbefbad819386b91507a510def3facb2` | passed; local-only / publication pending |
+| `agent-frontdoor` | `0.1.0` | `frontdoor-task` `intake.v0` | `4bcfcb6c1868a87076502999a38127e28e275e70` | `6d6ed4aea9d3f5612c5292a2f46c72634776dc27998b61cdcdbdba3f35e7ca7e` | passed; local-only / publication pending |
+| `workflow-governance-model` | `0.2.1` | `governance-handoff` `1.1` | `98576b4f3f755aceccc657bc83df7c94260d4fc0` | `75f96909fa31a8bcf65d74d243aeea0e8b43185b13974f19f60f47cf769125c7` | passed; local-only / publication pending |
+| `mothership-router` | `0.3.0` | `router-manifest` `1.0` | `a23f4b651e1a8baf39a1266a66188bec21c3265c` | `273b1def57ec35957750c4979c737480c4cbb7f4db2294993dd5475b54fc673b` | passed; local-only / publication pending |
+| `secretary-tui` | `1.2.0` | `observation-snapshot` `1.0` | `f3cb61e61bc88e7c4cfd09efe93006c812258fe9` | `587ef29c693a834ffada7789b28b2b76cbefbad819386b91507a510def3facb2` | passed; local-only / publication pending |
 
 The report verified four owner manifests, four schema digests, byte identity with all four bundled schemas, four public
 examples, the Secretary copy of the Router input, shared task ID/capability/status fields, and false authority/execution
