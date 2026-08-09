@@ -21,7 +21,7 @@ EXPECTED = {
     "capability": "code-review",
     "stages": [
         {"kind": "frontdoor-task", "schema_version": "intake.v0", "valid": True},
-        {"kind": "governance-handoff", "schema_version": "1.0", "valid": True},
+        {"kind": "governance-handoff", "schema_version": "1.1", "valid": True},
         {"kind": "router-manifest", "schema_version": "1.0", "valid": True},
         {"kind": "observation-snapshot", "schema_version": "1.0", "valid": True},
     ],

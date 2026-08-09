@@ -75,7 +75,7 @@ class CliTests(unittest.TestCase):
                 "schema_version": "mothership.protocol-validation.v1",
                 "status": "passed",
                 "kind": "governance-handoff",
-                "protocol_version": "1.0",
+                "protocol_version": "1.1",
                 "authority_effect": False,
                 "execution_effect": False,
             },

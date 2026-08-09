@@ -9,7 +9,7 @@ Mothership snapshot records compatibility; it does not take ownership of compani
 | Order | Kind | Version | Owner | Upstream source |
 | ---: | --- | --- | --- | --- |
 | 1 | `frontdoor-task` | `intake.v0` | Agent Frontdoor | `src/frontdoor/schema/intake.v0.json` |
-| 2 | `governance-handoff` | `1.0` | Workflow Governance Model | `schemas/workflow-handoff.schema.json` |
+| 2 | `governance-handoff` | `1.1` | Workflow Governance Model | `schemas/workflow-handoff.1.1.schema.json` |
 | 3 | `router-manifest` | `1.0` | Mothership Router | `src/mothership_router/schema/router-manifest.1.0.schema.json` |
 | 4 | `observation-snapshot` | `1.0` | Secretary TUI | `schemas/observation-snapshot.1.0.schema.json` |
 
@@ -48,6 +48,9 @@ unknowns, assumptions, and a human-gate state. It cannot select or invoke a work
 
 Portable evidence metadata for one task and capability with a bounded token budget. It contains references, not raw
 prompts, model output, credentials, or approval.
+
+The suite selects the portable 1.1 contract. The released permissive 1.0
+snapshot is retained separately and is never silently reinterpreted as 1.1.
 
 ### `router-manifest`
 

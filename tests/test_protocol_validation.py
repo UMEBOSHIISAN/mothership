@@ -26,7 +26,7 @@ VALID = {
         "next_safe_step": "Inspect the fictional change",
     },
     "governance-handoff": {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "task_id": "demo-review-001",
         "capability": "code-review",
         "risk": "low",
@@ -172,6 +172,22 @@ class ProtocolValidationTests(unittest.TestCase):
                 "governance-handoff",
                 {**VALID["governance-handoff"], "capability": "code\nreview"},
             ),
+            "governance_true_end": (
+                "governance-handoff",
+                {**VALID["governance-handoff"], "task_id": "review-1\n"},
+            ),
+            "governance_c1_control": (
+                "governance-handoff",
+                {**VALID["governance-handoff"], "capability": "code\x85review"},
+            ),
+            "governance_drive_relative": (
+                "governance-handoff",
+                {**VALID["governance-handoff"], "task_id": "C:private"},
+            ),
+            "governance_non_ascii": (
+                "governance-handoff",
+                {**VALID["governance-handoff"], "task_id": "日本語"},
+            ),
             "pattern": ("router-manifest", {**VALID["router-manifest"], "registry_sha256": "BAD"}),
             "router_path_task": (
                 "router-manifest",
@@ -189,6 +205,14 @@ class ProtocolValidationTests(unittest.TestCase):
                 "router-manifest",
                 {**VALID["router-manifest"], "reasons": [r"\\?\C:\private"]},
             ),
+            "router_true_end_digest": (
+                "router-manifest",
+                {**VALID["router-manifest"], "registry_sha256": "a" * 64 + "\n"},
+            ),
+            "router_c1_control": (
+                "router-manifest",
+                {**VALID["router-manifest"], "reasons": ["private\x9bvalue"]},
+            ),
             "one_of": ("router-manifest", {**VALID["router-manifest"], "task_id": 1}),
             "authority": ("router-manifest", {**VALID["router-manifest"], "authority_effect": True}),
             "control": (
@@ -198,6 +222,18 @@ class ProtocolValidationTests(unittest.TestCase):
             "observation_path_task": (
                 "observation-snapshot",
                 {**VALID["observation-snapshot"], "task_id": "private/path.json"},
+            ),
+            "observation_true_end": (
+                "observation-snapshot",
+                {**VALID["observation-snapshot"], "summary": ["safe line\n"]},
+            ),
+            "observation_c1_control": (
+                "observation-snapshot",
+                {**VALID["observation-snapshot"], "summary": ["unsafe\x85line"]},
+            ),
+            "observation_non_ascii": (
+                "observation-snapshot",
+                {**VALID["observation-snapshot"], "summary": ["日本語"]},
             ),
         }
         for name, (kind, document) in cases.items():
