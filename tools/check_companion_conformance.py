@@ -202,6 +202,8 @@ def _read_regular_file(root: Path, relative_path: object) -> bytes:
 
 def _git_environment() -> dict[str, str]:
     return {
+        "GIT_NO_LAZY_FETCH": "1",
+        "GIT_NO_REPLACE_OBJECTS": "1",
         "GIT_OPTIONAL_LOCKS": "0",
         "HOME": os.environ.get("HOME", ""),
         "LANG": "C",
