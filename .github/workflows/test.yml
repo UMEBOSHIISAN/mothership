@@ -1,0 +1,56 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[test]"
+      # PYTHONDONTWRITEBYTECODE matters here: the process-boundary tests assert an
+      # exact file inventory, and stray __pycache__ directories fail them.
+      - run: PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install .
+      # The README claims verify and demo are offline and grant no authority.
+      # Assert the demo's own effect flags rather than trusting the prose.
+      - name: verify and demo report no authority
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -uo pipefail
+          mothership verify > /dev/null || { echo "::error::mothership verify failed"; exit 1; }
+          out="$(mothership demo)" || { echo "::error::mothership demo failed"; exit 1; }
+          echo "$out"
+          echo "$out" | python -c 'import json,sys
+d = json.load(sys.stdin)
+assert d["status"] == "passed", d["status"]
+assert d["authority_effect"] is False, "authority_effect must be false"
+assert d["execution_effect"] is False, "execution_effect must be false"
+kinds = [stage["kind"] for stage in d["stages"]]
+assert kinds == ["frontdoor-task", "governance-handoff", "router-manifest", "observation-snapshot"], kinds
+assert all(stage["valid"] for stage in d["stages"]), "every stage must be valid"
+print("ok: four protocol stages composed with both effect flags false")'
