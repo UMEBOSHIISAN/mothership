@@ -20,7 +20,7 @@ CHECKS = {
 EXPECTED = {
     "schema_version": "mothership.verify.v1",
     "status": "passed",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "checks": CHECKS,
     "authority_effect": False,
     "execution_effect": False,

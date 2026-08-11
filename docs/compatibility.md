@@ -22,7 +22,7 @@ This is not a claim that every supported Python or POSIX combination has been ex
 ## Entry-point compatibility
 
 The `mothership` console script and `python -m mothership` are byte-equivalent for read-only commands. Existing
-`frontdoor`, `safety`, `orchestration`, and `evidence` package paths remain included for legacy compatibility in 0.2.0.
+`frontdoor`, `safety`, `orchestration`, and `evidence` package paths remain included for legacy compatibility in 0.2.1.
 
 ## Diagnostic compatibility
 
@@ -64,5 +64,5 @@ effects. This is conformance evidence for those commits, not a claim about newer
 ## Evidence
 
 - [Wave 1 verification](verification/2026-08-09-hub-wave1.md)
-- [Machine-readable evaluation](../evaluation/results/mothership-0.2.0.json)
+- [Machine-readable evaluation](../evaluation/results/mothership-0.2.1.json)
 - [Paper evidence and limits](research/paper-evidence.md)
