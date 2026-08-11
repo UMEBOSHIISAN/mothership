@@ -269,7 +269,7 @@ again, not an exception to it.
 - File-boundary implementation: POSIX regular-file, descriptor, and no-follow semantics.
 - Measured Wave 1 environment: Python 3.14.6 on macOS.
 - Diagnostic aliases: `claude-code-agent`, `codex-cli`, and `ollama-local`.
-- Frozen suite protocols: four, all non-authorizing and non-executing.
+- Frozen suite protocols: four from 0.2.0, all non-authorizing and non-executing.
 - Effect constants: `authority_effect: false` and `execution_effect: false`.
 
 See the [compatibility matrix](docs/compatibility.md) before assuming support for an unmeasured platform.
@@ -283,7 +283,7 @@ controls preserved.
 
 These are internal synthetic-corpus results, not production accuracy. Reproduce them and read the denominators and
 limitations in [Paper evidence and claim boundaries](docs/research/paper-evidence.md). The Mothership machine-readable
-result is [`evaluation/results/mothership-0.2.0.json`](evaluation/results/mothership-0.2.0.json).
+result is [`evaluation/results/mothership-0.2.1.json`](evaluation/results/mothership-0.2.1.json).
 
 ## Documentation
 

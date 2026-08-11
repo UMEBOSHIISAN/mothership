@@ -2,7 +2,17 @@
 
 ## Unreleased
 
-### 0.2.0 candidate
+## 0.2.1 - 2026-08-11
+
+- Restored the public architecture diagrams and added deliberate, read-only
+  diagnostic guidance.
+- Added public issue forms and a Code of Conduct.
+- Clarified the ecosystem constellation and kept the demo explicitly free of
+  authority and execution effects.
+- Hardened the public-package scan so staged checks do not traverse `.git`.
+- Expanded CI coverage to every push and corrected the workflow syntax.
+
+## 0.2.0 - 2026-08-09
 
 - Made Mothership an installable integration hub while keeping Agent Frontdoor,
   Workflow Governance Model, Mothership Router, and Secretary TUI independently
@@ -16,9 +26,6 @@
 - Added reproducible synthetic conformance measurements and exact claim boundaries.
 - Preserved the closed safety boundary: validation grants no authority, executes no
   work, installs no companion, reads no credentials, and starts no background service.
-
-This entry describes an unreleased candidate. It does not claim a tag, package-index
-upload, GitHub Release, deployment, or companion publication.
 
 ## 0.1.2 - 2026-08-08
 
