@@ -62,3 +62,34 @@ class LaunchKitTests(unittest.TestCase):
                 else "independent-companion-to-mothership"
             )
             self.assertEqual(expected_relationship, entry["relationship"])
+
+    def test_launch_copy_is_bilingual_proof_first_and_non_authorizing(self):
+        english = (ROOT / "docs/launch/announcement-en.md").read_text("utf-8")
+        japanese = (ROOT / "docs/launch/announcement-ja.md").read_text("utf-8")
+        outline = (ROOT / "docs/launch/article-outline.md").read_text("utf-8")
+        release = (ROOT / "docs/launch/release-notes.md").read_text("utf-8")
+        for text in (english, japanese):
+            self.assertIn("mothership demo safe", text)
+            self.assertIn("mothership demo drift", text)
+            self.assertIn("COMPLETE", text)
+            self.assertIn("DRIFTED", text)
+            self.assertIn("does not grant authority", text)
+            self.assertNotIn("10,000 stars", text)
+            self.assertNotIn("production-ready", text.casefold())
+            self.assertEqual(1, text.count("https://github.com/UMEBOSHIISAN/mothership"))
+        for heading in (
+            "Why AI agents need a flight recorder",
+            "A success message is not evidence",
+            "Authority as data",
+            "Safe flight",
+            "Drifted flight",
+            "What Mothership does not do",
+        ):
+            self.assertIn(heading, outline)
+        for value in (
+            "Mothership Flight Recorder",
+            "mothership demo safe",
+            "mothership demo drift",
+            "Local draft — not published",
+        ):
+            self.assertIn(value, release)
