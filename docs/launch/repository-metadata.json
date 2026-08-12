@@ -13,7 +13,7 @@
       "primary_language": "Python",
       "package_manager": "pip",
       "verified_at": "2026-08-12",
-      "source_commit": "0affcaee6a048ccb4de07b22fa08ac9eba513ecf"
+      "source_commit": "95f05fb3c7f998d4fd603be7f9d2a5f7e1427962"
     },
     {
       "name": "agent-frontdoor",

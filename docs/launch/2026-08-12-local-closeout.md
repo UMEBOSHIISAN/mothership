@@ -8,17 +8,17 @@ reached GitHub or another public channel.
 
 | Repository | Branch | Base | Local result commit | Changed files |
 | --- | --- | --- | --- | --- |
-| mothership | `feature/mothership-10000-stars` | `62240fd` | `04286c6e4581d10397621638ddbc322d2aba8382` | `README.md`; `docs/ja/README.md`; launch, plan, review, and design Markdown/JSON under `docs/`; six assets under `assets/`; demo generator under `tools/`; documentation, link, and launch tests under `tests/` |
-| agent-frontdoor | `docs/mothership-10000-stars` | `5ba58b262fd6a81fe19fa8f01d3c4e95e1607f73` | `9acf17a2b38fc7d43181f9e747ac91aa3bfbf8ef` | `README.md`, `tests/test_readme.py` |
-| workflow-governance-model | `docs/mothership-10000-stars` | `b94a85eb555f9e420ee528fe1cfa026aa549afb8` | `77f027d0142eca127cff0fbbadd58024007aa202` | `README.md`, `tests/test_readme.py` |
-| mothership-router | `docs/mothership-10000-stars` | `8783f1495ec91aeb6716aba4735db8717d6d7fe2` | `a9eb0f13c67c68f34c5052c9f6a4fd2a288a5bce` | `README.md`, `tests/test_readme.py` |
-| secretary-tui | `docs/mothership-10000-stars` | `8264692dbd36f75aee226ed8469f11f59a202624` | `92d2fb29a9426707d886866171e347e7530e48a8` | `README.md`, `readme_test.go` |
-| agent-team-runtime | `docs/mothership-10000-stars` | `0c13bee3cf65115116320d0d9448416923672f93` | `9ae42a4d58380b4e04c6c704f8fdeb17960e440e` | `README.md`, `assets/replay-reducer.svg`, `tests/test_readme.py` |
-| evidence-spine-core | `docs/mothership-10000-stars` | `a0a9b83d73d8950c4e5b9c8424eaea9271b84892` | `6f5453d98e782fc0329befa8601f4cb704eb5135` | `README.md`, `assets/evidence-chain.svg`, `tests/test_readme.py` |
-| run-lineage-core | `docs/mothership-10000-stars` | `e13de91718743af802027efba7afeae6397dc7b3` | `7291aaf41161e0536363982f6d9579dd3c803c48` | `README.md`, `assets/lineage-join-map.svg`, `tests/test_readme.py` |
-| source-health-core | `docs/mothership-10000-stars` | `b7c362e04c9daab13f207a9d37025f3907493fae` | `322a007ba323bed3d3e026c6b5a057ef747bc593` | `README.md`, `assets/source-envelope.svg`, `tests/test_readme.py` |
-| agent-decision-core | `docs/mothership-10000-stars` | `a0bb51d2616cf83ae5bc37ce45c88b4525e4ab78` | `f944bfe94a2eefd995cad56b163d05307aab9796` | `README.md`, `assets/advisory-gate.svg`, `test/readme.test.js` |
-| knowledge-lifecycle-kit | `docs/mothership-10000-stars` | `a8d8a79f11a58316b5a9279e023fa96903ead426` | `940073ac2308ff3c1eb594eca2eee8a24c18fe55` | `README.md`, `assets/knowledge-lifecycle.svg`, `tests/test_readme.py` |
+| mothership | `feature/mothership-10000-stars` | `62240fd` | `95f05fb3c7f998d4fd603be7f9d2a5f7e1427962` | `README.md`; `docs/ja/README.md`; launch, plan, review, and design Markdown/JSON under `docs/`; sixteen launch assets under `assets/`, including ten upload-ready companion previews; two deterministic renderers under `tools/`; documentation, link, and launch tests under `tests/` |
+| agent-frontdoor | `docs/mothership-10000-stars` | `5ba58b262fd6a81fe19fa8f01d3c4e95e1607f73` | `28a56515f41b96d8e4161cb2f9c533fde6a7412f` | `README.md`, `tests/test_readme.py` |
+| workflow-governance-model | `docs/mothership-10000-stars` | `b94a85eb555f9e420ee528fe1cfa026aa549afb8` | `12f44e87a8c588955e0234ac176e1ec8da1e3c8b` | `README.md`, `tests/test_readme.py` |
+| mothership-router | `docs/mothership-10000-stars` | `8783f1495ec91aeb6716aba4735db8717d6d7fe2` | `a5a09919c45378651ba5c3f8a060e4725da5989b` | `README.md`, `tests/test_readme.py` |
+| secretary-tui | `docs/mothership-10000-stars` | `8264692dbd36f75aee226ed8469f11f59a202624` | `76e4fd6a2009ba0c6eefbc00c3f9c4a80b9e3b63` | `README.md`, `readme_test.go` |
+| agent-team-runtime | `docs/mothership-10000-stars` | `0c13bee3cf65115116320d0d9448416923672f93` | `fbe93988af8b4e3289b6f0a3bdbd5530596b97bb` | `README.md`, `assets/replay-reducer.svg`, `tests/test_readme.py` |
+| evidence-spine-core | `docs/mothership-10000-stars` | `a0a9b83d73d8950c4e5b9c8424eaea9271b84892` | `82d909dec45612a54d92b5fbf50c9a7a02736854` | `README.md`, `assets/evidence-chain.svg`, `tests/test_readme.py` |
+| run-lineage-core | `docs/mothership-10000-stars` | `e13de91718743af802027efba7afeae6397dc7b3` | `61a7c63f0565780e6445cf6c0457f23cb26f80d1` | `README.md`, `assets/lineage-join-map.svg`, `tests/test_readme.py` |
+| source-health-core | `docs/mothership-10000-stars` | `b7c362e04c9daab13f207a9d37025f3907493fae` | `bbf810105cb3deeb69e6e275ff5a987341ca276c` | `README.md`, `assets/source-envelope.svg`, `tests/test_readme.py` |
+| agent-decision-core | `docs/mothership-10000-stars` | `a0bb51d2616cf83ae5bc37ce45c88b4525e4ab78` | `c6494cf27deccae945add371c29804942e33d029` | `README.md`, `assets/advisory-gate.svg`, `test/readme.test.js` |
+| knowledge-lifecycle-kit | `docs/mothership-10000-stars` | `a8d8a79f11a58316b5a9279e023fa96903ead426` | `555a623f95ba449deffbe2d29fcac99c0a2cafa1` | `README.md`, `assets/knowledge-lifecycle.svg`, `tests/test_readme.py` |
 
 The Mothership hash above is the final task-content commit before adding this
 self-referential receipt. Git records the later receipt commit; embedding that
@@ -28,7 +28,7 @@ commit's own hash inside its contents is not possible.
 
 | Repository | Command | Exit | Measured result |
 | --- | --- | ---: | --- |
-| mothership | `/opt/homebrew/bin/python3 -m unittest discover -s tests -v` | 0 | 310 tests passed; 6 skipped |
+| mothership | `python3 -m unittest discover -s tests -v` | 0 | 310 run; 6 skipped |
 | agent-frontdoor | `../../agent-frontdoor/.venv/bin/python -m pytest -q` | 0 | 629 passed |
 | workflow-governance-model | `PYTHONPATH=src python -m unittest discover -s tests -v` plus README contract test | 0 | 18 plus 1 passed |
 | mothership-router | `PYTHONPATH=src ../../agent-frontdoor/.venv/bin/python -m unittest discover -s tests -v` plus README contract test | 0 | 20 plus 1 passed |
@@ -43,10 +43,10 @@ commit's own hash inside its contents is not possible.
 All eleven task-owned diffs passed whitespace and public-boundary scans for
 private home paths, temporary paths, private-key markers, secret/token
 assignments, and newly added external image hotlinks. The real CLI demo was
-generated twice with identical output bytes. All twelve changed visual
-deliverables were inspected at desktop and narrow widths, with both SAFE and
-DRIFTED frames checked for the GIF; no clipping, illegible contrast, or false
-dependency arrow remained.
+generated twice with identical output bytes. Twenty-two changed visual
+deliverables were inspected, including all ten upload-ready companion social
+previews and both SAFE and DRIFTED GIF frames; no clipping, illegible contrast,
+or false dependency arrow remained.
 
 Environment-specific test notes are preserved in
 `docs/launch/wave2-proof-products-receipt.md` and
