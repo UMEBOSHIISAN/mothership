@@ -209,6 +209,42 @@ class FlightIoTests(unittest.TestCase):
             (base / "link").symlink_to(root, target_is_directory=True)
             self.assert_flight_error("FLIGHT.INVALID.FILE", lambda: self.load_flight_bundle(base / "link"))
 
+    def test_public_paths_must_be_lexically_normalized_and_absolute(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(os.path.realpath(temporary))
+            root = base / "bundle"
+            self.write_bundle(root)
+            source = base / "generic.jsonl"
+            generic_events = [
+                event(stage, number, schema_version="mothership.generic-event.v1")
+                for number, stage in enumerate(REQUIRED_STAGES)
+            ]
+            source.write_bytes(b"".join(canonical_json_bytes(item) + b"\n" for item in generic_events))
+
+            relative_root = Path(os.path.relpath(root, Path.cwd()))
+            nonnormalized_root = Path(f"{base}/../{base.name}/bundle")
+            relative_source = Path(os.path.relpath(source, Path.cwd()))
+            nonnormalized_source = Path(f"{base}/../{base.name}/generic.jsonl")
+            for invalid in (relative_root, nonnormalized_root):
+                with self.subTest(bundle=invalid):
+                    self.assert_flight_error("FLIGHT.INVALID.FILE", lambda invalid=invalid: self.load_flight_bundle(invalid))
+            for invalid in (relative_source, nonnormalized_source):
+                with self.subTest(source=invalid):
+                    output = base / f"output-source-{len(str(invalid))}"
+                    self.assert_flight_error(
+                        "FLIGHT.INVALID.FILE",
+                        lambda invalid=invalid, output=output: self.import_generic_jsonl(invalid, output),
+                    )
+                    self.assertFalse(output.exists())
+            for invalid in (Path("relative-output"), Path(f"{base}/../{base.name}/output")):
+                with self.subTest(output=invalid):
+                    self.assert_flight_error(
+                        "FLIGHT.INVALID.FILE",
+                        lambda invalid=invalid: self.import_generic_jsonl(source, invalid),
+                    )
+            self.assertFalse(Path("relative-output").exists())
+            self.assertFalse((base / "output").exists())
+
     def test_load_allows_only_report_md_as_untrusted_derived_root_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(os.path.realpath(temporary)) / "bundle"
@@ -285,7 +321,106 @@ class FlightIoTests(unittest.TestCase):
             self.write_bundle(root, invalid_events, index=invalid_index)
             self.assert_flight_error("FLIGHT.INVALID.SCHEMA", lambda: self.load_flight_bundle(root))
 
-    def test_loader_blocks_component_and_leaf_swap_races_without_ambient_capabilities(self) -> None:
+    def test_metadata_only_requires_a_literally_empty_artifacts_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(os.path.realpath(temporary)) / "bundle"
+            self.write_bundle(root)
+            (root / "artifacts" / "nested").mkdir()
+            self.assert_flight_error("FLIGHT.INVALID.PRIVACY", lambda: self.load_flight_bundle(root))
+
+    def test_root_membership_add_remove_and_replace_races_fail_closed(self) -> None:
+        import mothership.flight_io as flight_io
+
+        for mutation in ("add", "remove", "replace"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                root = Path(os.path.realpath(temporary)) / "bundle"
+                self.write_bundle(root)
+                changed = False
+
+                def mutate(label: str) -> None:
+                    nonlocal changed
+                    if label != "root" or changed:
+                        return
+                    changed = True
+                    if mutation == "add":
+                        (root / "unexpected.json").write_bytes(b"{}")
+                    elif mutation == "remove":
+                        (root / "events.jsonl").unlink()
+                    else:
+                        original = (root / "events.jsonl").read_bytes()
+                        (root / "events.jsonl").rename(root.parent / "events.original")
+                        (root / "events.jsonl").write_bytes(original)
+
+                with mock.patch.object(flight_io, "_MEMBERSHIP_VERIFY_HOOK", mutate, create=True):
+                    self.assert_flight_error("FLIGHT.INVALID.FILE", lambda: self.load_flight_bundle(root))
+                self.assertTrue(changed)
+
+    def test_artifact_membership_add_remove_and_replace_races_fail_closed(self) -> None:
+        import mothership.flight_io as flight_io
+
+        payload = canonical_json_bytes({"kind": "safe"})
+        for mutation in ("add", "remove", "replace"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                root = Path(os.path.realpath(temporary)) / "bundle"
+                events = [event(stage, number) for number, stage in enumerate(REQUIRED_STAGES)]
+                events[0]["subject"] = dict(
+                    events[0]["subject"],  # type: ignore[arg-type]
+                    storage="bundled",
+                    location="artifacts/proof.json",
+                    sha256=hashlib.sha256(payload).hexdigest(),
+                )
+                index = index_for(events, privacy_profile="portable-evidence")
+                self.write_bundle(root, events, index=index, artifacts={"proof.json": payload})
+                changed = False
+
+                def mutate(label: str) -> None:
+                    nonlocal changed
+                    if label != "artifacts" or changed:
+                        return
+                    changed = True
+                    proof = root / "artifacts" / "proof.json"
+                    if mutation == "add":
+                        (root / "artifacts" / "added.json").write_bytes(b"{}")
+                    elif mutation == "remove":
+                        proof.unlink()
+                    else:
+                        proof.rename(root.parent / "proof.original")
+                        proof.write_bytes(payload)
+
+                with mock.patch.object(flight_io, "_MEMBERSHIP_VERIFY_HOOK", mutate, create=True):
+                    self.assert_flight_error("FLIGHT.INVALID.FILE", lambda: self.load_flight_bundle(root))
+                self.assertTrue(changed)
+
+    def test_traversed_directory_component_swap_to_symlink_fails_closed(self) -> None:
+        import mothership.flight_io as flight_io
+
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(os.path.realpath(temporary))
+            component = base / "traversed-component"
+            component.mkdir()
+            root = component / "bundle"
+            self.write_bundle(root)
+            outside = base / "outside"
+            outside.mkdir()
+            marker = outside / "marker"
+            marker.write_bytes(b"unchanged")
+            changed = False
+
+            def swap(name: str) -> None:
+                nonlocal changed
+                if name != component.name or changed:
+                    return
+                changed = True
+                component.rename(base / "moved-component")
+                component.symlink_to(outside, target_is_directory=True)
+
+            with mock.patch.object(flight_io, "_COMPONENT_OPEN_HOOK", swap, create=True):
+                self.assert_flight_error("FLIGHT.INVALID.FILE", lambda: self.load_flight_bundle(root))
+            self.assertTrue(changed)
+            self.assertEqual(b"unchanged", marker.read_bytes())
+            self.assertEqual({"marker"}, {item.name for item in outside.iterdir()})
+
+    def test_loader_blocks_leaf_swap_without_ambient_capabilities(self) -> None:
         import mothership.flight_io as flight_io
 
         with tempfile.TemporaryDirectory() as temporary:
@@ -365,6 +500,61 @@ class FlightIoTests(unittest.TestCase):
 
             output.mkdir()
             self.assert_flight_error("FLIGHT.INVALID.FILE", lambda: self.import_generic_jsonl(source, output))
+
+    def test_import_symlinked_parent_cannot_create_in_its_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(os.path.realpath(temporary))
+            source = base / "generic.jsonl"
+            generic_events = [
+                event(stage, number, schema_version="mothership.generic-event.v1")
+                for number, stage in enumerate(REQUIRED_STAGES)
+            ]
+            source.write_bytes(b"".join(canonical_json_bytes(item) + b"\n" for item in generic_events))
+            destination = base / "destination"
+            destination.mkdir()
+            marker = destination / "marker"
+            marker.write_bytes(b"unchanged")
+            linked_parent = base / "linked-parent"
+            linked_parent.symlink_to(destination, target_is_directory=True)
+
+            self.assert_flight_error(
+                "FLIGHT.INVALID.FILE",
+                lambda: self.import_generic_jsonl(source, linked_parent / "OUTPUT"),
+            )
+            self.assertEqual(b"unchanged", marker.read_bytes())
+            self.assertEqual({"marker"}, {item.name for item in destination.iterdir()})
+
+    def test_import_target_swap_cannot_redirect_writes(self) -> None:
+        import mothership.flight_io as flight_io
+
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(os.path.realpath(temporary))
+            source = base / "generic.jsonl"
+            generic_events = [
+                event(stage, number, schema_version="mothership.generic-event.v1")
+                for number, stage in enumerate(REQUIRED_STAGES)
+            ]
+            source.write_bytes(b"".join(canonical_json_bytes(item) + b"\n" for item in generic_events))
+            output = base / "OUTPUT"
+            outside = base / "outside"
+            outside.mkdir(0o700)
+            marker = outside / "marker"
+            marker.write_bytes(b"unchanged")
+            changed = False
+
+            def swap(name: str) -> None:
+                nonlocal changed
+                if name != output.name or changed or not output.exists():
+                    return
+                changed = True
+                output.rename(base / "moved-created-output")
+                outside.rename(output)
+
+            with mock.patch.object(flight_io, "_COMPONENT_OPEN_HOOK", swap, create=True):
+                self.assert_flight_error("FLIGHT.INVALID.FILE", lambda: self.import_generic_jsonl(source, output))
+            self.assertTrue(changed)
+            self.assertEqual(b"unchanged", (output / "marker").read_bytes())
+            self.assertEqual({"marker"}, {item.name for item in output.iterdir()})
 
     def test_import_keeps_all_required_stages_and_rejects_bundled_subjects(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
