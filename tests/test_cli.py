@@ -205,9 +205,10 @@ class CliTests(unittest.TestCase):
 
         safe = str((FLIGHT_RESOURCES / "safe-run").resolve())
         drift = str((FLIGHT_RESOURCES / "scope-drift").resolve())
+        double_safe = "//" + safe.lstrip("/")
         for arguments, expected_exit, schema in (
-            (("verify", "run", safe), 0, "mothership.flight-verdict.v1"),
-            (("replay", safe), 0, "mothership.flight-replay.v1"),
+            (("verify", "run", double_safe), 0, "mothership.flight-verdict.v1"),
+            (("replay", double_safe), 0, "mothership.flight-replay.v1"),
             (("demo", "safe"), 0, "mothership.flight-demo.v1"),
             (("demo", "drift"), 21, "mothership.flight-demo.v1"),
         ):
@@ -217,7 +218,7 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(b"", completed.stderr)
                 self.assertEqual(schema, json.loads(completed.stdout)["schema_version"])
 
-        report = self._module("report", safe, "--format", "markdown")
+        report = self._module("report", double_safe, "--format", "markdown")
         self.assertEqual(0, report.returncode, report.stderr)
         self.assertEqual(b"", report.stderr)
         self.assertTrue(report.stdout.startswith(b"# Mothership Flight Report\n"))
@@ -352,12 +353,31 @@ class CliTests(unittest.TestCase):
             )
             self.assertNotIn(str(root), json.dumps(document))
 
-            process_output = root / "process-created-bundle"
-            completed = self._module("import", "generic", str(source), "--out", str(process_output))
+            process_output = root / "double-source-bundle"
+            completed = self._module(
+                "import",
+                "generic",
+                "//" + str(source).lstrip("/"),
+                "--out",
+                str(process_output),
+            )
             self.assertEqual(0, completed.returncode, completed.stderr)
             self.assertEqual(b"", completed.stderr)
-            self.assertEqual("process-created-bundle", json.loads(completed.stdout)["output"])
+            self.assertEqual("double-source-bundle", json.loads(completed.stdout)["output"])
             self.assertTrue(process_output.is_dir())
+
+            double_output = root / "double-output-bundle"
+            completed = self._module(
+                "import",
+                "generic",
+                str(source),
+                "--out",
+                "//" + str(double_output).lstrip("/"),
+            )
+            self.assertEqual(0, completed.returncode, completed.stderr)
+            self.assertEqual(b"", completed.stderr)
+            self.assertEqual("double-output-bundle", json.loads(completed.stdout)["output"])
+            self.assertTrue(double_output.is_dir())
 
         received: list[Path] = []
         with mock.patch.object(cli, "command_verify_run", side_effect=lambda path: (received.append(path), (0, {}))[1]), mock.patch.object(

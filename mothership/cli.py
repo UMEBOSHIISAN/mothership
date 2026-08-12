@@ -285,7 +285,10 @@ def command_flight_demo(name: str) -> tuple[int, dict[str, object]]:
 
 
 def _flight_path(value: str) -> Path:
-    return Path(os.path.abspath(value))
+    absolute = os.path.abspath(value)
+    if absolute.startswith("//"):
+        absolute = "/" + absolute.lstrip("/")
+    return Path(absolute)
 
 
 def _emit(document: object) -> bool:
