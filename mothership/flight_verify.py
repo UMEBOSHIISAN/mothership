@@ -49,6 +49,25 @@ def _subjects_match(left: dict[str, object], right: dict[str, object]) -> bool:
     return left["subject"]["sha256"] == right["subject"]["sha256"]  # type: ignore[index]
 
 
+def _event_ancestors(events: tuple[dict[str, object], ...]) -> dict[str, frozenset[str]]:
+    ancestors: dict[str, frozenset[str]] = {}
+    for event in events:
+        predecessor_ids = event["predecessor_event_ids"]  # type: ignore[assignment]
+        inherited: set[str] = set(predecessor_ids)
+        for predecessor_id in predecessor_ids:
+            inherited.update(ancestors.get(predecessor_id, ()))
+        ancestors[_event_id(event)] = frozenset(inherited)
+    return ancestors
+
+
+def _is_ancestor(
+    ancestor: dict[str, object],
+    descendant: dict[str, object],
+    ancestors: dict[str, frozenset[str]],
+) -> bool:
+    return _event_id(ancestor) in ancestors.get(_event_id(descendant), ())
+
+
 def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
     """Evaluate only the supplied validated bundle, without side effects."""
 
@@ -91,6 +110,7 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
         if not any(event["stage"] == stage for event in events):
             add("FLIGHT.INCOMPLETE.STAGE", None, "required stage is absent")
 
+    ancestors = _event_ancestors(events)
     scopes = _stage_events(events, "scope")
     approvals = _stage_events(events, "approval")
     executions = _stage_events(events, "execution")
@@ -100,27 +120,45 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
         for approval in approvals:
             if approval["outcome_status"] != "approved":
                 add("FLIGHT.INCOMPLETE.APPROVAL", _event_id(approval), "approval outcome is not approved")
-            if approval["authority_effect"] is not True and executions:
-                add("FLIGHT.DRIFT.AUTHORITY", _event_id(approval), "execution lacks authority-effect approval")
-        if scopes and executions:
-            scope_digests = {event["scope_sha256"] for event in scopes}
-            approval_digests = {event["scope_sha256"] for event in approvals}
-            execution_digests = {event["scope_sha256"] for event in executions}
-            if None in scope_digests or not (scope_digests == approval_digests == execution_digests):
-                add("FLIGHT.DRIFT.SCOPE", None, "scope digests differ across scope approval and execution")
-            scope_actions = {event["action_class"] for event in scopes}
-            approval_actions = {event["action_class"] for event in approvals}
-            execution_actions = {event["action_class"] for event in executions}
+        for execution in executions:
+            authority_approvals = tuple(
+                approval
+                for approval in approvals
+                if approval["outcome_status"] == "approved"
+                and approval["authority_effect"] is True
+                and _is_ancestor(approval, execution, ancestors)
+            )
+            authority_chains = tuple(
+                (scope, approval)
+                for approval in authority_approvals
+                for scope in scopes
+                if _is_ancestor(scope, approval, ancestors)
+                and scope["occurred_at"] < approval["occurred_at"] < execution["occurred_at"]
+            )
+            if not authority_chains:
+                add("FLIGHT.DRIFT.AUTHORITY", _event_id(execution), "execution lacks a strictly ordered authority chain")
+                continue
+            chain_matches = tuple(
+                (
+                    scope["scope_sha256"] is not None
+                    and scope["scope_sha256"] == approval["scope_sha256"] == execution["scope_sha256"],
+                    scope["action_class"] != "none"
+                    and scope["action_class"] == approval["action_class"] == execution["action_class"],
+                )
+                for scope, approval in authority_chains
+            )
+            if any(scope_matches and action_matches for scope_matches, action_matches in chain_matches):
+                continue
+            if not any(scope_matches for scope_matches, _action_matches in chain_matches):
+                add("FLIGHT.DRIFT.SCOPE", _event_id(execution), "causal authority scope digest differs")
+            if not any(action_matches for _scope_matches, action_matches in chain_matches):
+                add("FLIGHT.DRIFT.ACTION_CLASS", _event_id(execution), "causal authority action class differs")
             if (
-                "none" in scope_actions
-                or not (scope_actions == approval_actions == execution_actions)
+                any(scope_matches for scope_matches, _action_matches in chain_matches)
+                and any(action_matches for _scope_matches, action_matches in chain_matches)
             ):
-                add("FLIGHT.DRIFT.ACTION_CLASS", None, "action classes differ across scope approval and execution")
-            if (
-                max(event["occurred_at"] for event in scopes) > min(event["occurred_at"] for event in approvals)
-                or max(event["occurred_at"] for event in approvals) > min(event["occurred_at"] for event in executions)
-            ):
-                add("FLIGHT.DRIFT.AUTHORITY", None, "approval does not occur between scope and execution")
+                add("FLIGHT.DRIFT.SCOPE", _event_id(execution), "scope and action match only across different authority chains")
+                add("FLIGHT.DRIFT.ACTION_CLASS", _event_id(execution), "scope and action match only across different authority chains")
 
     results = _stage_events(events, "result")
     verifications = _stage_events(events, "verification")
@@ -135,22 +173,39 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
     if not successful_results:
         event_id = _event_id(executions[0]) if executions else None
         add("FLIGHT.INCOMPLETE.EVIDENCE", event_id, "successful execution lacks result evidence")
-    if not verifications or not any(event["outcome_status"] == "verified" for event in verifications):
-        add("FLIGHT.INCOMPLETE.VERIFICATION", _event_id(results[0]) if results else None, "result lacks verification")
-    if not persistences or not any(event["outcome_status"] == "persisted" for event in persistences):
-        add("FLIGHT.INCOMPLETE.PERSISTENCE", _event_id(verifications[0]) if verifications else None, "verification lacks persistence proof")
-    if successful_results and verifications:
-        for verification in verifications:
-            if verification["outcome_status"] == "verified" and not any(
-                _subjects_match(result, verification) for result in successful_results
-            ):
-                add("FLIGHT.DRIFT.RESULT", _event_id(verification), "result and verification digests disagree")
     verified = tuple(event for event in verifications if event["outcome_status"] == "verified")
     persisted = tuple(event for event in persistences if event["outcome_status"] == "persisted")
-    if verified and persisted:
-        for persistence in persisted:
-            if not any(_subjects_match(verification, persistence) for verification in verified):
-                add("FLIGHT.DRIFT.PERSISTENCE", _event_id(persistence), "verification and persistence digests disagree")
+    for result in successful_results:
+        verification_descendants = tuple(
+            verification
+            for verification in verified
+            if _is_ancestor(result, verification, ancestors)
+        )
+        if any(_subjects_match(result, verification) for verification in verification_descendants):
+            continue
+        if verification_descendants:
+            add("FLIGHT.DRIFT.RESULT", _event_id(result), "result and descendant verification digests disagree")
+        else:
+            add("FLIGHT.INCOMPLETE.VERIFICATION", _event_id(result), "successful result lacks a verified descendant")
+    for verification in verified:
+        result_ancestors = tuple(
+            result
+            for result in successful_results
+            if _is_ancestor(result, verification, ancestors)
+        )
+        if not any(_subjects_match(result, verification) for result in result_ancestors):
+            add("FLIGHT.DRIFT.RESULT", _event_id(verification), "verification lacks matching result ancestry")
+        persistence_descendants = tuple(
+            persistence
+            for persistence in persisted
+            if _is_ancestor(verification, persistence, ancestors)
+        )
+        if any(_subjects_match(verification, persistence) for persistence in persistence_descendants):
+            continue
+        if persistence_descendants:
+            add("FLIGHT.DRIFT.PERSISTENCE", _event_id(verification), "verification and descendant persistence digests disagree")
+        else:
+            add("FLIGHT.INCOMPLETE.PERSISTENCE", _event_id(verification), "verified record lacks a persisted descendant")
 
     evidence_verdict = max(("COMPLETE", *(_finding_verdict(item.rule_id) for item in findings)), key=PRECEDENCE.__getitem__)
     declared_verdict = index["declared_verdict"]

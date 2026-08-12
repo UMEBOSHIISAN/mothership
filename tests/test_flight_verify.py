@@ -25,6 +25,8 @@ REGISTRY_SHA256 = "cb5000ca90a1395c5efdf7362b5d9928fea70915a96af3c3b10542a7abbf0
 SCOPE_SHA256 = "b" * 64
 RESULT_SHA256 = "c" * 64
 OTHER_SHA256 = "d" * 64
+SECOND_SCOPE_SHA256 = "e" * 64
+SECOND_RESULT_SHA256 = "f" * 64
 
 
 def event(stage: str, number: int) -> dict[str, object]:
@@ -71,6 +73,32 @@ def complete_events() -> list[dict[str, object]]:
     return events
 
 
+def suffixed_complete_events(
+    suffix: str,
+    *,
+    scope_sha256: str = SCOPE_SHA256,
+    result_sha256: str = RESULT_SHA256,
+    action_class: str = "file_write",
+) -> list[dict[str, object]]:
+    events = complete_events()
+    identifiers = {
+        item["event_id"]: f"{item['event_id']}-{suffix}"
+        for item in events
+    }
+    for item in events:
+        item["event_id"] = identifiers[item["event_id"]]
+        item["predecessor_event_ids"] = [
+            identifiers[predecessor]
+            for predecessor in item["predecessor_event_ids"]  # type: ignore[union-attr]
+        ]
+        if item["stage"] in {"scope", "approval", "execution"}:
+            item["scope_sha256"] = scope_sha256
+            item["action_class"] = action_class
+        if item["stage"] in {"result", "verification", "persistence"}:
+            item["subject"] = dict(item["subject"], sha256=result_sha256)  # type: ignore[arg-type]
+    return events
+
+
 def index_for(events: list[dict[str, object]]) -> dict[str, object]:
     return {
         "schema_version": "mothership.flight-index.v1",
@@ -112,6 +140,11 @@ class FlightVerifyTests(unittest.TestCase):
         self.assertEqual(verdict, evaluation.verdict)
         self.assertIn(rule_id, [finding.rule_id for finding in evaluation.findings])
 
+    def assert_rule_set(self, bundle: object, verdict: str, rule_ids: set[str]) -> None:
+        evaluation = self.evaluate_flight(bundle)
+        self.assertEqual(verdict, evaluation.verdict)
+        self.assertEqual(rule_ids, {finding.rule_id for finding in evaluation.findings})
+
     def test_complete_run_has_no_findings_and_a_closed_evaluation_document(self) -> None:
         evaluation = self.evaluate_flight(self.bundle())
 
@@ -146,57 +179,139 @@ class FlightVerifyTests(unittest.TestCase):
             evaluation.verdict = "INVALID"  # type: ignore[misc]
 
     def test_authority_and_evidence_mutation_matrix(self) -> None:
-        cases: list[tuple[str, object, str, str]] = []
+        cases: list[tuple[str, object, str, set[str]]] = []
 
         missing_approval = complete_events()
         missing_approval = [item for item in missing_approval if item["stage"] != "approval"]
         next(item for item in missing_approval if item["stage"] == "execution")["predecessor_event_ids"] = ["event-decision"]
-        cases.append(("missing approval", self.bundle(missing_approval), "INCOMPLETE", "FLIGHT.INCOMPLETE.APPROVAL"))
+        cases.append((
+            "missing approval",
+            self.bundle(missing_approval),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.APPROVAL", "FLIGHT.INCOMPLETE.STAGE"},
+        ))
 
         stale_approval = complete_events()
         next(item for item in stale_approval if item["stage"] == "execution")["predecessor_event_ids"] = ["event-decision"]
         next(item for item in stale_approval if item["stage"] == "approval")["occurred_at"] = "2026-08-12T00:00:05Z"
-        cases.append(("stale approval", self.bundle(stale_approval), "DRIFTED", "FLIGHT.DRIFT.AUTHORITY"))
+        cases.append(("stale approval", self.bundle(stale_approval), "DRIFTED", {"FLIGHT.DRIFT.AUTHORITY"}))
 
         substituted_scope = complete_events()
         next(item for item in substituted_scope if item["stage"] == "approval")["scope_sha256"] = OTHER_SHA256
-        cases.append(("substituted approval scope", self.bundle(substituted_scope), "DRIFTED", "FLIGHT.DRIFT.SCOPE"))
+        cases.append(("substituted approval scope", self.bundle(substituted_scope), "DRIFTED", {"FLIGHT.DRIFT.SCOPE"}))
 
         action_escalation = complete_events()
-        next(item for item in action_escalation if item["stage"] == "approval")["action_class"] = "process_execute"
-        cases.append(("action escalation", self.bundle(action_escalation), "DRIFTED", "FLIGHT.DRIFT.ACTION_CLASS"))
+        next(item for item in action_escalation if item["stage"] == "execution")["action_class"] = "process_execute"
+        cases.append(("action escalation", self.bundle(action_escalation), "DRIFTED", {"FLIGHT.DRIFT.ACTION_CLASS"}))
 
         false_success = complete_events()
         next(item for item in false_success if item["stage"] == "execution")["outcome_status"] = "failed"
-        cases.append(("result after failed execution", self.bundle(false_success), "DRIFTED", "FLIGHT.DRIFT.FALSE_SUCCESS"))
+        cases.append(("result after failed execution", self.bundle(false_success), "DRIFTED", {"FLIGHT.DRIFT.FALSE_SUCCESS"}))
 
         substituted_result = complete_events()
         for stage in ("verification", "persistence"):
             item = next(item for item in substituted_result if item["stage"] == stage)
             item["subject"] = dict(item["subject"], sha256=OTHER_SHA256)  # type: ignore[arg-type]
-        cases.append(("result digest substitution", self.bundle(substituted_result), "DRIFTED", "FLIGHT.DRIFT.RESULT"))
+        cases.append(("result digest substitution", self.bundle(substituted_result), "DRIFTED", {"FLIGHT.DRIFT.RESULT"}))
 
         missing_verification = complete_events()
         missing_verification = [item for item in missing_verification if item["stage"] != "verification"]
         next(item for item in missing_verification if item["stage"] == "persistence")["predecessor_event_ids"] = ["event-result"]
-        cases.append(("missing verification", self.bundle(missing_verification), "INCOMPLETE", "FLIGHT.INCOMPLETE.VERIFICATION"))
+        cases.append((
+            "missing verification",
+            self.bundle(missing_verification),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.STAGE", "FLIGHT.INCOMPLETE.VERIFICATION"},
+        ))
 
         missing_persistence = [item for item in complete_events() if item["stage"] != "persistence"]
-        cases.append(("missing persistence", self.bundle(missing_persistence), "INCOMPLETE", "FLIGHT.INCOMPLETE.PERSISTENCE"))
+        cases.append((
+            "missing persistence",
+            self.bundle(missing_persistence),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.PERSISTENCE", "FLIGHT.INCOMPLETE.STAGE"},
+        ))
 
         mismatched_persistence = complete_events()
         item = next(item for item in mismatched_persistence if item["stage"] == "persistence")
         item["subject"] = dict(item["subject"], sha256=OTHER_SHA256)  # type: ignore[arg-type]
-        cases.append(("persistence digest mismatch", self.bundle(mismatched_persistence), "DRIFTED", "FLIGHT.DRIFT.PERSISTENCE"))
+        cases.append(("persistence digest mismatch", self.bundle(mismatched_persistence), "DRIFTED", {"FLIGHT.DRIFT.PERSISTENCE"}))
 
         declared_drift = complete_events()
         declared_index = index_for(declared_drift)
         declared_index["declared_verdict"] = "DRIFTED"
-        cases.append(("contradictory declared verdict", self.bundle(declared_drift, index=declared_index), "DRIFTED", "FLIGHT.DRIFT.DECLARED_VERDICT"))
+        cases.append((
+            "contradictory declared verdict",
+            self.bundle(declared_drift, index=declared_index),
+            "DRIFTED",
+            {"FLIGHT.DRIFT.DECLARED_VERDICT"},
+        ))
 
-        for name, bundle, verdict, rule_id in cases:
+        for name, bundle, verdict, rule_ids in cases:
             with self.subTest(name=name):
-                self.assert_rule(bundle, verdict, rule_id)
+                self.assert_rule_set(bundle, verdict, rule_ids)
+
+    def test_each_successful_result_requires_its_own_verified_descendant(self) -> None:
+        events = complete_events()
+        second_result = copy.deepcopy(next(item for item in events if item["stage"] == "result"))
+        second_result["event_id"] = "event-result-unverified"
+        second_result["occurred_at"] = "2026-08-12T00:00:08Z"
+        second_result["predecessor_event_ids"] = ["event-execution"]
+        second_result["subject"] = dict(second_result["subject"], sha256=SECOND_RESULT_SHA256)  # type: ignore[arg-type]
+        events.append(second_result)
+
+        self.assert_rule_set(
+            self.bundle(events),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.VERIFICATION"},
+        )
+
+    def test_each_verified_record_requires_its_own_persisted_descendant(self) -> None:
+        events = complete_events()
+        second_verification = copy.deepcopy(next(item for item in events if item["stage"] == "verification"))
+        second_verification["event_id"] = "event-verification-unpersisted"
+        second_verification["occurred_at"] = "2026-08-12T00:00:08Z"
+        second_verification["predecessor_event_ids"] = ["event-result"]
+        events.append(second_verification)
+
+        self.assert_rule_set(
+            self.bundle(events),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.PERSISTENCE"},
+        )
+
+    def test_authority_comparison_is_bound_to_each_causal_chain(self) -> None:
+        scope_swapped = suffixed_complete_events("a") + suffixed_complete_events(
+            "b",
+            scope_sha256=SECOND_SCOPE_SHA256,
+            result_sha256=SECOND_RESULT_SHA256,
+        )
+        executions = [item for item in scope_swapped if item["stage"] == "execution"]
+        executions[0]["scope_sha256"], executions[1]["scope_sha256"] = (
+            executions[1]["scope_sha256"],
+            executions[0]["scope_sha256"],
+        )
+        self.assert_rule_set(self.bundle(scope_swapped), "DRIFTED", {"FLIGHT.DRIFT.SCOPE"})
+
+        action_swapped = suffixed_complete_events("a", action_class="file_write") + suffixed_complete_events(
+            "b",
+            result_sha256=SECOND_RESULT_SHA256,
+            action_class="process_execute",
+        )
+        executions = [item for item in action_swapped if item["stage"] == "execution"]
+        executions[0]["action_class"], executions[1]["action_class"] = (
+            executions[1]["action_class"],
+            executions[0]["action_class"],
+        )
+        self.assert_rule_set(self.bundle(action_swapped), "DRIFTED", {"FLIGHT.DRIFT.ACTION_CLASS"})
+
+    def test_authority_timestamps_require_strict_scope_approval_execution_order(self) -> None:
+        events = complete_events()
+        approval = next(item for item in events if item["stage"] == "approval")
+        execution = next(item for item in events if item["stage"] == "execution")
+        execution["occurred_at"] = approval["occurred_at"]
+
+        self.assert_rule_set(self.bundle(events), "DRIFTED", {"FLIGHT.DRIFT.AUTHORITY"})
 
     def test_complete_requires_a_shared_scope_digest_non_none_action_and_execution_effect(self) -> None:
         no_scope_or_action = complete_events()
@@ -217,26 +332,29 @@ class FlightVerifyTests(unittest.TestCase):
 
     def test_identity_and_graph_mutation_matrix(self) -> None:
         duplicate = complete_events()
-        duplicate[5]["event_id"] = duplicate[4]["event_id"]
+        duplicate.append(copy.deepcopy(next(item for item in duplicate if item["stage"] == "persistence")))
         duplicate_index = index_for(duplicate)
 
         broken_predecessor = complete_events()
-        next(item for item in broken_predecessor if item["stage"] == "execution")["predecessor_event_ids"] = ["event-missing"]
+        next(item for item in broken_predecessor if item["stage"] == "decision")["predecessor_event_ids"] = [
+            "event-scope",
+            "event-missing",
+        ]
 
         reversed_timestamp = complete_events()
-        next(item for item in reversed_timestamp if item["stage"] == "execution")["occurred_at"] = "2026-08-12T00:00:02Z"
+        next(item for item in reversed_timestamp if item["stage"] == "decision")["occurred_at"] = "2026-08-12T00:00:00Z"
 
         mixed_run = complete_events()
         next(item for item in mixed_run if item["stage"] == "result")["run_id"] = "run-other-001"
 
-        for name, bundle, rule_id in (
-            ("duplicate event id", self.bundle(duplicate, index=duplicate_index), "FLIGHT.INVALID.IDENTITY"),
-            ("broken predecessor", self.bundle(broken_predecessor), "FLIGHT.INVALID.GRAPH"),
-            ("reversed timestamp", self.bundle(reversed_timestamp), "FLIGHT.INVALID.GRAPH"),
-            ("mixed run id", self.bundle(mixed_run), "FLIGHT.INVALID.IDENTITY"),
+        for name, bundle, rule_ids in (
+            ("duplicate event id", self.bundle(duplicate, index=duplicate_index), {"FLIGHT.INVALID.IDENTITY"}),
+            ("broken predecessor", self.bundle(broken_predecessor), {"FLIGHT.INVALID.GRAPH"}),
+            ("reversed timestamp", self.bundle(reversed_timestamp), {"FLIGHT.INVALID.GRAPH"}),
+            ("mixed run id", self.bundle(mixed_run), {"FLIGHT.INVALID.IDENTITY"}),
         ):
             with self.subTest(name=name):
-                self.assert_rule(bundle, "INVALID", rule_id)
+                self.assert_rule_set(bundle, "INVALID", rule_ids)
 
     def test_loader_rejects_schema_registry_and_bundle_integrity_mutations(self) -> None:
         cases: list[tuple[str, list[dict[str, object]], dict[str, object], str]] = []
@@ -276,7 +394,7 @@ class FlightVerifyTests(unittest.TestCase):
     def test_findings_are_sorted_and_declared_verdict_never_overrides_evidence(self) -> None:
         events = complete_events()
         next(item for item in events if item["stage"] == "approval")["scope_sha256"] = OTHER_SHA256
-        next(item for item in events if item["stage"] == "approval")["action_class"] = "process_execute"
+        next(item for item in events if item["stage"] == "execution")["action_class"] = "process_execute"
         index = index_for(events)
         index["declared_verdict"] = "COMPLETE"
         evaluation = self.evaluate_flight(self.bundle(events, index=index))
