@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import unicodedata
+
 from .flight_io import FlightBundle
 from .flight_verify import FlightEvaluation
 
@@ -46,8 +48,8 @@ def _safe(value: object) -> str:
             escaped.append("\\r")
         elif char == "\n":
             escaped.append("\\n")
-        elif code < 0x20 or code == 0x7F:
-            escaped.append(f"\\x{code:02x}")
+        elif unicodedata.category(char) == "Cc":
+            escaped.append(f"\\x{code:02x}" if code <= 0xFF else f"\\u{code:04x}")
         else:
             escaped.append(char)
     return "".join(escaped)
@@ -100,7 +102,7 @@ def render_markdown_report(bundle: FlightBundle, evaluation: FlightEvaluation) -
     if not evaluation.findings:
         lines.append("- None.")
     else:
-        for finding in sorted(evaluation.findings, key=lambda item: (item.rule_id, item.event_id or "", item.detail)):
+        for finding in evaluation.findings:
             lines.append(f"- {_safe(finding.rule_id)} ({_safe(finding.event_id)}): {_safe(finding.detail)}")
     lines.extend(
         (

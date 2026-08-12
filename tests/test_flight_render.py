@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import copy
 import json
+import locale
+import os
+from pathlib import Path
+import tempfile
 import unittest
 
 from orchestration.lib.canonical import canonical_json_bytes
@@ -45,6 +49,33 @@ class FlightRenderTests(unittest.TestCase):
         document["timeline"].clear()  # type: ignore[union-attr]
         self.assertEqual(8, len(self.bundle.events))
 
+    def test_replay_is_canonical_across_environment_variants(self) -> None:
+        from mothership.flight_render import replay_document
+
+        baseline = canonical_json_bytes(replay_document(self.bundle, self.evaluation))
+        original_cwd = Path.cwd()
+        original_home = os.environ.get("HOME")
+        original_hash_seed = os.environ.get("PYTHONHASHSEED")
+        original_locale = locale.setlocale(locale.LC_ALL)
+        try:
+            with tempfile.TemporaryDirectory() as temporary:
+                os.chdir(temporary)
+                os.environ["HOME"] = "/variant/home"
+                os.environ["PYTHONHASHSEED"] = "random"
+                locale.setlocale(locale.LC_ALL, "C")
+                self.assertEqual(baseline, canonical_json_bytes(replay_document(self.bundle, self.evaluation)))
+        finally:
+            os.chdir(original_cwd)
+            locale.setlocale(locale.LC_ALL, original_locale)
+            if original_home is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = original_home
+            if original_hash_seed is None:
+                os.environ.pop("PYTHONHASHSEED", None)
+            else:
+                os.environ["PYTHONHASHSEED"] = original_hash_seed
+
     def test_markdown_report_is_safe_ordered_and_concise(self) -> None:
         from mothership.flight_render import render_markdown_report
 
@@ -71,13 +102,24 @@ class FlightRenderTests(unittest.TestCase):
         event["stage"] = "s|\\\n\u0002"
         bundle = type(self.bundle)(self.bundle.root, self.bundle.index, (event,), self.bundle.events_bytes, ())
         evaluation = FlightEvaluation("run-complete-001", "INVALID", ("intent",), ("intent",), (
-            Finding("RULE.B", None, "detail|\\\n\u0003"),
+            Finding("RULE.B", None, "detail|\\\n\u0003\u0085"),
             Finding("RULE.A", "e|\\\n\u0001", "first"),
         ))
         report = render_markdown_report(bundle, evaluation)
-        self.assertIn("- RULE.B (None): detail\\|\\\\\\n\\x03", report)
+        self.assertIn("- RULE.B (None): detail\\|\\\\\\n\\x03\\x85", report)
         self.assertIn("- RULE.A (e\\|\\\\\\n\\x01): first", report)
         self.assertNotIn("\x01", report)
+
+    def test_markdown_preserves_supplied_finding_order(self) -> None:
+        from mothership.flight_render import render_markdown_report
+        from mothership.flight_verify import Finding, FlightEvaluation
+
+        evaluation = FlightEvaluation("run-complete-001", "INVALID", (), (), (
+            Finding("RULE.B", "event-b", "second"),
+            Finding("RULE.A", "event-a", "first"),
+        ))
+        report = render_markdown_report(self.bundle, evaluation)
+        self.assertLess(report.index("- RULE.B"), report.index("- RULE.A"))
 
     def test_no_findings_and_missing_approval_are_explicit(self) -> None:
         from mothership.flight_render import render_markdown_report
