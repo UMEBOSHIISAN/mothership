@@ -135,7 +135,10 @@ def _object(value: object, keys: frozenset[str]) -> dict[str, object]:
     _validate_metadata(value)
     if type(value) is not dict or set(value) != keys:
         _schema_error()
-    safe = _detached_json(value)
+    try:
+        safe = _detached_json(value)
+    except FlightError:
+        _schema_error()
     if type(safe) is not dict:
         _schema_error()
     return safe

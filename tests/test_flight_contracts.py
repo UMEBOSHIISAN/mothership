@@ -236,6 +236,16 @@ class FlightContractTests(unittest.TestCase):
         value["redaction"] = {"profile": "metadata-only", "removed_fields": True}
         self.assert_invalid(self.validate_flight_event, value)
 
+    def test_object_validator_reports_nonserializable_field_as_schema_failure(self) -> None:
+        malformed = flight_event()
+        malformed["redaction"] = {"profile": "metadata-only", "removed_fields": object()}
+        self.assert_invalid(self.validate_flight_event, malformed)
+        self.assert_invalid(
+            self.validate_safe_metadata,
+            malformed,
+            "FLIGHT.INVALID.PRIVACY",
+        )
+
     def test_flight_event_accepts_only_reference_extensions(self) -> None:
         value = flight_event()
         value["extension"] = {
