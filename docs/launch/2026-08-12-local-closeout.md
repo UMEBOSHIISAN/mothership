@@ -8,7 +8,7 @@ reached GitHub or another public channel.
 
 | Repository | Branch | Base | Local result commit | Changed files |
 | --- | --- | --- | --- | --- |
-| mothership | `feature/mothership-10000-stars` | `62240fd` | `95f05fb3c7f998d4fd603be7f9d2a5f7e1427962` | `README.md`; `docs/ja/README.md`; launch, plan, review, and design Markdown/JSON under `docs/`; sixteen launch assets under `assets/`, including ten upload-ready companion previews; two deterministic renderers under `tools/`; documentation, link, and launch tests under `tests/` |
+| mothership | `feature/mothership-10000-stars` | `62240fd` | `1ef6130a470527e7a15a6ee7ef655562a1c8d8a9` | `README.md`; `docs/ja/README.md`; launch, plan, review, and design Markdown/JSON under `docs/`; sixteen launch assets under `assets/`, including ten upload-ready companion previews; two deterministic renderers under `tools/`; documentation, link, and launch tests under `tests/` |
 | agent-frontdoor | `docs/mothership-10000-stars` | `5ba58b262fd6a81fe19fa8f01d3c4e95e1607f73` | `28a56515f41b96d8e4161cb2f9c533fde6a7412f` | `README.md`, `tests/test_readme.py` |
 | workflow-governance-model | `docs/mothership-10000-stars` | `b94a85eb555f9e420ee528fe1cfa026aa549afb8` | `12f44e87a8c588955e0234ac176e1ec8da1e3c8b` | `README.md`, `tests/test_readme.py` |
 | mothership-router | `docs/mothership-10000-stars` | `8783f1495ec91aeb6716aba4735db8717d6d7fe2` | `a5a09919c45378651ba5c3f8a060e4725da5989b` | `README.md`, `tests/test_readme.py` |
