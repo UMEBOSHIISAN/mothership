@@ -22,7 +22,7 @@
 
 **Files:**
 - Inspect: `agent-team-runtime`, `evidence-spine-core`, `run-lineage-core`, `source-health-core`, `agent-decision-core`, `knowledge-lifecycle-kit`
-- Create: six sibling worktrees under `/Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/`
+- Create: six sibling worktrees under `<workspace>/oss_staging/.worktrees-10000-stars/`
 
 **Interfaces:**
 - Consumes: current source repositories.
@@ -65,12 +65,12 @@ Expected: every selected base passes. Stop only the failing/dirty repository.
 - [ ] **Step 3: Create clean worktrees**
 
 ```bash
-git -C /Users/umeboshi/Workspace/agent-team-runtime worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/agent-team-runtime -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/oss_staging/evidence-spine-core worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/evidence-spine-core -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/oss_staging/run-lineage-core worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/run-lineage-core -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/oss_staging/source-health-core worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/source-health-core -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/oss_staging/agent-decision-core worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/agent-decision-core -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/oss_staging/knowledge-lifecycle-kit worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/knowledge-lifecycle-kit -b docs/mothership-10000-stars HEAD
+git -C <workspace>/agent-team-runtime worktree add <workspace>/oss_staging/.worktrees-10000-stars/agent-team-runtime -b docs/mothership-10000-stars HEAD
+git -C <workspace>/oss_staging/evidence-spine-core worktree add <workspace>/oss_staging/.worktrees-10000-stars/evidence-spine-core -b docs/mothership-10000-stars HEAD
+git -C <workspace>/oss_staging/run-lineage-core worktree add <workspace>/oss_staging/.worktrees-10000-stars/run-lineage-core -b docs/mothership-10000-stars HEAD
+git -C <workspace>/oss_staging/source-health-core worktree add <workspace>/oss_staging/.worktrees-10000-stars/source-health-core -b docs/mothership-10000-stars HEAD
+git -C <workspace>/oss_staging/agent-decision-core worktree add <workspace>/oss_staging/.worktrees-10000-stars/agent-decision-core -b docs/mothership-10000-stars HEAD
+git -C <workspace>/oss_staging/knowledge-lifecycle-kit worktree add <workspace>/oss_staging/.worktrees-10000-stars/knowledge-lifecycle-kit -b docs/mothership-10000-stars HEAD
 ```
 
 Expected: clean worktree on the new branch.

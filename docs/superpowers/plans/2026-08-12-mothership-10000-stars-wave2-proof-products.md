@@ -14,7 +14,7 @@
 - Independence copy must state that Mothership does not install, invoke, or configure the companion.
 - The Mothership link is `https://github.com/UMEBOSHIISAN/mothership` and is the only star-oriented CTA.
 - Existing signature proofs, commands, exit codes, schema versions, and safety boundaries are preserved unless current tests prove a correction is required.
-- Create all four worktrees under `/Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/` to avoid touching existing checkouts.
+- Create all four worktrees under `<workspace>/oss_staging/.worktrees-10000-stars/` to avoid touching existing checkouts.
 - A repository with a dirty checkout, unexplained upstream state, or failing baseline is stopped and reported; no stash/reset/clean/rebase workaround.
 
 ---
@@ -23,7 +23,7 @@
 
 **Files:**
 - Inspect only: each repository root, branch, upstream, status, and documented test files
-- Create worktrees: `/Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/{agent-frontdoor,workflow-governance-model,mothership-router,secretary-tui}`
+- Create worktrees: `<workspace>/oss_staging/.worktrees-10000-stars/{agent-frontdoor,workflow-governance-model,mothership-router,secretary-tui}`
 
 **Interfaces:**
 - Consumes: current clean primary checkouts.
@@ -65,11 +65,11 @@ Expected: every selected repository passes before editing.
 - [ ] **Step 3: Create the worktrees**
 
 ```bash
-mkdir -p /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars
-git -C /Users/umeboshi/Workspace/oss_staging/agent-frontdoor worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/agent-frontdoor -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/oss_staging/workflow-governance-model worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/workflow-governance-model -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/oss_staging/mothership-router worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/mothership-router -b docs/mothership-10000-stars HEAD
-git -C /Users/umeboshi/Workspace/Projects/Umeboshi/secretary-tui worktree add /Users/umeboshi/Workspace/oss_staging/.worktrees-10000-stars/secretary-tui -b docs/mothership-10000-stars HEAD
+mkdir -p <workspace>/oss_staging/.worktrees-10000-stars
+git -C <workspace>/oss_staging/agent-frontdoor worktree add <workspace>/oss_staging/.worktrees-10000-stars/agent-frontdoor -b docs/mothership-10000-stars HEAD
+git -C <workspace>/oss_staging/workflow-governance-model worktree add <workspace>/oss_staging/.worktrees-10000-stars/workflow-governance-model -b docs/mothership-10000-stars HEAD
+git -C <workspace>/oss_staging/mothership-router worktree add <workspace>/oss_staging/.worktrees-10000-stars/mothership-router -b docs/mothership-10000-stars HEAD
+git -C <workspace>/Projects/Umeboshi/secretary-tui worktree add <workspace>/oss_staging/.worktrees-10000-stars/secretary-tui -b docs/mothership-10000-stars HEAD
 ```
 
 Expected: each new worktree is clean on `docs/mothership-10000-stars`.

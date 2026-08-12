@@ -21,6 +21,14 @@ EXPECTED = {
 
 
 class LaunchKitTests(unittest.TestCase):
+    def test_rollout_documents_do_not_publish_the_local_username(self):
+        paths = (
+            ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-wave2-proof-products.md",
+            ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-wave3-focused-primitives.md",
+        )
+        for path in paths:
+            self.assertNotIn("/Users/umeboshi/", path.read_text("utf-8"))
+
     def test_metadata_manifest_is_closed_and_complete(self):
         data = json.loads(
             (ROOT / "docs/launch/repository-metadata.json").read_text("utf-8")
