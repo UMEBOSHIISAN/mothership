@@ -49,14 +49,17 @@ frontdoor-task
 It remains `protocol-composition-only`, with `authority_effect: false` and `execution_effect: false`. Observation can
 project any stage; it does not imply real-world completion.
 
-## Explicit I/O boundary
+## Immutable packaged resources and explicit I/O
 
-`mothership import generic` reads one named source and writes only to an explicit output directory. `mothership verify
-run`, `mothership replay`, and `mothership report` read one explicit bundle. Replay never re-executes an action; report
-writes only to an explicit target. There is no ambient capture, process watch, scheduler, daemon, retry, repair, remote
-fetch, or credential/environment collection.
+The installable hub verifies immutable packaged resources: the closed v0.2 registry, schema snapshots with SHA-256
+digests, fixtures, and inventory. The public Flight surface is a read-only CLI except for `mothership import generic`,
+which reads one named source and writes only to an explicit output directory. `mothership verify run`, `mothership
+replay`, and `mothership report` read one explicit bundle and print their result to standard output. Replay never
+re-executes an action. There is no ambient capture, process watch, scheduler, daemon, retry, repair, remote fetch, or
+credential/environment collection.
 
 ## Public modules
 
-The v0.2 facades remain: `mothership.scope`, `mothership.approval`, `mothership.adapters`, `mothership.contracts`, and
-`mothership.protocols`. Existing library writes require an explicit caller-supplied target; the Flight CLI creates none.
+The v0.2 legacy compatibility facades remain: `mothership.scope`, `mothership.approval`, `mothership.adapters`,
+`mothership.contracts`, and `mothership.protocols`. Existing library writes require an explicit caller-supplied target.
+Generic import is the only Flight CLI operation that writes, and its target is the explicit output bundle.

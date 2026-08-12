@@ -1,6 +1,6 @@
 # Ecosystem roadmap
 
-## Shipped in the Flight Recorder slice
+## Shipped in 0.2.0 and the Flight Recorder slice
 
 - Flight Bundle index and event-envelope verification.
 - Deterministic safe-run and scope-drift demonstrations.
@@ -21,8 +21,8 @@ nor commitments to collect runtime data.
 
 ## Not planned in this slice
 
-- Model or agent execution, permission grants, or authority promotion.
-- Automatic companion installation.
-- Credential management, prompt capture, or ambient environment collection.
-- Retry, repair, fallback, scheduler, daemon, deployment, or background capture services.
+- `model or agent execution`, permission grants, or authority promotion.
+- `automatic companion installation`.
+- `credential management`, prompt capture, or ambient environment collection.
+- `retry or fallback engine`, repair, scheduler, daemon, deployment, or `background service`.
 - Vendor, OWASP, NIST, or model-provider certification claims.

@@ -112,7 +112,7 @@ verifierはbundleからverdictを再計算します。優先順位は`INVALID`�
 - 公開Flight commandはすべてexplicit pathを使い、ambient captureやdirectory discoveryをしません。
 - `metadata-only`はmetadataだけを保存し、`portable-evidence`はsecret/private-path check後に明示選択されたartifactだけを扱います。
 - secret-like key、credential、environment dump、raw prompt body、private absolute path、unsupported binary contentは拒否またはredaction対象です。
-- verify、replay、reportはread-onlyです。reportはexplicit destinationがない限りstandard outputへ出ます。
+- verify、replay、reportはread-onlyです。reportはstandard outputだけへ出ます。
 - verifierはrepair、retry、fallback、continuation decisionをしません。
 
 falseまたは省略されたsource recordを含むresidual riskは[Security model](../security.md)を参照してください。
@@ -171,9 +171,13 @@ approval/execution eventを記述するものではありません。
 
 ## 互換性
 
-MothershipはPython 3.12以上とzero runtime dependenciesを要求します。measured environmentはPython 3.14.6 on macOSです。
-unmeasuredなPython、OS、package、adapter formをsupport claimにはしません。[Compatibility matrix](../compatibility.md)は
-measured factとprojection/candidateを分けています。
+MothershipはPython 3.12+とzero runtime dependenciesを要求します。measured environmentはPython 3.14.6 on macOSです。
+unmeasuredなPython、OS、package、adapter formをsupport claimにはしません。`0.2.0` projectionには
+`claude-code-agent`、`codex-cli`、`ollama-local` diagnosticがあります。Ollama detail probeだけは既存default loopback
+daemonをqueryする場合があります。[Compatibility matrix](../compatibility.md)はmeasured factとprojection/candidateを分けます。
+
+モデルを呼び出しません。権限を与えません。companionを自動インストールしません。従来の合成コーパスの結果は本番精度ではありません。
+v0.2 compatibilityのpinned companion commitはpublic main branchから到達可能です。
 
 ## ドキュメント
 

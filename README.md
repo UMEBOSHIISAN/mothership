@@ -122,8 +122,7 @@ over `INCOMPLETE`, which takes precedence over `COMPLETE`.
   private-path checks.
 - Secret-like keys, credentials, environment dumps, raw prompt bodies, private absolute paths, and unsupported binary
   content are rejected or require redaction.
-- Verification, replay, and report are read-only. Report output goes to standard output unless an explicit destination
-  is supplied.
+- Verification, replay, and report are read-only. Report output goes only to standard output.
 - The verifier does not repair, retry, fall back, or make a continuation decision.
 
 See the [security model](docs/security.md) for residual risks, including false or omitted source records.
@@ -182,9 +181,11 @@ The compatibility projection validates supplied protocol documents. Its `authori
 
 ## Compatibility
 
-Mothership requires Python 3.12 or newer and has zero runtime dependencies. The measured environment is Python 3.14.6
-on macOS; unmeasured Python, operating-system, package, and adapter forms are not claims of support. The
-[compatibility matrix](docs/compatibility.md) separates measured facts from projections and candidates.
+Mothership requires Python 3.12+ and has zero runtime dependencies. The measured environment is Python 3.14.6 on macOS;
+unmeasured Python, operating-system, package, and adapter forms are not claims of support. The retained `0.2.0`
+projection exposes `claude-code-agent`, `codex-cli`, and `ollama-local` diagnostics; only the Ollama detail probe may
+query an already installed default loopback daemon. The [compatibility matrix](docs/compatibility.md) separates measured
+facts from projections and candidates.
 
 ## Documentation
 

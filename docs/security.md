@@ -30,6 +30,14 @@ Import, verify, replay, and report do not invoke models, spawn workers, re-execu
 repair input, retry failures, or choose fallbacks. A valid approval record is evidence of a stated binding, not a
 permission grant from Mothership.
 
+## Packaged resources and diagnostics
+
+`mothership verify` checks immutable package inventory and schema digests. A stale protocol snapshot remains possible
+when an owner releases a change Mothership has not frozen; compatibility records make that lag explicit. `doctor` runs
+only fixed availability probes in a sanitized environment. It never authenticates, installs a tool, or invokes a model.
+`doctor ollama-local` may query an already installed Ollama default loopback daemon; Mothership does not direct it to an
+external network target.
+
 ## Residual risks
 
 Source records can be false, incomplete, stale, or omitted before bundling. A valid digest binds supplied bytes, not

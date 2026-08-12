@@ -2,7 +2,8 @@
 
 ## Measured, not universal
 
-Only measured forms are support facts. A package declaration, projection, or roadmap candidate is not a measurement.
+Mothership is an installable hub; its companion protocols remain independently adoptable. Only measured forms are support
+facts. A package declaration, projection, or roadmap candidate is not a measurement.
 
 | Form | Measured fact | Status |
 | --- | --- | --- |
@@ -13,7 +14,7 @@ Only measured forms are support facts. A package declaration, projection, or roa
 | v0.2 protocol projection | four frozen protocol documents | retained compatibility surface |
 | Flight Bundle | safe and scope-drift fixtures | measured by deterministic CLI tests |
 
-Mothership requires Python 3.12 or newer. That declaration does not claim every Python 3.12+ interpreter, OS, wheel, or
+Mothership requires Python 3.12+. That declaration does not claim every Python 3.12+ interpreter, OS, wheel, or
 package-index form is measured.
 
 ## Unmeasured forms
@@ -23,5 +24,7 @@ vendor adapters are unmeasured here. They remain unclaimed until a reproducible 
 
 ## Compatibility projection
 
-The v0.2 chain remains: `frontdoor-task` -> `governance-handoff` -> `router-manifest` -> `observation-snapshot`. It is
-non-authorizing and non-executing with `authority_effect: false` and `execution_effect: false`; it is not a full Flight.
+The v0.2.0 chain remains: `frontdoor-task` -> `governance-handoff` -> `router-manifest` -> `observation-snapshot`. It
+is non-authorizing and non-executing with `authority_effect: false` and `execution_effect: false`; it is not a full
+Flight. The pinned v0.2.0 companion commits are reachable from its repository's public `main` branch; this historical
+compatibility evidence does not claim current vendor/runtime support.
