@@ -111,7 +111,9 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
             add("FLIGHT.INCOMPLETE.STAGE", None, "required stage is absent")
 
     ancestors = _event_ancestors(events)
+    intents = _stage_events(events, "intent")
     scopes = _stage_events(events, "scope")
+    decisions = _stage_events(events, "decision")
     approvals = _stage_events(events, "approval")
     executions = _stage_events(events, "execution")
     if not approvals:
@@ -133,8 +135,12 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
             authority_chains = tuple(
                 (scope, approval)
                 for approval in authority_approvals
+                for decision in decisions
+                if _is_ancestor(decision, approval, ancestors)
                 for scope in scopes
-                if _is_ancestor(scope, approval, ancestors)
+                if _is_ancestor(scope, decision, ancestors)
+                for intent in intents
+                if _is_ancestor(intent, scope, ancestors)
                 and scope["occurred_at"] < approval["occurred_at"] < execution["occurred_at"]
             )
             if not authority_chains:

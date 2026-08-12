@@ -380,6 +380,15 @@ class FlightVerifyTests(unittest.TestCase):
 
         self.assert_rule_set(self.bundle(events), "DRIFTED", {"FLIGHT.DRIFT.AUTHORITY"})
 
+    def test_authority_requires_decision_on_the_same_intent_to_execution_chain(self) -> None:
+        events = complete_events()
+        decision = next(item for item in events if item["stage"] == "decision")
+        approval = next(item for item in events if item["stage"] == "approval")
+        decision["predecessor_event_ids"] = ["event-intent"]
+        approval["predecessor_event_ids"] = ["event-scope"]
+
+        self.assert_rule_set(self.bundle(events), "DRIFTED", {"FLIGHT.DRIFT.AUTHORITY"})
+
     def test_false_effect_approved_ancestor_is_reported_beside_valid_approval(self) -> None:
         events = complete_events()
         execution_position = next(
