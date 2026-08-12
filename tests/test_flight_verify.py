@@ -220,8 +220,12 @@ class FlightVerifyTests(unittest.TestCase):
         cases.append((
             "missing verification",
             self.bundle(missing_verification),
-            "INCOMPLETE",
-            {"FLIGHT.INCOMPLETE.STAGE", "FLIGHT.INCOMPLETE.VERIFICATION"},
+            "DRIFTED",
+            {
+                "FLIGHT.DRIFT.PERSISTENCE",
+                "FLIGHT.INCOMPLETE.STAGE",
+                "FLIGHT.INCOMPLETE.VERIFICATION",
+            },
         ))
 
         missing_persistence = [item for item in complete_events() if item["stage"] != "persistence"]
@@ -266,6 +270,53 @@ class FlightVerifyTests(unittest.TestCase):
             {"FLIGHT.INCOMPLETE.VERIFICATION"},
         )
 
+    def test_each_effectful_execution_requires_its_own_successful_result_descendant(self) -> None:
+        events = suffixed_complete_events("a") + [
+            item
+            for item in suffixed_complete_events(
+                "b",
+                scope_sha256=SECOND_SCOPE_SHA256,
+                result_sha256=SECOND_RESULT_SHA256,
+            )
+            if item["stage"] in {"intent", "scope", "decision", "approval", "execution"}
+        ]
+
+        self.assert_rule_set(
+            self.bundle(events),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.EVIDENCE"},
+        )
+
+    def test_successful_result_must_descend_from_its_own_execution(self) -> None:
+        events = complete_events()
+        result = next(item for item in events if item["stage"] == "result")
+        result["predecessor_event_ids"] = ["event-approval"]
+
+        self.assert_rule_set(
+            self.bundle(events),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.EVIDENCE"},
+        )
+
+    def test_unrelated_failed_execution_does_not_make_successful_branch_false_success(self) -> None:
+        successful_branch = suffixed_complete_events("successful")
+        failed_branch = [
+            item
+            for item in suffixed_complete_events(
+                "failed",
+                scope_sha256=SECOND_SCOPE_SHA256,
+                result_sha256=SECOND_RESULT_SHA256,
+            )
+            if item["stage"] in {"intent", "scope", "decision", "approval", "execution"}
+        ]
+        next(item for item in failed_branch if item["stage"] == "execution")["outcome_status"] = "failed"
+
+        self.assert_rule_set(
+            self.bundle(successful_branch + failed_branch),
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.EVIDENCE"},
+        )
+
     def test_each_verified_record_requires_its_own_persisted_descendant(self) -> None:
         events = complete_events()
         second_verification = copy.deepcopy(next(item for item in events if item["stage"] == "verification"))
@@ -279,6 +330,26 @@ class FlightVerifyTests(unittest.TestCase):
             "INCOMPLETE",
             {"FLIGHT.INCOMPLETE.PERSISTENCE"},
         )
+
+    def test_each_persisted_record_requires_a_matching_verified_ancestor(self) -> None:
+        for name, predecessor, digest in (
+            ("orphan", "event-result", RESULT_SHA256),
+            ("mismatched", "event-verification", OTHER_SHA256),
+        ):
+            with self.subTest(name=name):
+                events = complete_events()
+                persistence = copy.deepcopy(next(item for item in events if item["stage"] == "persistence"))
+                persistence["event_id"] = f"event-persistence-{name}"
+                persistence["occurred_at"] = "2026-08-12T00:00:08Z"
+                persistence["predecessor_event_ids"] = [predecessor]
+                persistence["subject"] = dict(persistence["subject"], sha256=digest)  # type: ignore[arg-type]
+                events.append(persistence)
+
+                self.assert_rule_set(
+                    self.bundle(events),
+                    "DRIFTED",
+                    {"FLIGHT.DRIFT.PERSISTENCE"},
+                )
 
     def test_authority_comparison_is_bound_to_each_causal_chain(self) -> None:
         scope_swapped = suffixed_complete_events("a") + suffixed_complete_events(
@@ -312,6 +383,26 @@ class FlightVerifyTests(unittest.TestCase):
         execution["occurred_at"] = approval["occurred_at"]
 
         self.assert_rule_set(self.bundle(events), "DRIFTED", {"FLIGHT.DRIFT.AUTHORITY"})
+
+    def test_false_effect_approved_ancestor_is_reported_beside_valid_approval(self) -> None:
+        events = complete_events()
+        execution_position = next(
+            position
+            for position, item in enumerate(events)
+            if item["stage"] == "execution"
+        )
+        false_approval = copy.deepcopy(next(item for item in events if item["stage"] == "approval"))
+        false_approval["event_id"] = "event-approval-false-effect"
+        false_approval["authority_effect"] = False
+        events.insert(execution_position, false_approval)
+        execution = next(item for item in events if item["stage"] == "execution")
+        execution["predecessor_event_ids"] = ["event-approval", "event-approval-false-effect"]
+
+        self.assert_rule_set(
+            self.bundle(events),
+            "DRIFTED",
+            {"FLIGHT.DRIFT.AUTHORITY"},
+        )
 
     def test_complete_requires_a_shared_scope_digest_non_none_action_and_execution_effect(self) -> None:
         no_scope_or_action = complete_events()

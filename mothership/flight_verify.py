@@ -120,6 +120,8 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
         for approval in approvals:
             if approval["outcome_status"] != "approved":
                 add("FLIGHT.INCOMPLETE.APPROVAL", _event_id(approval), "approval outcome is not approved")
+            elif approval["authority_effect"] is not True:
+                add("FLIGHT.DRIFT.AUTHORITY", _event_id(approval), "approved record lacks authority effect")
         for execution in executions:
             authority_approvals = tuple(
                 approval
@@ -166,13 +168,23 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
     for execution in executions:
         if execution["execution_effect"] is not True:
             add("FLIGHT.INCOMPLETE.EVIDENCE", _event_id(execution), "execution has no execution effect")
-    failed_executions = tuple(event for event in executions if event["outcome_status"] == "failed")
     successful_results = tuple(event for event in results if event["outcome_status"] == "succeeded")
-    if failed_executions and successful_results:
-        add("FLIGHT.DRIFT.FALSE_SUCCESS", _event_id(successful_results[0]), "result claims success after failed execution")
-    if not successful_results:
-        event_id = _event_id(executions[0]) if executions else None
-        add("FLIGHT.INCOMPLETE.EVIDENCE", event_id, "successful execution lacks result evidence")
+    for execution in executions:
+        if execution["execution_effect"] is True and not any(
+            _is_ancestor(execution, result, ancestors)
+            for result in successful_results
+        ):
+            add("FLIGHT.INCOMPLETE.EVIDENCE", _event_id(execution), "effectful execution lacks a successful result descendant")
+    for result in successful_results:
+        execution_ancestors = tuple(
+            execution
+            for execution in executions
+            if _is_ancestor(execution, result, ancestors)
+        )
+        if not execution_ancestors:
+            add("FLIGHT.INCOMPLETE.EVIDENCE", _event_id(result), "successful result lacks an execution ancestor")
+        if any(execution["outcome_status"] == "failed" for execution in execution_ancestors):
+            add("FLIGHT.DRIFT.FALSE_SUCCESS", _event_id(result), "result claims success after causal execution failed")
     verified = tuple(event for event in verifications if event["outcome_status"] == "verified")
     persisted = tuple(event for event in persistences if event["outcome_status"] == "persisted")
     for result in successful_results:
@@ -206,6 +218,14 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
             add("FLIGHT.DRIFT.PERSISTENCE", _event_id(verification), "verification and descendant persistence digests disagree")
         else:
             add("FLIGHT.INCOMPLETE.PERSISTENCE", _event_id(verification), "verified record lacks a persisted descendant")
+    for persistence in persisted:
+        verification_ancestors = tuple(
+            verification
+            for verification in verified
+            if _is_ancestor(verification, persistence, ancestors)
+        )
+        if not any(_subjects_match(verification, persistence) for verification in verification_ancestors):
+            add("FLIGHT.DRIFT.PERSISTENCE", _event_id(persistence), "persistence lacks matching verification ancestry")
 
     evidence_verdict = max(("COMPLETE", *(_finding_verdict(item.rule_id) for item in findings)), key=PRECEDENCE.__getitem__)
     declared_verdict = index["declared_verdict"]
