@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 import re
+import struct
 import subprocess
 import unittest
 from urllib.parse import unquote, urlsplit
@@ -154,6 +155,62 @@ class MarkdownLinkTests(unittest.TestCase):
                     failures.append(f"{document.relative_to(ROOT)}: missing image {target}")
         self.assertGreaterEqual(image_count, 2)
         self.assertEqual([], failures, "\n".join(failures))
+
+    def test_flight_evidence_is_tracked_and_safe_to_link(self) -> None:
+        # A documentation change must not replace generated CLI evidence with a private path.
+        for path in (
+            ROOT / "docs/generated/flight-safe-output.json",
+            ROOT / "docs/generated/flight-drift-output.json",
+            ROOT / "docs/generated/flight-safe-report.md",
+        ):
+            with self.subTest(path=path.name):
+                text = path.read_text("utf-8")
+                self.assertTrue(text.endswith("\n"))
+                self.assertFalse(text.endswith("\n\n"))
+                self.assertNotIn("/Users/", text)
+                self.assertNotIn("/" + "private/", text)
+
+    def test_flight_visuals_are_editable_accessible_svg(self) -> None:
+        for filename, labels in {
+            "flight-lifecycle.svg": (
+                "Intent",
+                "Approval binding",
+                "Verification",
+                "Persistence proof",
+            ),
+            "flight-incident.svg": (
+                "declared success",
+                "observed evidence",
+                "DRIFTED",
+            ),
+            "constellation.svg": (
+                "Mothership",
+                "Agent Frontdoor",
+                "Workflow Governance Model",
+                "Mothership Router",
+                "Secretary TUI",
+                "Agent Team Runtime",
+                "Evidence Spine Core",
+                "Run Lineage Core",
+                "Source Health Core",
+                "Agent Decision Core",
+                "Knowledge Lifecycle Kit",
+            ),
+        }.items():
+            text = (ROOT / "assets" / filename).read_text("utf-8")
+            self.assertIn("<svg", text)
+            self.assertIn('aria-labelledby="title desc"', text)
+            self.assertIn('<title id="title">', text)
+            self.assertIn('<desc id="desc">', text)
+            for label in labels:
+                self.assertIn(label, text)
+
+    def test_social_preview_is_1280_by_640_png(self) -> None:
+        preview = ROOT / "assets" / "mothership-flight-recorder-social.png"
+        payload = preview.read_bytes()
+        self.assertEqual(b"\x89PNG\r\n\x1a\n", payload[:8])
+        self.assertEqual(b"IHDR", payload[12:16])
+        self.assertEqual((1280, 640), struct.unpack(">II", payload[16:24]))
 
 
 if __name__ == "__main__":

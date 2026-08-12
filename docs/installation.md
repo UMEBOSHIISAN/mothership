@@ -1,14 +1,11 @@
-# Installation and lifecycle
+# Installation and Flight lifecycle
 
-Mothership requires Git for clone-based workflows and Python 3.12 or newer. Runtime commands have no third-party Python
-dependencies. Package installation may resolve build tooling; normal verification and demo commands run offline.
-
-**Installation is the only package-changing step** in the standard lifecycle. The installed `mothership` CLI does not
-edit settings, credentials, schedulers, startup configuration, or companion repositories.
+Mothership requires Python 3.12+ and has zero runtime dependencies. A source install can need build tooling already
+available to pip; build requirements are not runtime dependencies. **Installation is the only package-changing step** in
+the standard lifecycle. The installed CLI does not edit settings, credentials, schedulers, startup configuration, or
+companion repositories.
 
 ## Clone-first install
-
-Use this path to inspect source before installing:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git
@@ -17,15 +14,14 @@ python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install .
 mothership verify
-mothership demo
+mothership demo safe
 ```
 
-Side effects: Git creates the checkout, `venv` creates `.venv`, and pip installs Mothership and build metadata into the
-environment. The two Mothership commands are read-only.
+Git creates the checkout, `venv` creates `.venv`, and pip writes package/build metadata into the environment. The
+Mothership commands are read-only. In a pre-provisioned offline environment, keep the public command unchanged and set
+`PIP_NO_INDEX=1`, `PIP_NO_BUILD_ISOLATION=false`, and the pre-provisioned `PYTHONPATH` outside the document command.
 
 ## Wheel install
-
-After obtaining a reviewed wheel and its SHA-256 through a trusted channel:
 
 ```sh
 python3 -m venv .venv
@@ -34,12 +30,10 @@ python -m pip install --no-deps mothership_control_plane-0.2.1-py3-none-any.whl
 mothership verify
 ```
 
-`--no-deps` is valid because the wheel declares zero runtime requirements. Verify the expected digest before install.
-Mothership 0.2.1 has not been claimed as available on a package index.
+`--no-deps` is valid because the wheel declares zero runtime requirements. Review the wheel and its digest before
+installing; package-index availability is unmeasured here.
 
 ## Editable development install
-
-Contributors can expose the checkout directly:
 
 ```sh
 python3 -m venv .venv
@@ -48,60 +42,48 @@ python -m pip install -e ".[test]"
 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
 ```
 
-Side effects: pip writes editable-install metadata into `.venv`; tests create only temporary data when the bytecode flag
-is set. The test extra contains build tooling, not runtime functionality.
+The test extra contains build tooling, not runtime functionality.
 
 ## Verify
 
-Run both artifact and source checks when preparing a release candidate:
-
 ```sh
 mothership verify
-mothership demo
+mothership demo safe
 python tools/run_evaluation.py
 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
 ```
 
-`verify` checks the installed resource inventory. `demo` proves the bundled `protocol-composition-only` chain.
-`run_evaluation.py` measures the tracked synthetic corpus. The full test suite covers source and distribution behavior.
-None of these commands grants `authority_effect` or `execution_effect`.
+`mothership verify` checks installed resources. The retained `mothership demo` command remains exact v0.2
+`protocol-composition-only` evidence; `mothership demo safe` is the Flight demonstration.
 
-## Diagnostics
+## Import
 
-Use `mothership doctor` only when you intentionally want local CLI availability observations. Codex and Claude probes
-run fixed version/help shapes. The Ollama detail probe may query an existing default loopback daemon. Diagnostics never
-authenticate, install a tool, invoke a model, or repair an unavailable alias.
+Use `mothership import generic events.jsonl --out ./flight-001` to translate one explicitly supplied Generic JSONL file
+into one explicit Flight Bundle directory. Import does not inspect a repository, home directory, process, or environment
+dump.
+
+## Verify a Flight Bundle
+
+Use `mothership verify run ./flight-001` to recompute the bundle verdict from index, events, and selected artifacts. It
+is read-only and does not grant authority, repair a bundle, retry missing work, or fetch evidence.
+
+## Replay and report
+
+Use `mothership replay ./flight-001` to print a causal lifecycle projection. Use
+`mothership report ./flight-001 --format markdown` to emit a derived Markdown report to standard output. Replay and
+report never re-execute an action and do not write a destination file; reports can be regenerated and are not trusted
+bundle input.
 
 ## Update
 
-There is no self-updater.
-
-1. Obtain the intended source commit, tag, or wheel through a trusted channel.
-2. Read `CHANGELOG.md` and verify its checksum evidence.
-3. Install into a new virtual environment rather than overwriting the working one.
-4. Run `mothership verify`, `mothership demo`, and the applicable tests.
-5. Switch your own workflow only after reviewing the result.
-
-The operator owns the environment switch and rollback.
+There is no self-updater. Obtain an intended source commit, tag, or wheel through a trusted channel, review the
+changelog/checksum evidence, install into a new environment, run `mothership verify` and applicable tests, then make
+the environment switch yourself.
 
 ## Uninstall
-
-For a virtual-environment install:
 
 ```sh
 python -m pip uninstall mothership-control-plane
 ```
 
-For an isolated project environment, removing that environment is sufficient. A source checkout can be removed through
-the operator's normal file-management process. Mothership leaves no managed daemon, scheduler, editor setting, or
-credential store behind.
-
-## Troubleshooting
-
-| Symptom | Closed interpretation | Next check |
-| --- | --- | --- |
-| Python is older than 3.12 | unsupported environment | choose a supported interpreter |
-| `verify` returns 1 | installed resources did not validate | reinstall from reviewed bytes |
-| `doctor` returns 1 | one or more local probes are unavailable | inspect its sanitized JSON |
-| protocol validation returns 1 | the kind, file, or document is invalid | review without weakening checks |
-| pip needs network access | build tooling is not locally available | pre-provision reviewed build tools |
+Mothership leaves no managed daemon, scheduler, startup setting, or credential store.

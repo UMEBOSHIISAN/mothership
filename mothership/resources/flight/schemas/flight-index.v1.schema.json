@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mothership.flight-index.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "created_at",
+    "producer_class",
+    "event_ids",
+    "required_stages",
+    "protocol_registry_sha256",
+    "privacy_profile",
+    "bundle_sha256",
+    "declared_verdict"
+  ],
+  "properties": {
+    "schema_version": {"const": "mothership.flight-index.v1"},
+    "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "created_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "producer_class": {"enum": ["human", "agent", "tool", "importer", "synthetic"]},
+    "event_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}
+    },
+    "required_stages": {"const": ["intent", "scope", "decision", "approval", "execution", "result", "verification", "persistence"]},
+    "protocol_registry_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "privacy_profile": {"enum": ["metadata-only", "portable-evidence"]},
+    "bundle_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "declared_verdict": {"anyOf": [{"type": "null"}, {"enum": ["COMPLETE", "INCOMPLETE", "DRIFTED", "INVALID"]}]}
+  }
+}

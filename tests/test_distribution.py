@@ -193,6 +193,73 @@ class BuiltDistributionTests(unittest.TestCase):
         self.assertEqual(0, module.returncode, module.stderr)
         self.assertEqual(module.stdout, entry.stdout)
 
+        flight_root = self.source / "mothership/resources/flight"
+        for arguments, expected_exit in (
+            (("verify", "run", str(flight_root / "safe-run")), 0),
+            (("replay", str(flight_root / "safe-run")), 0),
+            (("report", str(flight_root / "safe-run"), "--format", "markdown"), 0),
+            (("demo", "safe"), 0),
+            (("demo", "drift"), 21),
+        ):
+            with self.subTest(arguments=arguments):
+                module = self._run([str(binary), "-m", "mothership", *arguments], self.root)
+                entry = self._run([str(console), *arguments], self.root)
+                self.assertEqual(expected_exit, module.returncode, module.stderr)
+                self.assertEqual(module.returncode, entry.returncode)
+                self.assertEqual(module.stdout, entry.stdout)
+                self.assertEqual(module.stderr, entry.stderr)
+
+        generic_source = self.root / "generic-events.jsonl"
+        generic_events = []
+        for line in (flight_root / "safe-run/events.jsonl").read_text("utf-8").splitlines():
+            event = json.loads(line)
+            event["schema_version"] = "mothership.generic-event.v1"
+            event["subject"] = dict(
+                event["subject"],
+                storage="external",
+                location=f"refs/{event['event_id']}.json",
+            )
+            generic_events.append(event)
+        generic_source.write_text(
+            "".join(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n" for event in generic_events),
+            encoding="utf-8",
+        )
+        module_output = self.root / "module-target/imported"
+        console_output = self.root / "console-target/imported"
+        module_output.parent.mkdir()
+        console_output.parent.mkdir()
+        module = self._run(
+            [
+                str(binary),
+                "-m",
+                "mothership",
+                "import",
+                "generic",
+                str(generic_source),
+                "--out",
+                str(module_output),
+            ],
+            self.root,
+        )
+        entry = self._run(
+            [
+                str(console),
+                "import",
+                "generic",
+                str(generic_source),
+                "--out",
+                str(console_output),
+            ],
+            self.root,
+        )
+        self.assertEqual(0, module.returncode, module.stderr)
+        self.assertEqual(module.returncode, entry.returncode)
+        self.assertEqual(module.stdout, entry.stdout)
+        self.assertEqual(module.stderr, entry.stderr)
+        self.assertEqual("imported", json.loads(module.stdout)["output"])
+        self.assertTrue(module_output.is_dir())
+        self.assertTrue(console_output.is_dir())
+
     def test_wheel_compatibility_apis_load_their_bundled_contracts(self) -> None:
         _environment, binary = self._environment("wheel-contracts", editable=False)
         script = b"""

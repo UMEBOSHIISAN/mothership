@@ -1,0 +1,139 @@
+{
+  "schema_version": "mothership-metadata-draft.v1",
+  "status": "draft-not-applied",
+  "generated_from": "local-commits-verified-2026-08-12",
+  "repositories": [
+    {
+      "name": "mothership",
+      "description": "The black box for AI agents — record authority, replay evidence, and detect drift without executing the agent.",
+      "topics": ["ai-agents", "flight-recorder", "evidence", "audit", "governance", "replay", "drift-detection", "python"],
+      "social_preview": "assets/mothership-flight-recorder-social.png",
+      "relationship": "flagship",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "1ef6130a470527e7a15a6ee7ef655562a1c8d8a9"
+    },
+    {
+      "name": "agent-frontdoor",
+      "description": "Turn an informal AI-agent request into a bounded, human-readable task contract and stop scope drift before execution.",
+      "topics": ["ai-agents", "task-contracts", "scope-control", "preflight", "fail-closed", "json-schema", "python"],
+      "social_preview": "assets/social-previews/agent-frontdoor.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "28a56515f41b96d8e4161cb2f9c533fde6a7412f"
+    },
+    {
+      "name": "workflow-governance-model",
+      "description": "A typed, fail-closed data model for evidence, claims, approval, execution receipts, and verification.",
+      "topics": ["ai-governance", "evidence", "approval", "verification", "fail-closed", "data-model", "python"],
+      "social_preview": "assets/social-previews/workflow-governance-model.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "12f44e87a8c588955e0234ac176e1ec8da1e3c8b"
+    },
+    {
+      "name": "mothership-router",
+      "description": "Produce digest-bound, human-gated dry-run routing manifests without launching a worker.",
+      "topics": ["ai-agents", "routing", "human-in-the-loop", "dry-run", "approval", "sha256", "python"],
+      "social_preview": "assets/social-previews/mothership-router.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "a5a09919c45378651ba5c3f8a060e4725da5989b"
+    },
+    {
+      "name": "secretary-tui",
+      "description": "A read-only terminal dashboard for local AI workflows that observes state without approving or triggering agent work.",
+      "topics": ["tui", "ai-agents", "observability", "read-only", "terminal", "bubbletea", "go"],
+      "social_preview": "assets/social-previews/secretary-tui.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Go",
+      "package_manager": "go",
+      "verified_at": "2026-08-12",
+      "source_commit": "76e4fd6a2009ba0c6eefbc00c3f9c4a80b9e3b63"
+    },
+    {
+      "name": "agent-team-runtime",
+      "description": "A local protocol core for deterministic packet replay, duplicate-wake suppression, and canonical completion checks.",
+      "topics": ["ai-agents", "multi-agent", "event-replay", "deterministic", "verification", "local-first", "python"],
+      "social_preview": "assets/social-previews/agent-team-runtime.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "fbe93988af8b4e3289b6f0a3bdbd5530596b97bb"
+    },
+    {
+      "name": "evidence-spine-core",
+      "description": "A local append-only evidence ledger for synthetic task, run, result, scorecard, and verification chains.",
+      "topics": ["evidence", "append-only", "audit-log", "verification", "local-first", "ai-agents", "python"],
+      "social_preview": "assets/social-previews/evidence-spine-core.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "82d909dec45612a54d92b5fbf50c9a7a02736854"
+    },
+    {
+      "name": "run-lineage-core",
+      "description": "Deterministic in-memory joins for exact, proposed, ambiguous, unmatched, and inconclusive run lineage.",
+      "topics": ["lineage", "provenance", "deterministic", "evidence", "in-memory", "ai-agents", "python"],
+      "social_preview": "assets/social-previews/run-lineage-core.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "61a7c63f0565780e6445cf6c0457f23cb26f80d1"
+    },
+    {
+      "name": "source-health-core",
+      "description": "Dependency-free validation for source-backed local-LLM and AI-agent observation records.",
+      "topics": ["local-llm", "observability", "validation", "source-provenance", "json-schema", "dependency-free", "python"],
+      "social_preview": "assets/social-previews/source-health-core.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "bbf810105cb3deeb69e6e275ff5a987341ca276c"
+    },
+    {
+      "name": "agent-decision-core",
+      "description": "Provider-neutral advisory gates for bounded task context and local-first decisions, with execution always disabled.",
+      "topics": ["ai-agents", "advisory", "decision-gate", "local-first", "human-in-the-loop", "provider-neutral", "nodejs"],
+      "social_preview": "assets/social-previews/agent-decision-core.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "JavaScript",
+      "package_manager": "npm",
+      "verified_at": "2026-08-12",
+      "source_commit": "c6494cf27deccae945add371c29804942e33d029"
+    },
+    {
+      "name": "knowledge-lifecycle-kit",
+      "description": "Offline-safe lifecycle inspection and advisory routing components that stop at human authority.",
+      "topics": ["knowledge-management", "lifecycle", "human-in-the-loop", "advisory", "offline-first", "ai-agents", "python"],
+      "social_preview": "assets/social-previews/knowledge-lifecycle-kit.png",
+      "relationship": "independent-companion-to-mothership",
+      "homepage": null,
+      "primary_language": "Python",
+      "package_manager": "pip",
+      "verified_at": "2026-08-12",
+      "source_commit": "555a623f95ba449deffbe2d29fcac99c0a2cafa1"
+    }
+  ]
+}

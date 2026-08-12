@@ -1,0 +1,7 @@
+$ mothership demo safe
+{"authority_effect":false,"claim":"supplied-records-only","execution_effect":false,"required_stages":8,"rule_ids":[],"run_id":"flight-safe-001","scenario":"safe","schema_version":"mothership.flight-demo.v1","verdict":"COMPLETE","verified_stages":8}
+[exit 0]
+
+$ mothership demo drift
+{"authority_effect":false,"claim":"supplied-records-only","execution_effect":false,"required_stages":8,"rule_ids":["FLIGHT.DRIFT.ACTION_CLASS"],"run_id":"flight-drift-001","scenario":"drift","schema_version":"mothership.flight-demo.v1","verdict":"DRIFTED","verified_stages":8}
+[exit 21]

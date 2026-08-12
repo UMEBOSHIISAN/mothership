@@ -1,38 +1,28 @@
 # Ecosystem roadmap
 
-This roadmap separates shipped behavior from candidates. It does not promise dates, adoption, publication, or automatic
-integration.
+## Shipped in 0.2.0 and the Flight Recorder slice
 
-## Shipped in 0.2.0
+- Flight Bundle index and event-envelope verification.
+- Deterministic safe-run and scope-drift demonstrations.
+- Generic JSONL import, explicit verification, replay, and Markdown reporting.
+- Retained v0.2 protocol compatibility projection.
 
-- Installable `mothership-control-plane` package with zero runtime dependencies.
-- Public `verify`, `doctor`, `protocol`, and `demo` commands.
-- Compatibility facades for scope, approval evidence, adapters, and contracts.
-- Frozen four-stage protocol registry and schema digests.
-- Deterministic `protocol-composition-only` golden path.
-- Synthetic evaluation corpus and machine-readable result.
-- English product page, research claim boundaries, and verification evidence.
+Generic JSONL is shipped because focused Flight tests exercise explicit import and verification behavior.
 
 ## Next candidates
 
-- Companion-owned conformance manifests tied to exact public releases.
-- A standardized sanitized observation export in Secretary TUI.
-- Cross-platform replication for declared Python and operating-system combinations.
-- An independently authored or blinded request corpus for external evaluation.
-- Artifact-paper materials, baselines, ablations, and third-party reproduction.
+- OpenAI Agents SDK importer.
+- LangGraph importer.
+- Claude Code and Codex CLI importers.
+- AutoGen importer.
 
-Candidates remain unshipped until implemented and verified. Companion projects stay independently adoptable; Mothership
-remains the installable hub.
+Candidates need stable upstream event surfaces and separate compatibility evidence. They are neither implemented adapters
+nor commitments to collect runtime data.
 
-## Not planned
+## Not planned in this slice
 
-- automatic companion installation;
-- model or agent execution;
-- retry or fallback engine;
-- credential management;
-- background service, daemon, scheduler, or hook manager;
-- automatic approval, executor selection, deployment, or external publishing;
-- inference that `authority_effect` or `execution_effect` became true from validation.
-
-Changing these exclusions requires a new design and explicit human decision. They are not TODO items hidden behind the
-current roadmap.
+- `model or agent execution`, permission grants, or authority promotion.
+- `automatic companion installation`.
+- `credential management`, prompt capture, or ambient environment collection.
+- `retry or fallback engine`, repair, scheduler, daemon, deployment, or `background service`.
+- Vendor, OWASP, NIST, or model-provider certification claims.

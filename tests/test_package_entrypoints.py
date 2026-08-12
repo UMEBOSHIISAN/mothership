@@ -59,7 +59,31 @@ class PackageEntrypointTests(unittest.TestCase):
         self.assertIn("doctor", result.stdout)
         self.assertIn("protocol", result.stdout)
         self.assertIn("demo", result.stdout)
+        self.assertIn("import", result.stdout)
+        self.assertIn("replay", result.stdout)
+        self.assertIn("report", result.stdout)
         self.assertEqual("", result.stderr)
+
+    def test_flight_subcommand_help_is_successful_and_side_effect_free(self) -> None:
+        environment = dict(os.environ)
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        for arguments, expected in (
+            (("verify", "--help"), "run"),
+            (("import", "--help"), "generic"),
+            (("demo", "--help"), "safe"),
+        ):
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(
+                    [sys.executable, "-m", "mothership", *arguments],
+                    cwd=PACKAGE_ROOT,
+                    env=environment,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn(expected, result.stdout)
+                self.assertEqual("", result.stderr)
 
     def test_main_accepts_explicit_argv(self) -> None:
         from mothership.cli import main

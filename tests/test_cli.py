@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from orchestration.lib.canonical import canonical_json_bytes
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+FLIGHT_RESOURCES = PACKAGE_ROOT / "mothership/resources/flight"
 
 
 class _Result:
@@ -182,19 +184,243 @@ class CliTests(unittest.TestCase):
         self.assertIs(False, result["authority_effect"])
         self.assertIs(False, result["execution_effect"])
 
-    def test_usage_errors_exit_two_without_running_a_command(self) -> None:
+    def test_usage_errors_exit_sixty_four_without_running_a_command(self) -> None:
         completed = self._module("protocol", "validate")
-        self.assertEqual(2, completed.returncode)
+        self.assertEqual(64, completed.returncode)
         self.assertEqual(b"", completed.stdout)
         self.assertIn(b"usage:", completed.stderr)
 
     def test_broken_pipe_returns_one_without_traceback(self) -> None:
-        from mothership.cli import main
+        from mothership import cli
 
         sink = mock.Mock()
         sink.write.side_effect = BrokenPipeError
         with mock.patch("sys.stdout", sink):
-            self.assertEqual(1, main(["demo"]))
+            self.assertEqual(1, cli.main(["demo"]))
+        with mock.patch.object(cli, "command_report", return_value=(0, "# report\n")), mock.patch("sys.stdout", sink):
+            self.assertEqual(1, cli.main(["report", "bundle", "--format", "markdown"]))
+
+    def test_flight_process_commands_keep_json_and_markdown_boundaries_closed(self) -> None:
+        """Catches a process command that emits a report as JSON or adds stderr to a normal verdict."""
+
+        safe = str((FLIGHT_RESOURCES / "safe-run").resolve())
+        drift = str((FLIGHT_RESOURCES / "scope-drift").resolve())
+        double_safe = "//" + safe.lstrip("/")
+        for arguments, expected_exit, schema in (
+            (("verify", "run", double_safe), 0, "mothership.flight-verdict.v1"),
+            (("replay", double_safe), 0, "mothership.flight-replay.v1"),
+            (("demo", "safe"), 0, "mothership.flight-demo.v1"),
+            (("demo", "drift"), 21, "mothership.flight-demo.v1"),
+        ):
+            with self.subTest(arguments=arguments):
+                completed = self._module(*arguments)
+                self.assertEqual(expected_exit, completed.returncode, completed.stderr)
+                self.assertEqual(b"", completed.stderr)
+                self.assertEqual(schema, json.loads(completed.stdout)["schema_version"])
+
+        report = self._module("report", double_safe, "--format", "markdown")
+        self.assertEqual(0, report.returncode, report.stderr)
+        self.assertEqual(b"", report.stderr)
+        self.assertTrue(report.stdout.startswith(b"# Mothership Flight Report\n"))
+        drift_report = self._module("report", drift, "--format", "markdown")
+        self.assertEqual(21, drift_report.returncode, drift_report.stderr)
+        self.assertEqual(b"", drift_report.stderr)
+        self.assertTrue(drift_report.stdout.startswith(b"# Mothership Flight Report\n"))
+
+    def test_flight_commands_evaluate_prepared_bundles_without_process_or_network_use(self) -> None:
+        """Catches a CLI handler that launches a process or network client instead of reading supplied records."""
+
+        from mothership import cli
+
+        safe = (FLIGHT_RESOURCES / "safe-run").resolve()
+        drift = (FLIGHT_RESOURCES / "scope-drift").resolve()
+        with mock.patch.object(cli.subprocess, "run", side_effect=AssertionError("process use is forbidden")), mock.patch(
+            "socket.socket", side_effect=AssertionError("network use is forbidden")
+        ):
+            for handler, path, verdict, schema in (
+                (cli.command_verify_run, safe, "COMPLETE", "mothership.flight-verdict.v1"),
+                (cli.command_replay, safe, "COMPLETE", "mothership.flight-replay.v1"),
+                (cli.command_verify_run, drift, "DRIFTED", "mothership.flight-verdict.v1"),
+            ):
+                with self.subTest(handler=handler.__name__, path=path.name):
+                    exit_code, document = handler(path)
+                    self.assertEqual({"COMPLETE": 0, "DRIFTED": 21}[verdict], exit_code)
+                    self.assertEqual(schema, document["schema_version"])
+                    self.assertEqual(verdict, document["verdict"])
+                    self.assertIs(False, document["authority_effect"])
+                    self.assertIs(False, document["execution_effect"])
+
+            exit_code, report = cli.command_report(safe)
+            self.assertEqual(0, exit_code)
+            self.assertTrue(report.startswith("# Mothership Flight Report\n"))
+            self.assertIn("- Verdict: COMPLETE\n", report)
+
+            exit_code, demo = cli.command_flight_demo("drift")
+            self.assertEqual(21, exit_code)
+            self.assertEqual("DRIFTED", demo["verdict"])
+
+    def test_verify_run_maps_all_verdicts_and_sanitizes_failures(self) -> None:
+        """Catches an incorrect verdict exit or a failure response that reflects a supplied private path."""
+
+        from mothership.cli import command_verify_run
+        from mothership.flight_io import bundle_digest, load_flight_bundle
+
+        safe = (FLIGHT_RESOURCES / "safe-run").resolve()
+        drift = (FLIGHT_RESOURCES / "scope-drift").resolve()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            incomplete = root / "incomplete"
+            shutil.copytree(safe, incomplete)
+            events = [json.loads(line) for line in (incomplete / "events.jsonl").read_text("utf-8").splitlines()]
+            events.pop()
+            event_bytes = b"".join(canonical_json_bytes(event) + b"\n" for event in events)
+            index = json.loads((incomplete / "flight.json").read_text("utf-8"))
+            index["event_ids"] = [event["event_id"] for event in events]
+            index["declared_verdict"] = "INCOMPLETE"
+            (incomplete / "artifacts/persistence.json").unlink()
+            index["bundle_sha256"] = bundle_digest(
+                index,
+                event_bytes,
+                tuple(
+                    row
+                    for row in load_flight_bundle(safe).artifacts
+                    if row[0] != "artifacts/persistence.json"
+                ),
+            )
+            (incomplete / "events.jsonl").write_bytes(event_bytes)
+            (incomplete / "flight.json").write_bytes(canonical_json_bytes(index))
+
+            invalid = root / "private-secret-bundle"
+            shutil.copytree(safe, invalid)
+            (invalid / "events.jsonl").write_bytes(b'{"secret":"never-print"}\n')
+
+            for path, expected_exit, expected_verdict in (
+                (safe, 0, "COMPLETE"),
+                (incomplete, 20, "INCOMPLETE"),
+                (drift, 21, "DRIFTED"),
+                (invalid, 22, "INVALID"),
+            ):
+                with self.subTest(path=path.name):
+                    exit_code, document = command_verify_run(path)
+                    self.assertEqual(expected_exit, exit_code)
+                    self.assertEqual(expected_verdict, document["verdict"])
+
+        exit_code, document = command_verify_run(Path("/private-secret-bundle"))
+        self.assertEqual(22, exit_code)
+        self.assertEqual(
+            {
+                "schema_version": "mothership.flight-error.v1",
+                "verdict": "INVALID",
+                "rule_id": "FLIGHT.INVALID.FILE",
+                "authority_effect": False,
+                "execution_effect": False,
+            },
+            document,
+        )
+        self.assertNotIn("private-secret-bundle", json.dumps(document))
+
+    def test_verify_run_reports_identity_only_after_the_trusted_digest(self) -> None:
+        from mothership.flight_io import bundle_digest, load_flight_bundle
+
+        safe = (FLIGHT_RESOURCES / "safe-run").resolve()
+        safe_bundle = load_flight_bundle(safe)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            invalid = root / "identity-mismatch"
+            shutil.copytree(safe, invalid)
+            index = json.loads((invalid / "flight.json").read_text("utf-8"))
+            index["event_ids"] = list(reversed(index["event_ids"]))
+            index["bundle_sha256"] = bundle_digest(index, safe_bundle.events_bytes, safe_bundle.artifacts)
+            (invalid / "flight.json").write_bytes(canonical_json_bytes(index))
+
+            for rule_id in ("FLIGHT.INVALID.IDENTITY", "FLIGHT.INVALID.DIGEST"):
+                with self.subTest(rule_id=rule_id):
+                    if rule_id == "FLIGHT.INVALID.DIGEST":
+                        index["bundle_sha256"] = "f" * 64
+                        (invalid / "flight.json").write_bytes(canonical_json_bytes(index))
+                    completed = self._module("verify", "run", str(invalid))
+                    self.assertEqual(22, completed.returncode)
+                    self.assertEqual(b"", completed.stderr)
+                    self.assertEqual(
+                        canonical_json_bytes(
+                            {
+                                "schema_version": "mothership.flight-error.v1",
+                                "verdict": "INVALID",
+                                "rule_id": rule_id,
+                                "authority_effect": False,
+                                "execution_effect": False,
+                            }
+                        )
+                        + b"\n",
+                        completed.stdout,
+                    )
+
+    def test_import_and_main_normalize_only_explicit_paths(self) -> None:
+        """Catches a Flight I/O path passed through relatively or an import response that exposes an absolute output path."""
+
+        from mothership import cli
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / "generic.jsonl"
+            events = [
+                dict(
+                    json.loads(line),
+                    schema_version="mothership.generic-event.v1",
+                    subject=dict(json.loads(line)["subject"], storage="external", location="refs/event.json"),
+                )
+                for line in (FLIGHT_RESOURCES / "safe-run/events.jsonl").read_text("utf-8").splitlines()
+            ]
+            source.write_bytes(b"".join(canonical_json_bytes(event) + b"\n" for event in events))
+            output = root / "created-bundle"
+            exit_code, document = cli.command_flight_import(source, output)
+            self.assertEqual(0, exit_code)
+            self.assertEqual(
+                {
+                    "schema_version": "mothership.flight-import.v1",
+                    "output": "created-bundle",
+                    "run_id": "flight-safe-001",
+                    "bundle_sha256": document["bundle_sha256"],
+                    "event_count": 8,
+                    "authority_effect": False,
+                    "execution_effect": False,
+                },
+                document,
+            )
+            self.assertNotIn(str(root), json.dumps(document))
+
+            process_output = root / "double-source-bundle"
+            completed = self._module(
+                "import",
+                "generic",
+                "//" + str(source).lstrip("/"),
+                "--out",
+                str(process_output),
+            )
+            self.assertEqual(0, completed.returncode, completed.stderr)
+            self.assertEqual(b"", completed.stderr)
+            self.assertEqual("double-source-bundle", json.loads(completed.stdout)["output"])
+            self.assertTrue(process_output.is_dir())
+
+            double_output = root / "double-output-bundle"
+            completed = self._module(
+                "import",
+                "generic",
+                str(source),
+                "--out",
+                "//" + str(double_output).lstrip("/"),
+            )
+            self.assertEqual(0, completed.returncode, completed.stderr)
+            self.assertEqual(b"", completed.stderr)
+            self.assertEqual("double-output-bundle", json.loads(completed.stdout)["output"])
+            self.assertTrue(double_output.is_dir())
+
+        received: list[Path] = []
+        with mock.patch.object(cli, "command_verify_run", side_effect=lambda path: (received.append(path), (0, {}))[1]), mock.patch.object(
+            cli, "_emit", return_value=True
+        ):
+            self.assertEqual(0, cli.main(["verify", "run", "relative-bundle"]))
+        self.assertEqual([(Path.cwd() / "relative-bundle").resolve()], received)
 
 
 if __name__ == "__main__":

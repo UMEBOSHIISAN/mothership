@@ -25,7 +25,7 @@ where = ["."]
 include = ["mothership*", "orchestration*", "frontdoor*", "safety*", "evidence*"]
 
 [tool.setuptools.package-data]
-mothership = ["resources/*.json", "resources/**/*.json"]
+mothership = ["resources/*.json", "resources/**/*.json", "resources/**/*.jsonl"]
 evidence = ["contracts/*.json"]
 frontdoor = ["contracts/*.json"]
 orchestration = ["config/*.json", "contracts/*.json"]
