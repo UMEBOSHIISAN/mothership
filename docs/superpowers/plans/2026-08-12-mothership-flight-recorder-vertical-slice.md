@@ -139,6 +139,7 @@ git commit -m "test: make local verification environment-stable"
 - Create: `mothership/resources/flight/schemas/flight-index.v1.schema.json`
 - Create: `mothership/resources/flight/schemas/flight-event.v1.schema.json`
 - Create: `mothership/resources/flight/schemas/generic-event.v1.schema.json`
+- Modify: `mothership/resources/inventory.json`
 - Create: `tests/test_flight_contracts.py`
 
 **Interfaces:**
@@ -270,18 +271,22 @@ The Generic Event has the same fields except `schema_version` is `mothership.gen
 
 The three Draft 2020-12 schema files must express the same exact required fields, enums, regexes, `additionalProperties: false`, and nested closure as the Python validators. Tests load each schema through `importlib.resources` and assert its `$id`, required set, enums, and closed nested objects match the Python constants.
 
-- [ ] **Step 6: Run focused and strict-JSON regressions**
+- [ ] **Step 6: Register the three schemas in the installed-resource inventory**
+
+Add the three schema paths to `mothership/resources/inventory.json` in lexical order with exact byte sizes and SHA-256 values. Do not defer this to Task 6: every committed task must leave `verify_installation()` and the complete resource inventory consistent.
+
+- [ ] **Step 7: Run focused, strict-JSON, and inventory regressions**
 
 ```sh
-python3 -m unittest tests.test_flight_contracts tests.test_jsonio tests.test_contracts -v
+python3 -m unittest tests.test_flight_contracts tests.test_jsonio tests.test_contracts tests.test_verify -v
 ```
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```sh
-git add mothership/flight_contracts.py mothership/resources/flight/schemas tests/test_flight_contracts.py
+git add mothership/flight_contracts.py mothership/resources/flight/schemas mothership/resources/inventory.json tests/test_flight_contracts.py
 git commit -m "feat: define closed flight data contracts"
 ```
 
