@@ -327,6 +327,27 @@ class FlightContractTests(unittest.TestCase):
                     "FLIGHT.INVALID.PRIVACY",
                 )
 
+    def test_safe_metadata_rejects_backtick_delimited_absolute_paths_without_overrejecting_inline_code(self) -> None:
+        for safe in (
+            {"reference": "`https://example.com/artifacts/proof.json`"},
+            {"reference": "`refs/proof.json`"},
+            {"summary": "compare `ratio / total` in prose"},
+        ):
+            with self.subTest(safe=safe):
+                self.assertEqual(safe, self.validate_safe_metadata(safe))
+
+        for private_reference in (
+            "`/Users/alice/proof.json`",
+            r"`C:\Users\alice\proof.json`",
+            r"`\\server\share\proof.json`",
+        ):
+            with self.subTest(private_reference=private_reference):
+                self.assert_invalid(
+                    self.validate_safe_metadata,
+                    {"reference": private_reference},
+                    "FLIGHT.INVALID.PRIVACY",
+                )
+
     def test_safe_metadata_scans_containers_canonical_json_can_serialize(self) -> None:
         class MetadataDict(dict[str, object]):
             pass

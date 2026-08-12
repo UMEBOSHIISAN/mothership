@@ -53,7 +53,7 @@ _TIMESTAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z
 _WINDOWS_DRIVE = re.compile(r"[A-Za-z]:")
 _LOCAL_FILE_URI = re.compile(r'''(?:^|[\s"'(<\[{=])file:(?:/{1,3}|\\+)''', re.IGNORECASE)
 _EMBEDDED_ABSOLUTE_PATH = re.compile(
-    r'''(?:^|[\s"'(<\[{=])(?:~[/\\]|//|/(?!/)|[A-Za-z]:[/\\]|\\\\)[A-Za-z0-9._~-]'''
+    r'''(?:^|[\s"'(<\[{=`])(?:~[/\\]|//|/(?!/)|[A-Za-z]:[/\\]|\\\\)[A-Za-z0-9._~-]'''
 )
 _LOCATION = re.compile(
     r"(?![A-Za-z]:)(?!\.\.?$)(?!\.\.?/)(?!.*?/\.\.?/)(?!.*?/\.\.?$)[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._:-]+)*"
