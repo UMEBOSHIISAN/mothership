@@ -8,7 +8,6 @@ import re
 import shutil
 import subprocess
 import sys
-import sysconfig
 import tempfile
 import unittest
 import venv
@@ -190,7 +189,7 @@ class ReadmeContractTests(unittest.TestCase):
     )
     def test_quickstart_succeeds_in_an_offline_preprovisioned_environment(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(os.path.realpath(directory))
             source = root / "source"
             shutil.copytree(
                 ROOT,
@@ -202,12 +201,14 @@ class ReadmeContractTests(unittest.TestCase):
             environment = root / "venv"
             venv.EnvBuilder(with_pip=True).create(environment)
             binary = environment / "bin/python"
+            preprovisioned_site_packages = metadata.distribution("setuptools").locate_file("")
             install_environment = _minimal_environment(root)
             install_environment.update(
                 {
                     "PIP_NO_INDEX": "1",
-                    "PIP_NO_BUILD_ISOLATION": "1",
-                    "PYTHONPATH": sysconfig.get_paths()["purelib"],
+                    # pip maps this inverse option onto build_isolation; false disables isolation.
+                    "PIP_NO_BUILD_ISOLATION": "false",
+                    "PYTHONPATH": str(preprovisioned_site_packages),
                 }
             )
             installed = subprocess.run(
@@ -226,18 +227,19 @@ class ReadmeContractTests(unittest.TestCase):
                 ("verify", "verify-output.json"),
                 ("demo safe", "flight-safe-output.json"),
             ):
-                completed = subprocess.run(
-                    [str(environment / "bin/mothership"), *command.split()],
-                    cwd=root,
-                    env=runtime_environment,
-                    input=b"",
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    check=False,
-                    timeout=10,
-                )
-                self.assertEqual(0, completed.returncode, completed.stderr)
-                self.assertEqual((GENERATED / generated).read_bytes(), completed.stdout)
+                with self.subTest(command=command):
+                    completed = subprocess.run(
+                        [str(environment / "bin/mothership"), *command.split()],
+                        cwd=root,
+                        env=runtime_environment,
+                        input=b"",
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        check=False,
+                        timeout=10,
+                    )
+                    self.assertEqual(0, completed.returncode, completed.stderr + completed.stdout)
+                    self.assertEqual((GENERATED / generated).read_bytes(), completed.stdout)
 
 
 class SupportingDocumentationTests(unittest.TestCase):
