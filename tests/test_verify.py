@@ -111,6 +111,35 @@ class VerifyTests(unittest.TestCase):
                 self.assertEqual("failed", result["status"])
                 self.assertEqual(["inventory_shape_mismatch"], result["errors"])
 
+    def test_inventory_rejects_missing_or_extra_jsonl_resources(self) -> None:
+        """Catches an inventory scan that omits packaged JSONL evidence."""
+
+        for mutation in ("missing", "extra"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = self._copy_resources(Path(directory))
+                if mutation == "missing":
+                    (root / "flight/safe-run/events.jsonl").unlink()
+                else:
+                    (root / "flight/safe-run/extra.jsonl").write_bytes(b"{}\n")
+
+                result = self._verify_copy(root)
+
+                self.assertEqual("failed", result["status"])
+                self.assertEqual(["inventory_shape_mismatch"], result["errors"])
+
+    def test_inventory_rejects_changed_jsonl_resource_bytes(self) -> None:
+        """Catches digest validation that checks JSON but not JSONL resources."""
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = self._copy_resources(Path(directory))
+            path = root / "flight/safe-run/events.jsonl"
+            path.write_bytes(path.read_bytes() + b" ")
+
+            result = self._verify_copy(root)
+
+        self.assertEqual("failed", result["status"])
+        self.assertEqual(["inventory_digest_mismatch"], result["errors"])
+
     def test_semantically_active_executor_snapshot_fails_after_rehash(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = self._copy_resources(Path(directory))

@@ -12,6 +12,56 @@
       "sha256": "7e14f22d0316aa53cff894ed1887d2cd60be7565a6daed7ba1366d4f92134b4d"
     },
     {
+      "path": "flight/safe-run/artifacts/approval.json",
+      "size": 35,
+      "sha256": "63c598add8488ae347936d91e1cff1be2de942618eb6e586f4d602342c5e8488"
+    },
+    {
+      "path": "flight/safe-run/artifacts/decision.json",
+      "size": 35,
+      "sha256": "6729771bb8fd2870e7b4b35fcd47f48a9783dfec5b7ce27a08485dd62638ea67"
+    },
+    {
+      "path": "flight/safe-run/artifacts/execution.json",
+      "size": 36,
+      "sha256": "de1540ff1f00cc3cee68c7559c155934a7a47b1775abc1a8ab8ff31f2beeee35"
+    },
+    {
+      "path": "flight/safe-run/artifacts/intent.json",
+      "size": 33,
+      "sha256": "0c01a771302bfd28cd1736c27d1cfd68e7767020cfa4847a3a8dbfa1f053bd72"
+    },
+    {
+      "path": "flight/safe-run/artifacts/persistence.json",
+      "size": 32,
+      "sha256": "ffb6e6714474b8d71049b397510530c781181e49feb286b3e29ef7ed622315b6"
+    },
+    {
+      "path": "flight/safe-run/artifacts/result.json",
+      "size": 32,
+      "sha256": "ffb6e6714474b8d71049b397510530c781181e49feb286b3e29ef7ed622315b6"
+    },
+    {
+      "path": "flight/safe-run/artifacts/scope.json",
+      "size": 32,
+      "sha256": "360d113c8fa9a3497597e536c40b91123052659ae3ea852faf59be33fb219b44"
+    },
+    {
+      "path": "flight/safe-run/artifacts/verification.json",
+      "size": 32,
+      "sha256": "ffb6e6714474b8d71049b397510530c781181e49feb286b3e29ef7ed622315b6"
+    },
+    {
+      "path": "flight/safe-run/events.jsonl",
+      "size": 5657,
+      "sha256": "0d99ff52dde4fbfe674a77e43b5bad655d29b2cc123048d3c710eb15f0966ab9"
+    },
+    {
+      "path": "flight/safe-run/flight.json",
+      "size": 669,
+      "sha256": "78ea65299e635e6c7087a691e07c7e04689aa5fdabbb579ae3d6901fbee6ec47"
+    },
+    {
       "path": "flight/schemas/flight-event.v1.schema.json",
       "size": 3834,
       "sha256": "689902e5c35c5511e03c7f8cf4caf1b290e4e9455b30e72c3cdc344eacd81871"
@@ -25,6 +75,56 @@
       "path": "flight/schemas/generic-event.v1.schema.json",
       "size": 3836,
       "sha256": "ee26e352f585023f7fd579ceadbd6d89d119fde0269b940010ecaba269c9d895"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/approval.json",
+      "size": 35,
+      "sha256": "63c598add8488ae347936d91e1cff1be2de942618eb6e586f4d602342c5e8488"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/decision.json",
+      "size": 35,
+      "sha256": "6729771bb8fd2870e7b4b35fcd47f48a9783dfec5b7ce27a08485dd62638ea67"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/execution.json",
+      "size": 36,
+      "sha256": "de1540ff1f00cc3cee68c7559c155934a7a47b1775abc1a8ab8ff31f2beeee35"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/intent.json",
+      "size": 33,
+      "sha256": "0c01a771302bfd28cd1736c27d1cfd68e7767020cfa4847a3a8dbfa1f053bd72"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/persistence.json",
+      "size": 32,
+      "sha256": "ffb6e6714474b8d71049b397510530c781181e49feb286b3e29ef7ed622315b6"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/result.json",
+      "size": 32,
+      "sha256": "ffb6e6714474b8d71049b397510530c781181e49feb286b3e29ef7ed622315b6"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/scope.json",
+      "size": 32,
+      "sha256": "360d113c8fa9a3497597e536c40b91123052659ae3ea852faf59be33fb219b44"
+    },
+    {
+      "path": "flight/scope-drift/artifacts/verification.json",
+      "size": 32,
+      "sha256": "ffb6e6714474b8d71049b397510530c781181e49feb286b3e29ef7ed622315b6"
+    },
+    {
+      "path": "flight/scope-drift/events.jsonl",
+      "size": 5678,
+      "sha256": "d6c62cd622afe54bf97cbbeb5508543696f49d95151ee5bc7cca20b8e72ea3ef"
+    },
+    {
+      "path": "flight/scope-drift/flight.json",
+      "size": 677,
+      "sha256": "4756cd789beb83c77fdb4dec813852f332605074b3c868a4a28bce7f4fe0c8fb"
     },
     {
       "path": "golden-path/01-frontdoor-task.json",

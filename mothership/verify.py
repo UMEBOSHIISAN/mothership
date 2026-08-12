@@ -43,7 +43,7 @@ def _safe_relative(value: object) -> bool:
     )
 
 
-def _json_paths(root: object, prefix: str = "") -> tuple[str, ...]:
+def _inventory_paths(root: object, prefix: str = "") -> tuple[str, ...]:
     found: list[str] = []
     try:
         children = sorted(root.iterdir(), key=lambda child: child.name)
@@ -55,8 +55,8 @@ def _json_paths(root: object, prefix: str = "") -> tuple[str, ...]:
             if hasattr(child, "is_symlink") and child.is_symlink():
                 raise _VerificationFailure("inventory_shape_mismatch")
             if child.is_dir():
-                found.extend(_json_paths(child, relative))
-            elif child.is_file() and child.name.endswith(".json") and relative != "inventory.json":
+                found.extend(_inventory_paths(child, relative))
+            elif child.is_file() and child.name.endswith((".json", ".jsonl")) and relative != "inventory.json":
                 found.append(relative)
         except OSError:
             raise _VerificationFailure("inventory_shape_mismatch") from None
@@ -97,7 +97,7 @@ def _verify_inventory(root: object) -> None:
         paths.append(entry["path"])
     if paths != sorted(paths) or len(paths) != len(set(paths)):
         raise _VerificationFailure("inventory_shape_mismatch")
-    if tuple(paths) != _json_paths(root):
+    if tuple(paths) != _inventory_paths(root):
         raise _VerificationFailure("inventory_shape_mismatch")
     for entry in entries:
         try:
