@@ -169,6 +169,40 @@ class MarkdownLinkTests(unittest.TestCase):
                 self.assertNotIn("/Users/", text)
                 self.assertNotIn("/" + "private/", text)
 
+    def test_flight_visuals_are_editable_accessible_svg(self) -> None:
+        for filename, labels in {
+            "flight-lifecycle.svg": (
+                "Intent",
+                "Approval binding",
+                "Verification",
+                "Persistence proof",
+            ),
+            "flight-incident.svg": (
+                "declared success",
+                "observed evidence",
+                "DRIFTED",
+            ),
+            "constellation.svg": (
+                "Mothership",
+                "Agent Frontdoor",
+                "Workflow Governance Model",
+                "Mothership Router",
+                "Secretary TUI",
+                "Agent Team Runtime",
+                "Evidence Spine Core",
+                "Run Lineage Core",
+                "Source Health Core",
+                "Agent Decision Core",
+                "Knowledge Lifecycle Kit",
+            ),
+        }.items():
+            text = (ROOT / "assets" / filename).read_text("utf-8")
+            self.assertIn("<svg", text)
+            self.assertIn("<title>", text)
+            self.assertIn("<desc>", text)
+            for label in labels:
+                self.assertIn(label, text)
+
 
 if __name__ == "__main__":
     unittest.main()

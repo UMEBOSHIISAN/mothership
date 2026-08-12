@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+  <title>Declared success versus observed evidence</title>
+  <desc>Compares declared success with observed evidence that execution exceeded the approved action class, producing a DRIFTED verdict.</desc>
+  <defs>
+    <linearGradient id="incident-bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07111f"/><stop offset="1" stop-color="#1b1625"/></linearGradient>
+    <marker id="incident-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#6f9aa5"/></marker>
+  </defs>
+  <rect width="1280" height="560" rx="24" fill="url(#incident-bg)"/>
+  <text x="64" y="70" fill="#f1f7f8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="30" font-weight="750">The message says “done.” The evidence says something else.</text>
+  <text x="64" y="102" fill="#9bb0ba" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">Mothership recomputes the verdict from supplied records.</text>
+  <g font-family="ui-sans-serif,system-ui,sans-serif">
+    <g transform="translate(64 155)">
+      <rect width="300" height="250" rx="18" fill="#112531" stroke="#3a6b78" stroke-width="2"/>
+      <text x="28" y="42" fill="#77dcd8" font-size="13" font-weight="800" letter-spacing="1.5">DECLARED SUCCESS</text>
+      <text x="28" y="92" fill="#edf8f8" font-size="25" font-weight="750">“Task completed”</text>
+      <text x="28" y="127" fill="#9bbbc2" font-size="14">status: success</text>
+      <text x="28" y="153" fill="#9bbbc2" font-size="14">summary: updated docs</text>
+      <line x1="28" y1="184" x2="272" y2="184" stroke="#31505a"/>
+      <text x="28" y="216" fill="#718d95" font-size="12">A label is a claim.</text>
+      <text x="28" y="237" fill="#718d95" font-size="12">It is not the evidence graph.</text>
+    </g>
+    <path d="M382 280 H446" stroke="#6f9aa5" stroke-width="3" marker-end="url(#incident-arrow)"/>
+    <g transform="translate(464 155)">
+      <rect width="350" height="250" rx="18" fill="#171d27" stroke="#8d6a3b" stroke-width="2"/>
+      <text x="28" y="42" fill="#f0b567" font-size="13" font-weight="800" letter-spacing="1.5">OBSERVED EVIDENCE</text>
+      <text x="28" y="87" fill="#f7efe2" font-size="17" font-weight="700">approved action</text>
+      <rect x="28" y="104" width="294" height="38" rx="7" fill="#2a241a"/><text x="44" y="129" fill="#ffd9a0" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">read-only audit</text>
+      <text x="28" y="174" fill="#f7efe2" font-size="17" font-weight="700">execution receipt</text>
+      <rect x="28" y="191" width="294" height="38" rx="7" fill="#32191d"/><text x="44" y="216" fill="#ffb0b8" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">repository mutation</text>
+    </g>
+    <path d="M832 280 H896" stroke="#6f9aa5" stroke-width="3" marker-end="url(#incident-arrow)"/>
+    <g transform="translate(914 155)">
+      <rect width="302" height="250" rx="18" fill="#2a1118" stroke="#e06a6a" stroke-width="3"/>
+      <text x="28" y="42" fill="#ff9aa4" font-size="13" font-weight="800" letter-spacing="1.5">RECOMPUTED VERDICT</text>
+      <text x="151" y="128" text-anchor="middle" fill="#fff1f2" font-size="42" font-weight="850">DRIFTED</text>
+      <text x="151" y="164" text-anchor="middle" fill="#ffb3ba" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">FLIGHT.DRIFT.ACTION_CLASS</text>
+      <line x1="28" y1="190" x2="274" y2="190" stroke="#6e2d38"/>
+      <text x="151" y="219" text-anchor="middle" fill="#d7939a" font-size="12">No repair. No retry.</text>
+      <text x="151" y="238" text-anchor="middle" fill="#d7939a" font-size="12">No authority effect.</text>
+    </g>
+  </g>
+  <text x="640" y="492" text-anchor="middle" fill="#a2b6bc" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14">The finding exists in the relationship between approval and execution — not in either record alone.</text>
+</svg>
