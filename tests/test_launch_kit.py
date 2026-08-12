@@ -93,3 +93,11 @@ class LaunchKitTests(unittest.TestCase):
             "Local draft — not published",
         ):
             self.assertIn(value, release)
+
+    def test_square_social_card_is_exact_png(self):
+        data = (ROOT / "assets/mothership-flight-recorder-square.png").read_bytes()
+        self.assertEqual(b"\x89PNG\r\n\x1a\n", data[:8])
+        self.assertEqual(
+            (1080, 1080),
+            tuple(int.from_bytes(data[n : n + 4], "big") for n in (16, 20)),
+        )
