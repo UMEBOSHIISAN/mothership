@@ -69,4 +69,25 @@ ffmpeg -hide_banner -loglevel error -y \
     '[0:v][1:v]concat=n=2:v=1:a=0,fps=8,split[frames][palette_input];[palette_input]palettegen=stats_mode=diff[palette];[frames][palette]paletteuse=dither=bayer:bayer_scale=3' \
     -loop 0 "$gif"
 
+"$python_bin" - "$transcript" "$gif" <<'PY'
+from hashlib import sha256
+from pathlib import Path
+import sys
+
+transcript_path = Path(sys.argv[1])
+gif_path = Path(sys.argv[2])
+payload = gif_path.read_bytes()
+if not payload.endswith(b"\x3b"):
+    raise SystemExit("generated GIF is missing its trailer")
+comment = (
+    b"mothership-transcript-sha256="
+    + sha256(transcript_path.read_bytes()).hexdigest().encode("ascii")
+)
+if len(comment) > 255:
+    raise SystemExit("generated GIF provenance comment is too long")
+gif_path.write_bytes(
+    payload[:-1] + b"\x21\xfe" + bytes((len(comment),)) + comment + b"\x00\x3b"
+)
+PY
+
 printf 'wrote %s\nwrote %s\n' "$transcript" "$gif"

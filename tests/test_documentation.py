@@ -89,20 +89,22 @@ def _marked_fence(text: str, name: str, language: str) -> str:
     return text.split(start, 1)[1].split(end, 1)[0]
 
 
-def _skip_gif_sub_blocks(data: bytes, offset: int) -> int:
+def _read_gif_sub_blocks(data: bytes, offset: int) -> tuple[int, bytes]:
+    payload = bytearray()
     while True:
         if offset >= len(data):
             raise ValueError("truncated GIF sub-block")
         size = data[offset]
         offset += 1
         if size == 0:
-            return offset
+            return offset, bytes(payload)
         if offset + size > len(data):
             raise ValueError("truncated GIF sub-block payload")
+        payload.extend(data[offset : offset + size])
         offset += size
 
 
-def _gif_shape_and_frames(data: bytes) -> tuple[int, int, int]:
+def _gif_details(data: bytes) -> tuple[int, int, int, tuple[bytes, ...]]:
     if len(data) < 13 or data[:6] not in (b"GIF87a", b"GIF89a"):
         raise ValueError("invalid GIF header")
     width = int.from_bytes(data[6:8], "little")
@@ -112,18 +114,22 @@ def _gif_shape_and_frames(data: bytes) -> tuple[int, int, int]:
     if packed & 0x80:
         offset += 3 * (1 << ((packed & 0x07) + 1))
     frames = 0
+    comments: list[bytes] = []
     while offset < len(data):
         marker = data[offset]
         offset += 1
         if marker == 0x3B:
             if offset != len(data):
                 raise ValueError("bytes after GIF trailer")
-            return width, height, frames
+            return width, height, frames, tuple(comments)
         if marker == 0x21:
             if offset >= len(data):
                 raise ValueError("truncated GIF extension")
+            label = data[offset]
             offset += 1
-            offset = _skip_gif_sub_blocks(data, offset)
+            offset, payload = _read_gif_sub_blocks(data, offset)
+            if label == 0xFE:
+                comments.append(payload)
             continue
         if marker != 0x2C or offset + 9 > len(data):
             raise ValueError("invalid GIF block")
@@ -134,7 +140,7 @@ def _gif_shape_and_frames(data: bytes) -> tuple[int, int, int]:
         if offset >= len(data):
             raise ValueError("truncated GIF image data")
         offset += 1
-        offset = _skip_gif_sub_blocks(data, offset)
+        offset, _ = _read_gif_sub_blocks(data, offset)
         frames += 1
     raise ValueError("missing GIF trailer")
 
@@ -150,13 +156,22 @@ class GeneratedDocumentationTests(unittest.TestCase):
             transcript,
         )
         data = (ROOT / "assets" / "flight-demo.gif").read_bytes()
-        self.assertEqual((1280, 720, 56), _gif_shape_and_frames(data))
+        transcript_digest = hashlib.sha256(transcript.encode("utf-8")).hexdigest()
         self.assertEqual(
-            "df6ba0b0bb816b724fc496cdf5456dab6cdf074c195598453df5271034c93381",
+            (
+                1280,
+                720,
+                56,
+                (("mothership-transcript-sha256=" + transcript_digest).encode("ascii"),),
+            ),
+            _gif_details(data),
+        )
+        self.assertEqual(
+            "3ef93d92ac51d66d16a7ac0bf76ed251d535f9573f52859374eeeb563917db73",
             hashlib.sha256(data).hexdigest(),
         )
         with self.assertRaises(ValueError):
-            _gif_shape_and_frames(b"GIF89a")
+            _gif_details(b"GIF89a")
 
     def test_generated_outputs_are_exact_current_cli_bytes(self) -> None:
         # A changed CLI transcript must force its checked-in evidence to change too.
