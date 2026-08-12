@@ -78,6 +78,11 @@ Mothership link. It must never claim that Mothership installs, invokes, or contr
 These repositories already have a memorable principle, runnable evidence, or visual
 identity. They remain distinct products and supply the strongest credibility paths.
 
+This tiering is based on the repository READMEs inspected on 2026-08-12. At the start of
+each implementation wave, the current branch, HEAD, root README, signature example, and
+documented test command must be read again. Copy may describe a proof only when the named
+artifact still exists and its current repository-native verification passes.
+
 | Repository | Irreducible idea | Signature proof |
 | --- | --- | --- |
 | `agent-frontdoor` | The request reaching a worker should be the request a human read | safe card versus scope drift |
@@ -198,7 +203,9 @@ Every companion README uses the same compact top-fold contract:
 
 Tier 1 keeps its full storytelling depth. Tier 2 should usually stay under roughly 180
 README lines unless the contract itself genuinely needs more explanation. This is an
-editorial target, not an automated acceptance threshold.
+editorial target, not an automated acceptance threshold. Any Tier 2 README above 220 lines
+at Wave 3 closeout must be listed explicitly with its line count and a one-sentence reason;
+unexplained excess returns that repository to editing rather than being silently accepted.
 
 ### Cross-link language
 
@@ -281,6 +288,15 @@ If GitHub traffic data cannot be observed, it remains UNKNOWN rather than being 
 - Cross-repository commits remain separate so every repository can be reviewed, tested,
   and published independently.
 
+A **measured clean base** requires all of the following evidence recorded before the first
+edit: repository root and worktree list; current branch and HEAD; upstream branch and
+ahead/behind counts when an upstream exists; porcelain status with no tracked or untracked
+entries in the selected checkout; and a successful repository-native baseline test. If the
+checkout is dirty, has unpushed commits that are not the selected base, lacks an understood
+upstream, or fails its baseline, implementation stops for that repository. Existing work is
+reported and a new non-overlapping base or explicit human direction is required. No stash,
+reset, clean, rebase, force operation, or whole-tree staging is permitted as a workaround.
+
 ### Waves
 
 1. **Flagship conversion surface:** Mothership copy hierarchy, real demo recording,
@@ -350,20 +366,23 @@ Local implementation is complete only when all of the following are measured:
    star destination in its first screenful.
 2. Every behavioral claim in the Mothership README is backed by current code, fixtures,
    tests, or a clearly named limitation.
-3. Mothership has a reviewed hero/social image, actual terminal recording, accessible
+3. Every signature-proof and behavioral claim added to a companion README is backed by
+   that companion's current code, fixture, example, or repository-native passing test;
+   a Mothership test cannot substitute for companion evidence.
+4. Mothership has a reviewed hero/social image, actual terminal recording, accessible
    lifecycle/incident visuals, and a static transcript fallback.
-4. All ten companions have accurate top folds, one useful proof visual or transcript,
+5. All ten companions have accurate top folds, one useful proof visual or transcript,
    a truthful independence statement, and a prominent Mothership route.
-5. The metadata manifest contains reviewed description/topic/social-preview drafts for all
+6. The metadata manifest contains reviewed description/topic/social-preview drafts for all
    eleven repositories.
-6. The local launch kit contains English and Japanese release/announcement material,
+7. The local launch kit contains English and Japanese release/announcement material,
    article outline, social images, demo clip, transcript, and publication checklist.
-7. Every repository's relevant tests, link checks, asset checks, privacy scan, diff check,
+8. Every repository's relevant tests, link checks, asset checks, privacy scan, diff check,
    and final review pass at its recorded commit.
-8. Dirty-tree ownership is measured and unrelated user work remains untouched.
-9. No remote or public state is described as changed before commit reachability and the
+9. Dirty-tree ownership is measured and unrelated user work remains untouched.
+10. No remote or public state is described as changed before commit reachability and the
    rendered/public side effect are measured.
-10. A factual closeout lists per-repository commits, tests, remaining publication gates,
+11. A factual closeout lists per-repository commits, tests, remaining publication gates,
     and UNKNOWN metrics without inflating them into success claims.
 
 The 10,000-star North Star remains active after local completion. Reaching it depends on
