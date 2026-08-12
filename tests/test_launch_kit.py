@@ -27,7 +27,8 @@ class LaunchKitTests(unittest.TestCase):
             ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-wave3-focused-primitives.md",
         )
         for path in paths:
-            self.assertNotIn("/Users/umeboshi/", path.read_text("utf-8"))
+            private_prefix = "/Users/" + "umeboshi/"
+            self.assertNotIn(private_prefix, path.read_text("utf-8"))
 
     def test_metadata_manifest_is_closed_and_complete(self):
         data = json.loads(
@@ -132,3 +133,13 @@ class LaunchKitTests(unittest.TestCase):
             "do not paste credentials",
         ):
             self.assertIn(value, prompt)
+
+    def test_closeout_names_every_repository_and_keeps_publication_open(self):
+        text = (ROOT / "docs/launch/2026-08-12-local-closeout.md").read_text(
+            "utf-8"
+        )
+        for name in EXPECTED:
+            self.assertIn(name, text)
+        self.assertIn("NOT APPLIED", text)
+        self.assertIn("UNKNOWN", text)
+        self.assertNotIn("remote rollout complete", text.casefold())
