@@ -12,6 +12,21 @@
       "sha256": "7e14f22d0316aa53cff894ed1887d2cd60be7565a6daed7ba1366d4f92134b4d"
     },
     {
+      "path": "flight/schemas/flight-event.v1.schema.json",
+      "size": 3834,
+      "sha256": "689902e5c35c5511e03c7f8cf4caf1b290e4e9455b30e72c3cdc344eacd81871"
+    },
+    {
+      "path": "flight/schemas/flight-index.v1.schema.json",
+      "size": 1441,
+      "sha256": "a0fe1c80fbf14e57f3066733e121cbbeea3e04525cf5ae08b87aee0b9ebe2158"
+    },
+    {
+      "path": "flight/schemas/generic-event.v1.schema.json",
+      "size": 3836,
+      "sha256": "ee26e352f585023f7fd579ceadbd6d89d119fde0269b940010ecaba269c9d895"
+    },
+    {
       "path": "golden-path/01-frontdoor-task.json",
       "size": 576,
       "sha256": "6236cb63380c947708b34c88562a7e9a343a9bdb200ab27063b039286e20096d"

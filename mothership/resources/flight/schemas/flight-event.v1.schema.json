@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mothership.flight-event.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "run_id",
+    "event_type",
+    "stage",
+    "occurred_at",
+    "producer_class",
+    "tool_id",
+    "predecessor_event_ids",
+    "subject",
+    "scope_sha256",
+    "action_class",
+    "authority_effect",
+    "execution_effect",
+    "outcome_status",
+    "redaction",
+    "extension"
+  ],
+  "properties": {
+    "schema_version": {"const": "mothership.flight-event.v1"},
+    "event_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "event_type": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "stage": {"enum": ["intent", "scope", "decision", "approval", "execution", "result", "verification", "persistence"]},
+    "occurred_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "producer_class": {"enum": ["human", "agent", "tool", "importer", "synthetic"]},
+    "tool_id": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "predecessor_event_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage", "protocol_kind", "schema_version", "location", "sha256"],
+      "properties": {
+        "storage": {"enum": ["external", "bundled"]},
+        "protocol_kind": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "schema_version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "location": {"type": "string", "pattern": "^(?![A-Za-z]:)(?!\\.\\.?$)(?!\\.\\.?/)(?!.*?/\\.\\.?/)(?!.*?/\\.\\.?$)[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._:-]+)*$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"storage": {"const": "bundled"}}},
+          "then": {"properties": {"location": {"pattern": "^artifacts/"}}}
+        }
+      ]
+    },
+    "scope_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "action_class": {"enum": ["none", "read_only", "file_write", "process_execute", "network_access", "credential_access", "deploy", "scheduler_change", "infrastructure_change"]},
+    "authority_effect": {"type": "boolean"},
+    "execution_effect": {"type": "boolean"},
+    "outcome_status": {"enum": ["recorded", "proposed", "approved", "started", "succeeded", "failed", "verified", "persisted", "observed"]},
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "removed_fields"],
+      "properties": {
+        "profile": {"enum": ["metadata-only", "portable-evidence"]},
+        "removed_fields": {"type": "integer", "minimum": 0}
+      }
+    },
+    "extension": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["namespace", "schema_version", "location", "content_sha256"],
+          "properties": {
+            "namespace": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+            "schema_version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+            "location": {"type": "string", "pattern": "^(?![A-Za-z]:)(?!\\.\\.?$)(?!\\.\\.?/)(?!.*?/\\.\\.?/)(?!.*?/\\.\\.?$)[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._:-]+)*$"},
+            "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        }
+      ]
+    }
+  }
+}
