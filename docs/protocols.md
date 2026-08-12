@@ -1,97 +1,47 @@
 # Protocol reference
 
-Mothership is the **installable hub** for the frozen suite snapshot. Each semantic owner remains **independently
-adoptable**. In plain terms, every companion is independently adoptable and can release on its own schedule. A
-Mothership snapshot records compatibility; it does not take ownership of companion semantics.
+Mothership composes explicit records without taking semantic ownership from independently adoptable companion protocols.
+It owns the Flight index, event envelope, and whole-run evaluation.
 
-## Ordered registry
+## Flight index and event envelope
 
-| Order | Kind | Version | Owner | Upstream source |
-| ---: | --- | --- | --- | --- |
-| 1 | `frontdoor-task` | `intake.v0` | Agent Frontdoor | `src/frontdoor/schema/intake.v0.json` |
-| 2 | `governance-handoff` | `1.1` | Workflow Governance Model | `schemas/workflow-handoff.1.1.schema.json` |
-| 3 | `router-manifest` | `1.0` | Mothership Router | `src/mothership_router/schema/router-manifest.1.0.schema.json` |
-| 4 | `observation-snapshot` | `1.0` | Secretary TUI | `schemas/observation-snapshot.1.0.schema.json` |
+`flight.json` uses `mothership.flight-index.v1`: run identifier, ordered event identifiers, required stages, privacy
+profile, protocol-registry digest, bundle digest, and optional derived verdict. The declared verdict is untrusted until
+recomputed. `events.jsonl` uses `mothership.flight-event.v1`: event/run identity, type, stage, timestamp, producer,
+predecessors, subject protocol kind/version/location/digest, scope/action class, authority/execution flags, outcome,
+redaction metadata, and optional extension namespace.
 
-Every v0.2 entry has `authority_capable: false` and `execution_capable: false`. Router and observation documents also
-carry `authority_effect: false` and `execution_effect: false`.
+The source protocol owns its extension namespace. An extension cannot alter closed envelope fields, create authority, or
+widen the verifier's interpretation.
 
-## Registry fields
+## Versions and digests
 
-Each entry contains an exact kind, version, owner repository, upstream source path, bundled schema path, schema SHA-256,
-predecessors, successors, effect capabilities, and the Mothership version that froze it. Unknown fields fail closed.
+Index, event, and Generic JSONL schemas are versioned and fail closed on unknown versions or fields where strict closure
+applies. The bundle digest covers canonical index content without its digest and derived verdict, exact `events.jsonl`
+bytes, and sorted content-addressed artifacts. Derived reports are excluded so they can be regenerated.
 
-## List and validate
+The frozen v0.2 registry has separate schema SHA-256 digests. Its projection is `frontdoor-task`,
+`governance-handoff`, `router-manifest`, then `observation-snapshot`; it is `protocol-composition-only` with
+`authority_effect: false` and `execution_effect: false`.
 
-List installed snapshots with `mothership protocol list`.
-
-Validate an explicit file with:
-
-```text
-mothership protocol validate KIND ABSOLUTE_FILE
-```
-
-A valid result exits 0 and reports the kind, protocol version, and false effect fields. Invalid input exits 1. Every
-unknown kind is rejected before file access. Usage errors exit 2.
-
-The validator rejects relative or non-normalized paths, symbolic links, special files, oversized input, malformed UTF-8,
-duplicate keys, non-finite numbers, version drift, unknown fields, type errors, secret-like keys, and private paths.
-
-## Protocol meanings
-
-### `frontdoor-task`
-
-A bounded, reviewable task card. It carries requested work, allowed and forbidden actions, evidence needs, risk tags,
-unknowns, assumptions, and a human-gate state. It cannot select or invoke a worker.
-
-### `governance-handoff`
-
-Portable evidence metadata for one task and capability with a bounded token budget. It contains references, not raw
-prompts, model output, credentials, or approval.
-
-The suite selects the portable 1.1 contract. The released permissive 1.0
-snapshot is retained separately and is never silently reinterpreted as 1.1.
-
-### `router-manifest`
-
-A dry-run recommendation with status, optional candidate alias, registry digest, and reasons. It explicitly carries no
-authority or execution effect.
-
-### `observation-snapshot`
-
-A sanitized view of explicitly supplied governance or Router state. It makes no freshness claim and cannot mutate the
-observed system.
-
-## Golden path
-
-The bundled fixtures share one fictional task identifier and capability. `mothership demo` validates each schema, the
-ordered edges, continuity, and non-escalating effects. Its only claim is `protocol-composition-only`.
-
-## Development companion audit
-
-`tools/check_companion_conformance.py` audits source owners before Mothership records compatibility. It requires four
-explicit, normalized repository roots in protocol order and rejects symbolic links, traversal, missing artifacts, wrong
-owners, stale commits, schema drift, example drift, and effect escalation. It never searches the filesystem for a
-repository.
+## Verdict precedence
 
 ```text
-python tools/check_companion_conformance.py \
-  --frontdoor-root /abs/path/to/agent-frontdoor \
-  --wgm-root /abs/path/to/workflow-governance-model \
-  --router-root /abs/path/to/mothership-router \
-  --secretary-root /abs/path/to/secretary-tui
+INVALID > DRIFTED > INCOMPLETE > COMPLETE
 ```
 
-Success is one canonical, path-free JSON report. The command pins the exact commit set listed in
-[Compatibility](compatibility.md); a different commit fails closed until the suite is reviewed and deliberately updated.
+`INVALID` is malformed, contradictory, or substituted syntax/schema/identity/digest/graph material. `DRIFTED` is valid
+evidence of authority, scope, action-class, result, or persistence mismatch. `INCOMPLETE` is absent required material.
+`COMPLETE` is present, valid, linked, within authority, evidence-backed, verified, and persisted material.
 
-## Schema update procedure
+## Generic JSONL boundary
 
-1. The semantic owner publishes and documents a versioned schema.
-2. Mothership reviews the public owner bytes and adds a frozen snapshot.
-3. The registry version, source path, bundled path, and SHA-256 are updated together.
-4. Positive, negative, transition, privacy, and package-inventory tests are updated.
-5. Compatibility and composition documentation are updated in the same change.
-6. All affected companion conformance suites pass before a release candidate is described as compatible.
+Generic JSONL is the only shipped importer. It translates one explicit source into a Flight Bundle; it is not a runtime
+integration. OpenAI Agents SDK, LangGraph, Claude Code, Codex CLI, and AutoGen are candidates, not adapters.
 
-Never overwrite a snapshot silently or reinterpret a prior version in place.
+## v0.2 validation
+
+`mothership protocol validate KIND ABSOLUTE_FILE` validates one explicit snapshot. An unknown kind is rejected before
+file access. The validator rejects relative/non-normalized paths, symbolic links, special files, oversized input,
+malformed UTF-8, duplicate keys, non-finite numbers, unsupported versions, unknown fields, secret-like keys, and private
+paths.

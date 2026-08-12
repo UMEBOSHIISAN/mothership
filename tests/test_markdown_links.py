@@ -155,6 +155,20 @@ class MarkdownLinkTests(unittest.TestCase):
         self.assertGreaterEqual(image_count, 2)
         self.assertEqual([], failures, "\n".join(failures))
 
+    def test_flight_evidence_is_tracked_and_safe_to_link(self) -> None:
+        # A documentation change must not replace generated CLI evidence with a private path.
+        for path in (
+            ROOT / "docs/generated/flight-safe-output.json",
+            ROOT / "docs/generated/flight-drift-output.json",
+            ROOT / "docs/generated/flight-safe-report.md",
+        ):
+            with self.subTest(path=path.name):
+                text = path.read_text("utf-8")
+                self.assertTrue(text.endswith("\n"))
+                self.assertFalse(text.endswith("\n\n"))
+                self.assertNotIn("/Users/", text)
+                self.assertNotIn("/" + "private/", text)
+
 
 if __name__ == "__main__":
     unittest.main()
