@@ -55,6 +55,10 @@ LIFECYCLE = (
     "Reusable asset (optional)",
 )
 VERDICTS = ("COMPLETE", "INCOMPLETE", "DRIFTED", "INVALID")
+OFFLINE_INSTALL_ENVIRONMENT = (
+    ("PIP_NO_INDEX", "1"),
+    ("PIP_NO_BUILD_ISOLATION", "false"),
+)
 
 
 def _setuptools_77_available() -> bool:
@@ -203,14 +207,8 @@ class ReadmeContractTests(unittest.TestCase):
             binary = environment / "bin/python"
             preprovisioned_site_packages = metadata.distribution("setuptools").locate_file("")
             install_environment = _minimal_environment(root)
-            install_environment.update(
-                {
-                    "PIP_NO_INDEX": "1",
-                    # pip maps this inverse option onto build_isolation; false disables isolation.
-                    "PIP_NO_BUILD_ISOLATION": "false",
-                    "PYTHONPATH": str(preprovisioned_site_packages),
-                }
-            )
+            install_environment.update(dict(OFFLINE_INSTALL_ENVIRONMENT))
+            install_environment["PYTHONPATH"] = str(preprovisioned_site_packages)
             installed = subprocess.run(
                 [str(binary), "-m", "pip", "install", "."],
                 cwd=source,
@@ -295,6 +293,9 @@ class SupportingDocumentationTests(unittest.TestCase):
         for forbidden in ("sudo ", "install a hook", "shell startup file"):
             self.assertNotIn(forbidden, text.casefold())
         self.assertIn("Installation is the only package-changing step", text)
+        for name, value in OFFLINE_INSTALL_ENVIRONMENT:
+            self.assertIn(f"`{name}={value}`", text)
+        self.assertNotIn("`PIP_NO_BUILD_ISOLATION=1`", text)
 
     def test_protocol_owners_sources_and_update_procedure_remain_closed(self) -> None:
         text = self.documents["protocols"]

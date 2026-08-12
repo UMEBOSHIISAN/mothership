@@ -19,7 +19,7 @@ mothership demo safe
 
 Git creates the checkout, `venv` creates `.venv`, and pip writes package/build metadata into the environment. The
 Mothership commands are read-only. In a pre-provisioned offline environment, keep the public command unchanged and set
-`PIP_NO_INDEX=1`, `PIP_NO_BUILD_ISOLATION=1`, and the pre-provisioned `PYTHONPATH` outside the document command.
+`PIP_NO_INDEX=1`, `PIP_NO_BUILD_ISOLATION=false`, and the pre-provisioned `PYTHONPATH` outside the document command.
 
 ## Wheel install
 
