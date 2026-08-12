@@ -101,3 +101,26 @@ class LaunchKitTests(unittest.TestCase):
             (1080, 1080),
             tuple(int.from_bytes(data[n : n + 4], "big") for n in (16, 20)),
         )
+
+    def test_publication_checklist_separates_local_and_remote_evidence(self):
+        checklist = (ROOT / "docs/launch/publication-checklist.md").read_text("utf-8")
+        prompt = (ROOT / "docs/launch/community-prompt.md").read_text("utf-8")
+        for value in (
+            "commit exists locally",
+            "commit reached origin",
+            "rendered README",
+            "repository description",
+            "topics",
+            "social preview",
+            "release reachability",
+            "star count",
+            "GitHub traffic remains UNKNOWN",
+        ):
+            self.assertIn(value, checklist)
+        for value in (
+            "remove secrets",
+            "remove private paths",
+            "synthetic reproduction",
+            "do not paste credentials",
+        ):
+            self.assertIn(value, prompt)
