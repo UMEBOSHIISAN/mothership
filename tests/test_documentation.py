@@ -35,6 +35,7 @@ EXPECTED_H2 = (
     "Security",
     "Roadmap",
     "License",
+    "Star the black box",
 )
 QUICKSTART = (
     "python3 -m venv .venv",
@@ -180,6 +181,31 @@ class ReadmeContractTests(unittest.TestCase):
         )
         self.assertIn(disclaimer, (GENERATED / "flight-safe-report.md").read_text("utf-8"))
         self.assertIn(disclaimer, self.text)
+
+    def test_flagship_funnel_has_real_demo_visual_and_one_star_cta(self) -> None:
+        for asset in (
+            "assets/flight-demo.gif",
+            "assets/flight-lifecycle.svg",
+            "assets/flight-incident.svg",
+            "assets/mothership-flight-recorder-social.png",
+        ):
+            self.assertIn(asset, self.text)
+        self.assertEqual(
+            1,
+            len(re.findall(r"\(https://github\.com/UMEBOSHIISAN/mothership\)", self.text)),
+        )
+        self.assertIn("Part of the Mothership constellation", self.text)
+        self.assertIn("independently adoptable", self.text)
+
+    def test_japanese_entry_matches_the_flagship_boundary(self) -> None:
+        text = JAPANESE_README.read_text("utf-8")
+        for value in (
+            "AIエージェントのブラックボックス",
+            "mothership demo safe",
+            "mothership demo drift",
+        ):
+            self.assertIn(value, text)
+        self.assertIn("権限を付与しません", text)
 
     def test_quickstart_is_the_clone_first_sequence(self) -> None:
         self.assertEqual(QUICKSTART, tuple(_marked_fence(self.text, "quickstart", "sh").splitlines()))

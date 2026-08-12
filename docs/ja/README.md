@@ -14,13 +14,17 @@ ambient stateを収集せず、新しい権限も作りません。
 [Protocol](../protocols.md) · [Security](../security.md) · [Flight Recorder design](../superpowers/specs/2026-08-12-mothership-flight-recorder-design.md)
 
 <p align="center">
-  <img src="../../assets/mothership-banner.png" alt="暗い星空を進むクジラ型のMothership" width="100%">
+  <img src="../../assets/mothership-flight-recorder-social.png" alt="深宇宙でリンクされた証拠経路を描くクジラ型Mothership" width="100%">
+</p>
+
+<p align="center">
+  <img src="../../assets/flight-demo.gif" alt="完全なrunとscope driftを比較する実際のMothership CLI demo" width="100%">
 </p>
 
 ## 60秒でスコープ逸脱を確認
 
 credential不要の2つのfixtureで、safe runとscope mismatchを検証します。下の出力は手書きではなく、実際のCLIが
-生成したものです。
+生成したものです。`mothership demo safe`はexit 0、`mothership demo drift`は検出結果としてexit 21を返します。
 
 <!-- flight-safe-output-ja:start -->
 ```json
@@ -37,6 +41,10 @@ credential不要の2つのfixtureで、safe runとscope mismatchを検証しま�
 `COMPLETE`は、渡されたsafe runの証拠が完全でリンクされていることを示します。`DRIFTED`は、渡されたrecordが
 approvalを超えるexecution action classを示したことを意味します。必須の証拠がなければ`INCOMPLETE`、形式不正、
 置換、矛盾があれば`INVALID`です。
+
+<p align="center">
+  <img src="../../assets/flight-incident.svg" alt="execution action classがapprovalを超えたためdeclared successをDRIFTEDへ再計算する図" width="100%">
+</p>
 
 生成済みの[safe-run report](../generated/flight-safe-report.md)にも、次の境界があります。 “This report verifies
 supplied records; it does not grant authority or prove unobserved real-world actions.”
@@ -57,6 +65,10 @@ evidence graphのmismatchは検出します。ただしrogue AIを止めるも�
 ## フライトライフサイクル
 
 正規の順序は次のとおりです。
+
+<p align="center">
+  <img src="../../assets/flight-lifecycle.svg" alt="IntentからPersistence proofまで8つの必須リンクを示す図" width="100%">
+</p>
 
 ```text
 Intent
@@ -140,7 +152,9 @@ Mothershipはflight bundleのcomposition、run verdict、replay、presentation�
 | Cross-run relationships | Run Lineage Core | replay/reportへprojection |
 | Composition and verdict | Mothership | supplied run全体をevaluate |
 
-constellationはconceptual relationshipであり、installed dependency、authority grant、automatic integrationではありません。
+Mothership constellationの一員とは、明示的な境界を持ち、各componentがindependently adoptableであることです。
+Mothershipはcompanionをinstall、invoke、configureしません。constellationはdiscoveryとcompositionのmapであり、
+installed dependency、authority grant、automatic integrationではありません。
 
 <p align="center">
   <img src="../../assets/constellation.svg" alt="独立して採用できるMothership companion projectのconstellation" width="100%">
@@ -208,3 +222,8 @@ adoption number、platform coverage、certificationは示しません。
 ## ライセンス
 
 Mothershipは[MIT License](../../LICENSE)で公開します。
+
+## ブラックボックスを育てる
+
+Mothershipが検証するのは、明示的に渡されたrecordだけです。モデルを呼び出さず、agentを実行せず、権限を付与しません。
+この境界に共感したら、英語版READMEの案内からMothershipを応援してください。
