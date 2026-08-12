@@ -88,6 +88,18 @@ def _marked_fence(text: str, name: str, language: str) -> str:
 
 
 class GeneratedDocumentationTests(unittest.TestCase):
+    def test_terminal_demo_transcript_is_current_cli_evidence(self) -> None:
+        transcript = (GENERATED / "flight-demo-transcript.txt").read_text("utf-8")
+        safe = (GENERATED / "flight-safe-output.json").read_text("utf-8").rstrip()
+        drift = (GENERATED / "flight-drift-output.json").read_text("utf-8").rstrip()
+        self.assertEqual(
+            "$ mothership demo safe\n" + safe + "\n[exit 0]\n\n"
+            "$ mothership demo drift\n" + drift + "\n[exit 21]\n",
+            transcript,
+        )
+        data = (ROOT / "assets" / "flight-demo.gif").read_bytes()
+        self.assertIn(data[:6], (b"GIF87a", b"GIF89a"))
+
     def test_generated_outputs_are_exact_current_cli_bytes(self) -> None:
         # A changed CLI transcript must force its checked-in evidence to change too.
         commands = (
