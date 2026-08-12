@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from importlib import metadata
 import os
 from pathlib import Path
 import re
@@ -35,6 +36,15 @@ EXPECTED_H2 = (
     "Roadmap",
     "License",
 )
+
+
+def _setuptools_77_available() -> bool:
+    try:
+        raw = metadata.version("setuptools")
+        major = int(raw.split(".", 1)[0])
+    except (metadata.PackageNotFoundError, TypeError, ValueError):
+        return False
+    return major >= 77
 QUICKSTART = (
     "python3 -m venv .venv",
     ". .venv/bin/activate",
@@ -207,6 +217,10 @@ class ReadmeContractTests(unittest.TestCase):
                 continue
             self.assertLessEqual(len(line), 120, f"README line {number} is too long")
 
+    @unittest.skipUnless(
+        _setuptools_77_available(),
+        "setuptools>=77 is required for offline source-install verification",
+    )
     def test_quickstart_succeeds_in_an_isolated_preprovisioned_environment(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

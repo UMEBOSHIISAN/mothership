@@ -98,13 +98,15 @@ class DoctorTests(unittest.TestCase):
             "__CF_USER_TEXT_ENCODING": "must-not-pass",
         }
 
-    def _assert_package_bytecode_absent(self) -> None:
-        artifacts = sorted(
+    def _package_bytecode_artifacts(self) -> tuple[str, ...]:
+        return tuple(sorted(
             path.relative_to(PACKAGE_ROOT).as_posix()
             for path in PACKAGE_ROOT.rglob("*")
             if path.name == "__pycache__" or path.suffix == ".pyc"
-        )
-        self.assertEqual([], artifacts)
+        ))
+
+    def _assert_package_bytecode_unchanged(self, before: tuple[str, ...]) -> None:
+        self.assertEqual(before, self._package_bytecode_artifacts())
 
     def _normalized_recorded_environment(self, value: object) -> dict[str, object]:
         self.assertIsInstance(value, dict)
@@ -377,7 +379,7 @@ raise SystemExit(9)
         self._install_fake("ollama", b"NAME ID SIZE\nfriend-core-advisory abc 1GB\n")
         parent = self._parent_environment(self.fake_bin)
         before = dict(parent)
-        self._assert_package_bytecode_absent()
+        bytecode_before = self._package_bytecode_artifacts()
         completed = subprocess.run(
             [sys.executable, "-B", str(DOCTOR_CLI)],
             shell=False,
@@ -388,7 +390,7 @@ raise SystemExit(9)
             stderr=subprocess.PIPE,
             check=False,
         )
-        self._assert_package_bytecode_absent()
+        self._assert_package_bytecode_unchanged(bytecode_before)
         self.assertEqual(0, completed.returncode)
         self.assertEqual(b"", completed.stderr)
         self.assertEqual(before, parent)
@@ -432,7 +434,7 @@ raise SystemExit(9)
         )
         for arguments in invalid_cases:
             with self.subTest(arguments=arguments):
-                self._assert_package_bytecode_absent()
+                bytecode_before = self._package_bytecode_artifacts()
                 completed = subprocess.run(
                     [sys.executable, "-B", str(DOCTOR_CLI), *arguments],
                     shell=False,
@@ -443,7 +445,7 @@ raise SystemExit(9)
                     stderr=subprocess.PIPE,
                     check=False,
                 )
-                self._assert_package_bytecode_absent()
+                self._assert_package_bytecode_unchanged(bytecode_before)
                 self.assertEqual(2, completed.returncode)
                 self.assertEqual(b"", completed.stdout)
                 self.assertEqual(b"", completed.stderr)
@@ -455,7 +457,7 @@ raise SystemExit(9)
             if flag != "--safe-mode"
         ).encode("utf-8")
         self._install_fake("claude", missing_safe_mode)
-        self._assert_package_bytecode_absent()
+        bytecode_before = self._package_bytecode_artifacts()
         completed = subprocess.run(
             [sys.executable, "-B", str(DOCTOR_CLI), "claude-code-agent"],
             shell=False,
@@ -466,7 +468,7 @@ raise SystemExit(9)
             stderr=subprocess.PIPE,
             check=False,
         )
-        self._assert_package_bytecode_absent()
+        self._assert_package_bytecode_unchanged(bytecode_before)
         expected = dict(self._expected_available_results()[0])
         expected["status"] = "unavailable"
         expected["required_flags"] = dict(expected["required_flags"])
