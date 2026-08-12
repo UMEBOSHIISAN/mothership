@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 import re
+import struct
 import subprocess
 import unittest
 from urllib.parse import unquote, urlsplit
@@ -202,6 +203,13 @@ class MarkdownLinkTests(unittest.TestCase):
             self.assertIn("<desc>", text)
             for label in labels:
                 self.assertIn(label, text)
+
+    def test_social_preview_is_1280_by_640_png(self) -> None:
+        preview = ROOT / "assets" / "mothership-flight-recorder-social.png"
+        payload = preview.read_bytes()
+        self.assertEqual(b"\x89PNG\r\n\x1a\n", payload[:8])
+        self.assertEqual(b"IHDR", payload[12:16])
+        self.assertEqual((1280, 640), struct.unpack(">II", payload[16:24]))
 
 
 if __name__ == "__main__":
