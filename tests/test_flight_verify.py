@@ -220,12 +220,8 @@ class FlightVerifyTests(unittest.TestCase):
         cases.append((
             "missing verification",
             self.bundle(missing_verification),
-            "DRIFTED",
-            {
-                "FLIGHT.DRIFT.PERSISTENCE",
-                "FLIGHT.INCOMPLETE.STAGE",
-                "FLIGHT.INCOMPLETE.VERIFICATION",
-            },
+            "INCOMPLETE",
+            {"FLIGHT.INCOMPLETE.STAGE", "FLIGHT.INCOMPLETE.VERIFICATION"},
         ))
 
         missing_persistence = [item for item in complete_events() if item["stage"] != "persistence"]

@@ -224,7 +224,7 @@ def evaluate_flight(bundle: FlightBundle) -> FlightEvaluation:
             for verification in verified
             if _is_ancestor(verification, persistence, ancestors)
         )
-        if not any(_subjects_match(verification, persistence) for verification in verification_ancestors):
+        if verified and not any(_subjects_match(verification, persistence) for verification in verification_ancestors):
             add("FLIGHT.DRIFT.PERSISTENCE", _event_id(persistence), "persistence lacks matching verification ancestry")
 
     evidence_verdict = max(("COMPLETE", *(_finding_verdict(item.rule_id) for item in findings)), key=PRECEDENCE.__getitem__)
