@@ -153,6 +153,32 @@ class FlightIoTests(unittest.TestCase):
         index["declared_verdict"] = "COMPLETE"
         self.assertEqual(expected, self.bundle_digest(index, event_bytes, tuple(reversed(artifacts))))
 
+    def test_load_checks_digest_before_identity_and_classifies_identity_relationships(self) -> None:
+        cases: list[tuple[str, list[dict[str, object]], dict[str, object], str]] = []
+
+        order_mismatch_events = [event(stage, number) for number, stage in enumerate(REQUIRED_STAGES)]
+        order_mismatch_index = index_for(order_mismatch_events)
+        order_mismatch_index["event_ids"] = list(reversed(order_mismatch_index["event_ids"]))  # type: ignore[arg-type]
+        cases.append(("event order", order_mismatch_events, order_mismatch_index, "FLIGHT.INVALID.IDENTITY"))
+
+        run_mismatch_events = [event(stage, number) for number, stage in enumerate(REQUIRED_STAGES)]
+        run_mismatch_events[-1]["run_id"] = "run-other-001"
+        cases.append(("run identifier", run_mismatch_events, index_for(run_mismatch_events), "FLIGHT.INVALID.IDENTITY"))
+
+        combined_events = [event(stage, number) for number, stage in enumerate(REQUIRED_STAGES)]
+        combined_index = index_for(combined_events)
+        combined_index["event_ids"] = list(reversed(combined_index["event_ids"]))  # type: ignore[arg-type]
+        cases.append(("identity and digest", combined_events, combined_index, "FLIGHT.INVALID.DIGEST"))
+
+        for name, events, index, rule_id in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(os.path.realpath(temporary)) / "bundle"
+                written_index, _events_bytes = self.write_bundle(root, events, index=index)
+                if name == "identity and digest":
+                    written_index["bundle_sha256"] = "f" * 64
+                    (root / "flight.json").write_bytes(canonical_json_bytes(written_index))
+                self.assert_flight_error(rule_id, lambda: self.load_flight_bundle(root))
+
     def test_load_rejects_invalid_jsonl_structure_and_never_echoes_sensitive_input(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(os.path.realpath(temporary)) / "bundle"

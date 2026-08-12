@@ -319,6 +319,42 @@ class CliTests(unittest.TestCase):
         )
         self.assertNotIn("private-secret-bundle", json.dumps(document))
 
+    def test_verify_run_reports_identity_only_after_the_trusted_digest(self) -> None:
+        from mothership.flight_io import bundle_digest, load_flight_bundle
+
+        safe = (FLIGHT_RESOURCES / "safe-run").resolve()
+        safe_bundle = load_flight_bundle(safe)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            invalid = root / "identity-mismatch"
+            shutil.copytree(safe, invalid)
+            index = json.loads((invalid / "flight.json").read_text("utf-8"))
+            index["event_ids"] = list(reversed(index["event_ids"]))
+            index["bundle_sha256"] = bundle_digest(index, safe_bundle.events_bytes, safe_bundle.artifacts)
+            (invalid / "flight.json").write_bytes(canonical_json_bytes(index))
+
+            for rule_id in ("FLIGHT.INVALID.IDENTITY", "FLIGHT.INVALID.DIGEST"):
+                with self.subTest(rule_id=rule_id):
+                    if rule_id == "FLIGHT.INVALID.DIGEST":
+                        index["bundle_sha256"] = "f" * 64
+                        (invalid / "flight.json").write_bytes(canonical_json_bytes(index))
+                    completed = self._module("verify", "run", str(invalid))
+                    self.assertEqual(22, completed.returncode)
+                    self.assertEqual(b"", completed.stderr)
+                    self.assertEqual(
+                        canonical_json_bytes(
+                            {
+                                "schema_version": "mothership.flight-error.v1",
+                                "verdict": "INVALID",
+                                "rule_id": rule_id,
+                                "authority_effect": False,
+                                "execution_effect": False,
+                            }
+                        )
+                        + b"\n",
+                        completed.stdout,
+                    )
+
     def test_import_and_main_normalize_only_explicit_paths(self) -> None:
         """Catches a Flight I/O path passed through relatively or an import response that exposes an absolute output path."""
 

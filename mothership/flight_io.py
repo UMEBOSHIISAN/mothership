@@ -350,9 +350,9 @@ def _validate_bundle_relationships(
     index: dict[str, object], events: tuple[dict[str, object], ...], artifacts: tuple[tuple[str, int, str], ...]
 ) -> None:
     if [event["event_id"] for event in events] != index["event_ids"]:
-        raise FlightError("INVALID", "FLIGHT.INVALID.SCHEMA")
+        raise FlightError("INVALID", "FLIGHT.INVALID.IDENTITY")
     if any(event["run_id"] != index["run_id"] for event in events):
-        raise FlightError("INVALID", "FLIGHT.INVALID.SCHEMA")
+        raise FlightError("INVALID", "FLIGHT.INVALID.IDENTITY")
     profile = index["privacy_profile"]
     if profile == "metadata-only":
         if artifacts or any(event["subject"]["storage"] != "external" for event in events):  # type: ignore[index]
@@ -420,9 +420,9 @@ def load_flight_bundle(path: Path) -> FlightBundle:
             _verify_directory_member(root_fd, "artifacts", artifacts_fd, artifacts_identity)
         finally:
             os.close(artifacts_fd)
-        _validate_bundle_relationships(index, events, artifacts)
         if index["bundle_sha256"] != bundle_digest(index, events_bytes, artifacts):
             raise FlightError("INVALID", "FLIGHT.INVALID.DIGEST")
+        _validate_bundle_relationships(index, events, artifacts)
         _verify_membership(root_fd, root_snapshot, "root")
         _verify_directory_member(root_parent_fd, root_name, root_fd, root_identity)
         return FlightBundle(root, index, events, events_bytes, artifacts)
