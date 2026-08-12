@@ -21,14 +21,26 @@ EXPECTED = {
 
 
 class LaunchKitTests(unittest.TestCase):
-    def test_rollout_documents_do_not_publish_the_local_username(self):
+    def test_rollout_documents_are_portable_and_publish_no_private_paths(self):
         paths = (
+            ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-master.md",
+            ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-wave1-flagship.md",
             ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-wave2-proof-products.md",
             ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-wave3-focused-primitives.md",
+            ROOT / "docs/superpowers/plans/2026-08-12-mothership-10000-stars-wave4-launch-audit.md",
+            ROOT / "docs/launch/2026-08-12-local-closeout.md",
         )
+        home_path = re.compile(
+            r"(?<![A-Za-z0-9])/(?:Users|home)/[A-Za-z0-9._-]+/"
+            r"|(?i:(?<![A-Za-z0-9])[A-Z]:\\Users\\[A-Za-z0-9._-]+\\)"
+        )
+        private_temp = "/" + "private/"
+        homebrew_root = "/opt/" + "homebrew/"
         for path in paths:
-            private_prefix = "/Users/" + "umeboshi/"
-            self.assertNotIn(private_prefix, path.read_text("utf-8"))
+            text = path.read_text("utf-8")
+            self.assertIsNone(home_path.search(text), path)
+            self.assertNotIn(private_temp, text)
+            self.assertNotIn(homebrew_root, text)
 
     def test_metadata_manifest_is_closed_and_complete(self):
         data = json.loads(
@@ -64,6 +76,23 @@ class LaunchKitTests(unittest.TestCase):
             )
             self.assertNotIn("/Users/", json.dumps(entry))
             self.assertRegex(entry["source_commit"], r"\A[0-9a-f]{40}\Z")
+            self.assertIn(
+                Path(entry["social_preview"]).suffix.casefold(),
+                {".png", ".jpg", ".jpeg", ".gif"},
+            )
+            preview = ROOT / entry["social_preview"]
+            self.assertTrue(preview.is_file())
+            self.assertLess(preview.stat().st_size, 1_000_000)
+            if preview.suffix.casefold() == ".png":
+                payload = preview.read_bytes()
+                self.assertEqual(b"\x89PNG\r\n\x1a\n", payload[:8])
+                self.assertEqual(
+                    (1280, 640),
+                    tuple(
+                        int.from_bytes(payload[n : n + 4], "big")
+                        for n in (16, 20)
+                    ),
+                )
             self.assertIn(entry["package_manager"], {"pip", "npm", "go"})
             expected_relationship = (
                 "flagship"

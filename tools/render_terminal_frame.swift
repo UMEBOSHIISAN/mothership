@@ -70,7 +70,7 @@ transcript.draw(
     withAttributes: bodyAttributes
 )
 
-let boundary = "metadata only · no ambient capture · no execution authority"
+let boundary = "explicitly supplied records · no ambient capture · no execution authority"
 let boundaryAttributes: [NSAttributedString.Key: Any] = [
     .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .regular),
     .foregroundColor: NSColor(calibratedRed: 0.48, green: 0.65, blue: 0.70, alpha: 1),

@@ -48,7 +48,7 @@ def test_flight_visuals_are_editable_accessible_svg(self) -> None:
 
 - [ ] **Step 2: Run the failing test**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_markdown_links.MarkdownLinkTests.test_flight_visuals_are_editable_accessible_svg -v`
+Run: `python3 -m unittest tests.test_markdown_links.MarkdownLinkTests.test_flight_visuals_are_editable_accessible_svg -v`
 
 Expected: ERROR with missing asset file.
 
@@ -58,7 +58,7 @@ Use a `0 0 1280 560` wide viewBox, opaque deep-navy panel, cyan normal evidence,
 
 - [ ] **Step 4: Run asset and link tests**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_markdown_links -v`
+Run: `python3 -m unittest tests.test_markdown_links -v`
 
 Expected: PASS.
 
@@ -90,7 +90,7 @@ def test_social_preview_is_1280_by_640_png(self) -> None:
 
 - [ ] **Step 2: Run the test and observe the missing asset**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_markdown_links.MarkdownLinkTests.test_social_preview_is_1280_by_640_png -v`
+Run: `python3 -m unittest tests.test_markdown_links.MarkdownLinkTests.test_social_preview_is_1280_by_640_png -v`
 
 Expected: ERROR with missing file.
 
@@ -141,7 +141,7 @@ def test_terminal_demo_transcript_is_current_cli_evidence(self) -> None:
 
 - [ ] **Step 2: Run the test and observe missing outputs**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_documentation.GeneratedDocumentationTests.test_terminal_demo_transcript_is_current_cli_evidence -v`
+Run: `python3 -m unittest tests.test_documentation.GeneratedDocumentationTests.test_terminal_demo_transcript_is_current_cli_evidence -v`
 
 Expected: ERROR for the missing transcript.
 
@@ -153,7 +153,7 @@ The shell script must: use `mktemp -d`; capture safe stdout and require exit 0; 
 
 Run: `bash tools/generate_flight_demo.sh`
 
-Then: `/opt/homebrew/bin/python3 -m unittest tests.test_documentation.GeneratedDocumentationTests -v`
+Then: `python3 -m unittest tests.test_documentation.GeneratedDocumentationTests -v`
 
 Expected: PASS; safe/drift CLI bytes remain exact.
 
@@ -197,7 +197,7 @@ def test_japanese_entry_matches_the_flagship_boundary(self) -> None:
     self.assertIn('権限を付与しません', text)
 ```
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_documentation.ReadmeContractTests -v`
+Run: `python3 -m unittest tests.test_documentation.ReadmeContractTests -v`
 
 Expected: FAIL because the README copy has not referenced the now-existing assets or CTA.
 
@@ -207,13 +207,13 @@ Put the GIF immediately below the hero, retain the safe/drift evidence before ar
 
 - [ ] **Step 3: Run focused documentation tests**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_documentation tests.test_documentation_commands tests.test_markdown_links -v`
+Run: `python3 -m unittest tests.test_documentation tests.test_documentation_commands tests.test_markdown_links -v`
 
 Expected: PASS.
 
 - [ ] **Step 4: Run the full suite**
 
-Run: `/opt/homebrew/bin/python3 -m unittest discover -s tests -v`
+Run: `python3 -m unittest discover -s tests -v`
 
 Expected: all tests pass; the six existing optional distribution/offline skips remain explainable.
 

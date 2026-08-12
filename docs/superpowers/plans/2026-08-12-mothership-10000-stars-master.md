@@ -17,7 +17,7 @@
 - Behavioral claims come from current code, fixtures, examples, or passing repository-native tests.
 - Raster art creates atmosphere only; behavioral visuals come from current CLI output, schemas, fixtures, or editable SVG.
 - Existing dirty or unpushed work is never stashed, reset, cleaned, rebased, staged, or bundled.
-- Python verification uses `/opt/homebrew/bin/python3` (currently Python 3.14.6 and compatible with the project floor of Python 3.12+).
+- Python verification uses `python3` (currently Python 3.14.6 and compatible with the project floor of Python 3.12+).
 - Each task ends with focused tests, native regression tests proportional to the change, diff checks, and a separate commit.
 
 ---
@@ -135,7 +135,7 @@ Use these headings and fields:
 
 - [ ] **Step 2: Run the final Mothership suite**
 
-Run: `/opt/homebrew/bin/python3 -m unittest discover -s tests -v`
+Run: `python3 -m unittest discover -s tests -v`
 
 Expected: 299 tests pass with the same six environment/tooling skips unless new documentation tests increase the total.
 

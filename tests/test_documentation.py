@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from importlib import metadata
 import os
@@ -88,6 +89,56 @@ def _marked_fence(text: str, name: str, language: str) -> str:
     return text.split(start, 1)[1].split(end, 1)[0]
 
 
+def _skip_gif_sub_blocks(data: bytes, offset: int) -> int:
+    while True:
+        if offset >= len(data):
+            raise ValueError("truncated GIF sub-block")
+        size = data[offset]
+        offset += 1
+        if size == 0:
+            return offset
+        if offset + size > len(data):
+            raise ValueError("truncated GIF sub-block payload")
+        offset += size
+
+
+def _gif_shape_and_frames(data: bytes) -> tuple[int, int, int]:
+    if len(data) < 13 or data[:6] not in (b"GIF87a", b"GIF89a"):
+        raise ValueError("invalid GIF header")
+    width = int.from_bytes(data[6:8], "little")
+    height = int.from_bytes(data[8:10], "little")
+    packed = data[10]
+    offset = 13
+    if packed & 0x80:
+        offset += 3 * (1 << ((packed & 0x07) + 1))
+    frames = 0
+    while offset < len(data):
+        marker = data[offset]
+        offset += 1
+        if marker == 0x3B:
+            if offset != len(data):
+                raise ValueError("bytes after GIF trailer")
+            return width, height, frames
+        if marker == 0x21:
+            if offset >= len(data):
+                raise ValueError("truncated GIF extension")
+            offset += 1
+            offset = _skip_gif_sub_blocks(data, offset)
+            continue
+        if marker != 0x2C or offset + 9 > len(data):
+            raise ValueError("invalid GIF block")
+        image_packed = data[offset + 8]
+        offset += 9
+        if image_packed & 0x80:
+            offset += 3 * (1 << ((image_packed & 0x07) + 1))
+        if offset >= len(data):
+            raise ValueError("truncated GIF image data")
+        offset += 1
+        offset = _skip_gif_sub_blocks(data, offset)
+        frames += 1
+    raise ValueError("missing GIF trailer")
+
+
 class GeneratedDocumentationTests(unittest.TestCase):
     def test_terminal_demo_transcript_is_current_cli_evidence(self) -> None:
         transcript = (GENERATED / "flight-demo-transcript.txt").read_text("utf-8")
@@ -99,7 +150,13 @@ class GeneratedDocumentationTests(unittest.TestCase):
             transcript,
         )
         data = (ROOT / "assets" / "flight-demo.gif").read_bytes()
-        self.assertIn(data[:6], (b"GIF87a", b"GIF89a"))
+        self.assertEqual((1280, 720, 56), _gif_shape_and_frames(data))
+        self.assertEqual(
+            "df6ba0b0bb816b724fc496cdf5456dab6cdf074c195598453df5271034c93381",
+            hashlib.sha256(data).hexdigest(),
+        )
+        with self.assertRaises(ValueError):
+            _gif_shape_and_frames(b"GIF89a")
 
     def test_generated_outputs_are_exact_current_cli_bytes(self) -> None:
         # A changed CLI transcript must force its checked-in evidence to change too.

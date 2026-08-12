@@ -48,13 +48,13 @@ Expected: empty porcelain status. If `@{upstream}` is absent, record `upstream: 
 
 ```bash
 # Agent Frontdoor
-/opt/homebrew/bin/python3 -m pytest -q
+python3 -m pytest -q
 
 # Workflow Governance Model
-PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v
+PYTHONPATH=src python3 -m unittest discover -s tests -v
 
 # Mothership Router
-PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v
+PYTHONPATH=src python3 -m unittest discover -s tests -v
 
 # Secretary TUI
 go test ./...
@@ -97,7 +97,7 @@ def test_readme_routes_to_mothership_without_claiming_integration() -> None:
 
 - [ ] **Step 2: Verify the new test fails**
 
-Run: `/opt/homebrew/bin/python3 -m pytest tests/test_readme.py -q`
+Run: `python3 -m pytest tests/test_readme.py -q`
 
 Expected: FAIL on the missing shared relationship wording.
 
@@ -111,9 +111,9 @@ For authority, evidence, replay, and drift across the complete agent flight, vis
 
 - [ ] **Step 4: Run focused and full tests**
 
-Run: `/opt/homebrew/bin/python3 -m pytest tests/test_readme.py tests/test_no_execution_paths.py -q`
+Run: `python3 -m pytest tests/test_readme.py tests/test_no_execution_paths.py -q`
 
-Then: `/opt/homebrew/bin/python3 -m pytest -q`
+Then: `python3 -m pytest -q`
 
 Expected: PASS.
 
@@ -152,7 +152,7 @@ def test_readme_has_evidence_backed_mothership_relationship() -> None:
 
 - [ ] **Step 2: Run and observe failure**
 
-Run: `/opt/homebrew/bin/python3 -m pytest tests/test_readme.py -q`
+Run: `python3 -m pytest tests/test_readme.py -q`
 
 Expected: FAIL on the relationship string.
 
@@ -162,9 +162,9 @@ Place it below the top link row. Use `WGM` consistently with the README's existi
 
 - [ ] **Step 4: Run full tests**
 
-Run: `PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v`
+Run: `PYTHONPATH=src python3 -m unittest discover -s tests -v`
 
-Then: `/opt/homebrew/bin/python3 -m pytest tests/test_readme.py -q`
+Then: `python3 -m pytest tests/test_readme.py -q`
 
 Expected: PASS.
 
@@ -205,7 +205,7 @@ def test_readme_routes_digest_proof_to_mothership() -> None:
 
 - [ ] **Step 2: Run and observe failure**
 
-Run: `/opt/homebrew/bin/python3 -m pytest tests/test_readme.py -q`
+Run: `python3 -m pytest tests/test_readme.py -q`
 
 Expected: FAIL on the relationship string.
 
@@ -215,9 +215,9 @@ Keep the digest-binding explanation and four outcome table unchanged. Do not add
 
 - [ ] **Step 4: Run full tests**
 
-Run: `PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v`
+Run: `PYTHONPATH=src python3 -m unittest discover -s tests -v`
 
-Then: `/opt/homebrew/bin/python3 -m pytest tests/test_readme.py -q`
+Then: `python3 -m pytest tests/test_readme.py -q`
 
 Expected: PASS.
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
-  <title>The Mothership flagship constellation</title>
-  <desc>Ten independently adoptable companion repositories orbit Mothership as proof products and focused primitives. The lines represent discovery and composition, not installation, execution, or authority.</desc>
+  <title id="title">The Mothership flagship constellation</title>
+  <desc id="desc">Ten independently adoptable companion repositories orbit Mothership as proof products and focused primitives. The lines represent discovery and composition, not installation, execution, or authority.</desc>
   <defs>
     <radialGradient id="constellation-bg" cx="50%" cy="48%" r="70%"><stop stop-color="#143149"/><stop offset=".55" stop-color="#091827"/><stop offset="1" stop-color="#050b15"/></radialGradient>
     <radialGradient id="flagship" cx="50%" cy="45%" r="60%"><stop stop-color="#39c7c5"/><stop offset=".46" stop-color="#137b83"/><stop offset="1" stop-color="#0b3849"/></radialGradient>

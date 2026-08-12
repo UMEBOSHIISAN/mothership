@@ -47,17 +47,17 @@ Expected: empty porcelain. Record an absent upstream as `none`, never as synchro
 
 ```bash
 # agent-team-runtime
-PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v
+PYTHONPATH=src python3 -m unittest discover -s tests -v
 # evidence-spine-core
-/opt/homebrew/bin/python3 -m unittest discover -s tests -v && /opt/homebrew/bin/python3 tools/check_public_boundary.py .
+python3 -m unittest discover -s tests -v && python3 tools/check_public_boundary.py .
 # run-lineage-core
-/opt/homebrew/bin/python3 -m unittest discover -s tests -v && /opt/homebrew/bin/python3 tools/check_public_boundary.py .
+python3 -m unittest discover -s tests -v && python3 tools/check_public_boundary.py .
 # source-health-core
-PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v && /opt/homebrew/bin/python3 tools/verify_public_boundary.py .
+PYTHONPATH=src python3 -m unittest discover -s tests -v && python3 tools/verify_public_boundary.py .
 # agent-decision-core
 npm test && node tools/check-public-boundary.js .
 # knowledge-lifecycle-kit
-/opt/homebrew/bin/python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v
 ```
 
 Expected: every selected base passes. Stop only the failing/dirty repository.
@@ -112,7 +112,7 @@ class ReadmeTests(unittest.TestCase):
 
 - [ ] **Step 2: Verify failure**
 
-Run: `PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest tests.test_readme -v`
+Run: `PYTHONPATH=src python3 -m unittest tests.test_readme -v`
 
 Expected: ERROR because the SVG is absent.
 
@@ -122,7 +122,7 @@ Show ordered packet events, duplicate wake suppression, explicit verification, a
 
 - [ ] **Step 4: Run native tests and check length**
 
-Run: `PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v && wc -l README.md && git diff --check`
+Run: `PYTHONPATH=src python3 -m unittest discover -s tests -v && wc -l README.md && git diff --check`
 
 Expected: PASS and normally at most 180 README lines.
 
@@ -169,7 +169,7 @@ class ReadmeTests(unittest.TestCase):
 
 - [ ] **Step 2: Verify failure**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_readme -v`
+Run: `python3 -m unittest tests.test_readme -v`
 
 Expected: ERROR for missing SVG.
 
@@ -179,7 +179,7 @@ Keep the synthetic tutorial copyable. State that verification checks a supplied 
 
 - [ ] **Step 4: Run native verification**
 
-Run: `/opt/homebrew/bin/python3 -m unittest discover -s tests -v && /opt/homebrew/bin/python3 tools/check_public_boundary.py . && wc -l README.md && git diff --check`
+Run: `python3 -m unittest discover -s tests -v && python3 tools/check_public_boundary.py . && wc -l README.md && git diff --check`
 
 Expected: PASS.
 
@@ -224,7 +224,7 @@ class ReadmeTests(unittest.TestCase):
 
 - [ ] **Step 2: Verify failure**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_readme -v`
+Run: `python3 -m unittest tests.test_readme -v`
 
 Expected: FAIL on the missing asset reference.
 
@@ -234,7 +234,7 @@ The diagram must show explicit task/run/manifest/hash evidence reaching `EXACT`,
 
 - [ ] **Step 4: Run native verification**
 
-Run: `/opt/homebrew/bin/python3 -m unittest discover -s tests -v && /opt/homebrew/bin/python3 tools/check_public_boundary.py . && wc -l README.md && git diff --check`
+Run: `python3 -m unittest discover -s tests -v && python3 tools/check_public_boundary.py . && wc -l README.md && git diff --check`
 
 Expected: PASS.
 
@@ -279,7 +279,7 @@ class ReadmeTests(unittest.TestCase):
 
 - [ ] **Step 2: Verify failure**
 
-Run: `PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest tests.test_readme -v`
+Run: `PYTHONPATH=src python3 -m unittest tests.test_readme -v`
 
 Expected: FAIL on the asset/relationship additions.
 
@@ -289,7 +289,7 @@ Place the five-minute quickstart and before/after example above audience detail.
 
 - [ ] **Step 4: Run native verification**
 
-Run: `PYTHONPATH=src /opt/homebrew/bin/python3 -m unittest discover -s tests -v && /opt/homebrew/bin/python3 tools/verify_public_boundary.py . && wc -l README.md && git diff --check`
+Run: `PYTHONPATH=src python3 -m unittest discover -s tests -v && python3 tools/verify_public_boundary.py . && wc -l README.md && git diff --check`
 
 Expected: PASS.
 
@@ -386,7 +386,7 @@ class ReadmeTests(unittest.TestCase):
 
 - [ ] **Step 2: Verify failure**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_readme -v`
+Run: `python3 -m unittest tests.test_readme -v`
 
 Expected: FAIL on new asset/relationship wording.
 
@@ -396,7 +396,7 @@ The diagram must show machine `inspect` and `propose`, then stop at a human deci
 
 - [ ] **Step 4: Run native verification**
 
-Run: `/opt/homebrew/bin/python3 -m unittest discover -s tests -v && wc -l README.md && git diff --check`
+Run: `python3 -m unittest discover -s tests -v && wc -l README.md && git diff --check`
 
 Expected: PASS.
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
-  <title>Declared success versus observed evidence</title>
-  <desc>Compares declared success with observed evidence that execution exceeded the approved action class, producing a DRIFTED verdict.</desc>
+  <title id="title">Declared success versus observed evidence</title>
+  <desc id="desc">Compares declared success with observed evidence that execution exceeded the approved action class, producing a DRIFTED verdict.</desc>
   <defs>
     <linearGradient id="incident-bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07111f"/><stop offset="1" stop-color="#1b1625"/></linearGradient>
     <marker id="incident-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#6f9aa5"/></marker>

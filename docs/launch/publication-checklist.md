@@ -41,6 +41,9 @@ Apply one entry at a time from
 
 ## 4. Social previews
 
+Paths in `repository-metadata.json` resolve from the Mothership rollout commit;
+they are upload sources, not files that must be added to a companion repository.
+
 - [ ] Render the declared local social preview and verify dimensions/contrast.
 - [ ] Confirm atmospheric art is not described as behavioral evidence.
 - [ ] Upload a social preview only under repository-specific approval.

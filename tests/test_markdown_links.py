@@ -199,8 +199,9 @@ class MarkdownLinkTests(unittest.TestCase):
         }.items():
             text = (ROOT / "assets" / filename).read_text("utf-8")
             self.assertIn("<svg", text)
-            self.assertIn("<title>", text)
-            self.assertIn("<desc>", text)
+            self.assertIn('aria-labelledby="title desc"', text)
+            self.assertIn('<title id="title">', text)
+            self.assertIn('<desc id="desc">', text)
             for label in labels:
                 self.assertIn(label, text)
 

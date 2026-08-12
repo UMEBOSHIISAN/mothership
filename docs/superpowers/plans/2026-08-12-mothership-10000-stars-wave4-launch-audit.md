@@ -63,7 +63,7 @@ class LaunchKitTests(unittest.TestCase):
 
 - [ ] **Step 2: Run and observe failure**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_metadata_manifest_is_closed_and_complete -v`
+Run: `python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_metadata_manifest_is_closed_and_complete -v`
 
 Expected: ERROR for missing manifest.
 
@@ -85,11 +85,11 @@ agent-decision-core: Provider-neutral advisory gates for bounded task context an
 knowledge-lifecycle-kit: Offline-safe lifecycle inspection and advisory routing components that stop at human authority.
 ```
 
-Use 5–10 repository-specific lowercase topics per entry. `mothership` uses the Wave 1 social PNG; Tier 1 uses its existing strongest local asset; Tier 2 uses its new signature SVG. Every companion relationship equals `independent-companion-to-mothership` and Mothership equals `flagship`. Set `homepage` to `null` unless a durable public page was measured; record the actual primary language and package manager (`pip`, `npm`, or `go`); set `verified_at` to `2026-08-12`; and fill `source_commit` from each final local HEAD rather than a branch name.
+Use 5–10 repository-specific lowercase topics per entry. `mothership` uses the Wave 1 social PNG. Each companion uses a committed 1280×640 PNG under Mothership's `assets/social-previews/`, rendered from that repository's strongest local visual so GitHub receives an accepted upload format without adding rollout-only binaries to the companion. Every companion relationship equals `independent-companion-to-mothership` and Mothership equals `flagship`. Set `homepage` to `null` unless a durable public page was measured; record the actual primary language and package manager (`pip`, `npm`, or `go`); set `verified_at` to `2026-08-12`; and fill `source_commit` from each final local HEAD rather than a branch name.
 
 - [ ] **Step 4: Run the manifest test**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit -v`
+Run: `python3 -m unittest tests.test_launch_kit -v`
 
 Expected: PASS.
 
@@ -140,7 +140,7 @@ def test_launch_copy_is_bilingual_proof_first_and_non_authorizing(self):
 
 - [ ] **Step 2: Run and observe missing files**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_launch_copy_is_bilingual_proof_first_and_non_authorizing -v`
+Run: `python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_launch_copy_is_bilingual_proof_first_and_non_authorizing -v`
 
 Expected: ERROR for missing launch copy.
 
@@ -150,7 +150,7 @@ Each announcement contains: one category sentence; the problem; safe and drift c
 
 - [ ] **Step 4: Run launch copy tests**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit -v`
+Run: `python3 -m unittest tests.test_launch_kit -v`
 
 Expected: PASS.
 
@@ -182,7 +182,7 @@ def test_square_social_card_is_exact_png(self):
 
 - [ ] **Step 2: Run and observe failure**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_square_social_card_is_exact_png -v`
+Run: `python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_square_social_card_is_exact_png -v`
 
 Expected: ERROR for missing image.
 
@@ -230,7 +230,7 @@ def test_publication_checklist_separates_local_and_remote_evidence(self):
 
 - [ ] **Step 2: Run and observe failure**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_publication_checklist_separates_local_and_remote_evidence -v`
+Run: `python3 -m unittest tests.test_launch_kit.LaunchKitTests.test_publication_checklist_separates_local_and_remote_evidence -v`
 
 Expected: ERROR for missing files.
 
@@ -240,7 +240,7 @@ The checklist groups exact read-only verification after each separately approved
 
 - [ ] **Step 4: Run tests**
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit -v`
+Run: `python3 -m unittest tests.test_launch_kit -v`
 
 Expected: PASS.
 
@@ -289,13 +289,13 @@ def test_closeout_names_every_repository_and_keeps_publication_open(self):
     self.assertNotIn("remote rollout complete", text.casefold())
 ```
 
-Run: `/opt/homebrew/bin/python3 -m unittest tests.test_launch_kit -v`
+Run: `python3 -m unittest tests.test_launch_kit -v`
 
 Expected: PASS.
 
 - [ ] **Step 6: Run final Mothership regression and commit**
 
-Run: `/opt/homebrew/bin/python3 -m unittest discover -s tests -v`
+Run: `python3 -m unittest discover -s tests -v`
 
 Then:
 
