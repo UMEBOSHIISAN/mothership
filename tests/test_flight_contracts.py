@@ -305,6 +305,28 @@ class FlightContractTests(unittest.TestCase):
             with self.subTest(invalid=invalid):
                 self.assert_invalid(self.validate_safe_metadata, invalid, "FLIGHT.INVALID.PRIVACY")
 
+    def test_safe_metadata_rejects_local_file_uris_unc_and_embedded_absolute_paths(self) -> None:
+        for safe in (
+            {"reference": "https://example.com/artifacts/proof.json"},
+            {"summary": "verification completed without local path disclosure"},
+            {"summary": "compare the recorded ratio / total count"},
+        ):
+            with self.subTest(safe=safe):
+                self.assertEqual(safe, self.validate_safe_metadata(safe))
+
+        for private_reference in (
+            "file:///Users/alice/.env",
+            r"\\server\share\proof.json",
+            "artifact stored at /Users/alice/proof.json",
+            r"artifact stored at C:\Users\alice\proof.json",
+        ):
+            with self.subTest(private_reference=private_reference):
+                self.assert_invalid(
+                    self.validate_safe_metadata,
+                    {"reference": private_reference},
+                    "FLIGHT.INVALID.PRIVACY",
+                )
+
     def test_safe_metadata_scans_containers_canonical_json_can_serialize(self) -> None:
         class MetadataDict(dict[str, object]):
             pass

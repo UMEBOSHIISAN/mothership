@@ -51,6 +51,10 @@ _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _TIMESTAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
 _WINDOWS_DRIVE = re.compile(r"[A-Za-z]:")
+_LOCAL_FILE_URI = re.compile(r'''(?:^|[\s"'(<\[{=])file:(?:/{1,3}|\\+)''', re.IGNORECASE)
+_EMBEDDED_ABSOLUTE_PATH = re.compile(
+    r'''(?:^|[\s"'(<\[{=])(?:~[/\\]|//|/(?!/)|[A-Za-z]:[/\\]|\\\\)[A-Za-z0-9._~-]'''
+)
 _LOCATION = re.compile(
     r"(?![A-Za-z]:)(?!\.\.?$)(?!\.\.?/)(?!.*?/\.\.?/)(?!.*?/\.\.?$)[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._:-]+)*"
 )
@@ -98,7 +102,12 @@ def _normalized_key(value: str) -> str:
 
 
 def _is_private_location(value: str) -> bool:
-    return value.startswith(("/", "~/")) or _WINDOWS_DRIVE.match(value) is not None
+    return (
+        value.startswith(("/", "~/"))
+        or _WINDOWS_DRIVE.match(value) is not None
+        or _LOCAL_FILE_URI.search(value) is not None
+        or _EMBEDDED_ABSOLUTE_PATH.search(value) is not None
+    )
 
 
 def _validate_metadata(value: object) -> None:

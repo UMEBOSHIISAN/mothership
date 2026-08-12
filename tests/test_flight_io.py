@@ -282,6 +282,31 @@ class FlightIoTests(unittest.TestCase):
             self.write_bundle(root, events, artifacts={"proof.json": payload})
             self.assert_flight_error("FLIGHT.INVALID.PRIVACY", lambda: self.load_flight_bundle(root))
 
+    def test_load_rejects_artifacts_with_local_file_uris_unc_or_embedded_absolute_paths(self) -> None:
+        for private_reference in (
+            "file:///Users/alice/.env",
+            r"\\server\share\proof.json",
+            "artifact stored at /Users/alice/proof.json",
+        ):
+            with self.subTest(private_reference=private_reference), tempfile.TemporaryDirectory() as temporary:
+                root = Path(os.path.realpath(temporary)) / "bundle"
+                payload = canonical_json_bytes({"reference": private_reference})
+                events = [event(stage, number) for number, stage in enumerate(REQUIRED_STAGES)]
+                events[0]["subject"] = dict(
+                    events[0]["subject"],  # type: ignore[arg-type]
+                    storage="bundled",
+                    location="artifacts/proof.json",
+                    sha256=hashlib.sha256(payload).hexdigest(),
+                )
+                events[0]["redaction"] = {"profile": "portable-evidence", "removed_fields": 0}
+                index = index_for(events, privacy_profile="portable-evidence")
+                self.write_bundle(root, events, index=index, artifacts={"proof.json": payload})
+
+                with self.assertRaises(self.FlightError) as raised:
+                    self.load_flight_bundle(root)
+                self.assertEqual("FLIGHT.INVALID.PRIVACY", raised.exception.rule_id)
+                self.assertNotIn(private_reference, str(raised.exception))
+
     def test_load_rejects_unreferenced_or_wrong_artifacts_and_artifact_symlinks(self) -> None:
         payload = canonical_json_bytes({"kind": "safe"})
         events = [event(stage, number) for number, stage in enumerate(REQUIRED_STAGES)]
