@@ -14,6 +14,11 @@ from orchestration.lib.adapters import _ALIASES, _diagnostic_environment, doctor
 from orchestration.lib.canonical import canonical_json_bytes
 
 from .demo import DemoError, run_demo
+from .flight_contracts import FlightError
+from .flight_demo import run_flight_demo
+from .flight_io import import_generic_jsonl, load_flight_bundle
+from .flight_render import render_markdown_report, replay_document
+from .flight_verify import evaluate_flight, evaluation_document
 from .protocols import ProtocolError, list_protocols, validate_protocol_file
 from .verify import verify_installation
 
@@ -27,15 +32,30 @@ _PROTOCOL_KINDS = frozenset(
         "observation-snapshot",
     }
 )
+FLIGHT_EXIT_CODES = {
+    "COMPLETE": 0,
+    "INCOMPLETE": 20,
+    "DRIFTED": 21,
+    "INVALID": 22,
+}
+
+
+class _Parser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        self.exit(64, f"{self.prog}: error: {message}\n")
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         prog="mothership",
         description="Verify and inspect a portable AI coding control plane.",
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("verify", help="verify installed package resources")
+    verify = commands.add_parser("verify", help="verify installed package resources")
+    verify_commands = verify.add_subparsers(dest="verify_command")
+    verify_run = verify_commands.add_parser("run", help="evaluate one explicit Flight bundle")
+    verify_run.add_argument("bundle")
 
     doctor = commands.add_parser("doctor", help="run fixed local diagnostics")
     doctor.add_argument("aliases", nargs="*")
@@ -53,7 +73,23 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("kind")
     validate.add_argument("file")
 
-    commands.add_parser("demo", help="validate the synthetic golden path")
+    flight_import = commands.add_parser("import", help="import a Generic JSONL Flight record")
+    import_commands = flight_import.add_subparsers(dest="import_command", required=True)
+    generic_import = import_commands.add_parser("generic", help="import Generic JSONL")
+    generic_import.add_argument("source")
+    generic_import.add_argument("--out", required=True)
+
+    replay = commands.add_parser("replay", help="project one explicit Flight bundle")
+    replay.add_argument("bundle")
+
+    report = commands.add_parser("report", help="render one explicit Flight bundle")
+    report.add_argument("bundle")
+    report.add_argument("--format", choices=("markdown",), required=True)
+
+    demo = commands.add_parser("demo", help="validate the synthetic golden path")
+    demo_commands = demo.add_subparsers(dest="demo_command")
+    demo_commands.add_parser("safe", help="evaluate the supplied safe Flight record")
+    demo_commands.add_parser("drift", help="evaluate the supplied drift Flight record")
     return parser
 
 
@@ -165,6 +201,93 @@ def command_demo() -> tuple[int, dict[str, object]]:
         }
 
 
+def _flight_error_document(verdict: str, rule_id: str) -> dict[str, object]:
+    return {
+        "schema_version": "mothership.flight-error.v1",
+        "verdict": verdict,
+        "rule_id": rule_id,
+        "authority_effect": False,
+        "execution_effect": False,
+    }
+
+
+def _flight_failure(error: FlightError) -> tuple[int, dict[str, object]]:
+    return (
+        FLIGHT_EXIT_CODES[error.verdict],
+        _flight_error_document(error.verdict, error.rule_id),
+    )
+
+
+def _flight_internal_failure() -> tuple[int, dict[str, object]]:
+    return 70, _flight_error_document("INVALID", "FLIGHT.INTERNAL")
+
+
+def command_flight_import(source: Path, output: Path) -> tuple[int, dict[str, object]]:
+    try:
+        bundle = import_generic_jsonl(source, output)
+    except FlightError as error:
+        return _flight_failure(error)
+    except (OSError, UnicodeError):
+        return _flight_internal_failure()
+    return 0, {
+        "schema_version": "mothership.flight-import.v1",
+        "output": output.name,
+        "run_id": bundle.index["run_id"],
+        "bundle_sha256": bundle.index["bundle_sha256"],
+        "event_count": len(bundle.events),
+        "authority_effect": False,
+        "execution_effect": False,
+    }
+
+
+def command_verify_run(path: Path) -> tuple[int, dict[str, object]]:
+    try:
+        evaluation = evaluate_flight(load_flight_bundle(path))
+    except FlightError as error:
+        return _flight_failure(error)
+    except (OSError, UnicodeError):
+        return _flight_internal_failure()
+    return FLIGHT_EXIT_CODES[evaluation.verdict], evaluation_document(evaluation)
+
+
+def command_replay(path: Path) -> tuple[int, dict[str, object]]:
+    try:
+        bundle = load_flight_bundle(path)
+        evaluation = evaluate_flight(bundle)
+        document = replay_document(bundle, evaluation)
+    except FlightError as error:
+        return _flight_failure(error)
+    except (OSError, UnicodeError):
+        return _flight_internal_failure()
+    return FLIGHT_EXIT_CODES[evaluation.verdict], document
+
+
+def command_report(path: Path) -> tuple[int, str | dict[str, object]]:
+    try:
+        bundle = load_flight_bundle(path)
+        evaluation = evaluate_flight(bundle)
+        report = render_markdown_report(bundle, evaluation)
+    except FlightError as error:
+        return _flight_failure(error)
+    except (OSError, UnicodeError):
+        return _flight_internal_failure()
+    return FLIGHT_EXIT_CODES[evaluation.verdict], report
+
+
+def command_flight_demo(name: str) -> tuple[int, dict[str, object]]:
+    try:
+        document = run_flight_demo(name)
+    except FlightError as error:
+        return _flight_failure(error)
+    except (OSError, UnicodeError):
+        return _flight_internal_failure()
+    return FLIGHT_EXIT_CODES[document["verdict"]], document
+
+
+def _flight_path(value: str) -> Path:
+    return Path(os.path.abspath(value))
+
+
 def _emit(document: object) -> bool:
     try:
         sys.stdout.write(canonical_json_bytes(document).decode("utf-8") + "\n")
@@ -173,14 +296,37 @@ def _emit(document: object) -> bool:
         return False
 
 
+def _emit_text(document: str) -> bool:
+    try:
+        sys.stdout.write(document)
+        return True
+    except (BrokenPipeError, OSError, UnicodeError):
+        return False
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
-    if arguments.command == "verify":
+    text_output = False
+    if arguments.command == "verify" and arguments.verify_command is None:
         exit_code, document = command_verify()
+    elif arguments.command == "verify":
+        exit_code, document = command_verify_run(_flight_path(arguments.bundle))
     elif arguments.command == "doctor":
         exit_code, document = command_doctor(tuple(arguments.aliases))
-    elif arguments.command == "demo":
+    elif arguments.command == "import":
+        exit_code, document = command_flight_import(
+            _flight_path(arguments.source),
+            _flight_path(arguments.out),
+        )
+    elif arguments.command == "replay":
+        exit_code, document = command_replay(_flight_path(arguments.bundle))
+    elif arguments.command == "report":
+        exit_code, document = command_report(_flight_path(arguments.bundle))
+        text_output = isinstance(document, str)
+    elif arguments.command == "demo" and arguments.demo_command is None:
         exit_code, document = command_demo()
+    elif arguments.command == "demo":
+        exit_code, document = command_flight_demo(arguments.demo_command)
     elif arguments.protocol_command == "list":
         exit_code, document = command_protocol_list()
     else:
@@ -188,17 +334,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             arguments.kind,
             Path(arguments.file),
         )
-    if not _emit(document):
+    emitted = _emit_text(document) if text_output else _emit(document)
+    if not emitted:
         return 1
     return exit_code
 
 
 __all__ = (
     "build_parser",
+    "command_flight_demo",
+    "command_flight_import",
     "command_demo",
     "command_doctor",
     "command_protocol_list",
     "command_protocol_validate",
+    "command_replay",
+    "command_report",
     "command_verify",
+    "command_verify_run",
     "main",
 )

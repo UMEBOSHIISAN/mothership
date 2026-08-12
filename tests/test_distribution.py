@@ -193,6 +193,22 @@ class BuiltDistributionTests(unittest.TestCase):
         self.assertEqual(0, module.returncode, module.stderr)
         self.assertEqual(module.stdout, entry.stdout)
 
+        flight_root = self.source / "mothership/resources/flight"
+        for arguments, expected_exit in (
+            (("verify", "run", str(flight_root / "safe-run")), 0),
+            (("replay", str(flight_root / "safe-run")), 0),
+            (("report", str(flight_root / "safe-run"), "--format", "markdown"), 0),
+            (("demo", "safe"), 0),
+            (("demo", "drift"), 21),
+        ):
+            with self.subTest(arguments=arguments):
+                module = self._run([str(binary), "-m", "mothership", *arguments], self.root)
+                entry = self._run([str(console), *arguments], self.root)
+                self.assertEqual(expected_exit, module.returncode, module.stderr)
+                self.assertEqual(module.returncode, entry.returncode)
+                self.assertEqual(module.stdout, entry.stdout)
+                self.assertEqual(module.stderr, entry.stderr)
+
     def test_wheel_compatibility_apis_load_their_bundled_contracts(self) -> None:
         _environment, binary = self._environment("wheel-contracts", editable=False)
         script = b"""
