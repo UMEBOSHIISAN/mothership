@@ -30,6 +30,44 @@ The protocol order is fixed:
 The demo claim is `protocol-composition-only`. It does not represent approval, worker execution, or task completion.
 Where effect fields exist, `authority_effect` and `execution_effect` remain false.
 
+## Two separate chains: protocol composition and human decision boundary
+
+The flow above is the **Protocol Composition Chain**. It answers whether four independently owned interchange
+documents are schema-compatible and sequence-continuous. It says nothing about what a human should do next, and
+nothing in it grants authority.
+
+A second, distinct chain — the **Human Decision Boundary** — governs that separate question:
+
+```mermaid
+flowchart TD
+    Ev[Evidence / context]
+    Card["Decision Card<br/>evidence/contracts/decision-card.v0.schema.json<br/>authority_effect: false, execution_effect: false"]
+    Hum{{Human}}
+    App["Decision Approval<br/>evidence/contracts/decision-approval.v0.schema.json<br/>bound to one exact Card by SHA-256 + decision_id"]
+    Ex[Execution authority stays separate]
+
+    Ev --> Card --> Hum --> App
+    App -.->|no direct arrow| Ex
+```
+
+`validate_decision_approval_binding()` (`orchestration/lib/decision.py`, exported from `mothership.contracts`)
+validates both objects against their schemas, recomputes `canonical_json_sha256()` of the Card, and requires an exact
+match against `decision_card_sha256` on the Approval plus exact `decision_id` agreement. It is pure: no I/O, no
+network access, no side effects. A valid binding means only that the human reviewed *this exact* Card — it is not
+execution authority, a worker selection, or an invocation.
+
+This is deliberately not the same object as two existing, similarly named schemas:
+
+- `decision` (`frontdoor/contracts/decision.schema.json`) is the Agent Frontdoor's advisory routing recommendation —
+  a machine output, not a human judgment record.
+- `approval-event` (`evidence/contracts/approval-event.schema.json`) is invocation/execution-side evidence governing
+  the `attempt_started` / `attempt_finished` chain. No code path connects it to a Decision Approval.
+
+`consequence_if_approved` on the Decision Card is human-readable presentation text. It must not be consumed as a
+shell command, executor input, invocation request, approval evidence, or execution plan.
+
+This primitive is library-level only; no `mothership` CLI subcommand exposes it yet.
+
 ## Installed package
 
 The distribution is `mothership-control-plane` and the command is `mothership`. Python 3.12 or newer is required; the
@@ -54,7 +92,7 @@ The v0.2 modules are compatibility facades over the existing authoritative imple
 | `mothership.scope` | `orchestration.lib.paths` | bounded local paths and staging |
 | `mothership.approval` | `orchestration.lib.ledger` | approval and attempt evidence |
 | `mothership.adapters` | `orchestration.lib.adapters` | immutable plans and diagnostics |
-| `mothership.contracts` | canonical, JSON, contract, and registry modules | strict data contracts |
+| `mothership.contracts` | canonical, JSON, contract, and registry modules, plus `orchestration.lib.decision` | strict data contracts, and Decision Card / Decision Approval binding |
 | `mothership.protocols` | Mothership protocol registry and validator | suite interchange validation |
 
 The legacy compatibility layer keeps old imports and command wrappers available in 0.2. The facades do not copy

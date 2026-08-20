@@ -106,6 +106,42 @@ flowchart LR
 | Secretary TUI | supplied stateの表示 | freshness |
 | Mothership | package、protocol、integrity | ambient authority |
 
+### Human decision boundary（人間の判断境界）
+
+上の図はProtocol Composition Chainです。4つの独立したtoolのinterchange documentがschema互換か・順序が繋がっているか
+を検証するもので、「次に人間が何をすべきか」には答えません。その別の問いには、library-levelの独立したcontractが
+あります（CLI subcommandはまだありません）。
+
+```mermaid
+flowchart TD
+    E[Evidence / context]
+    C["Decision Card<br/>authority_effect: false<br/>execution_effect: false"]
+    H{{Human}}
+    A["Decision Approval<br/>SHA-256で1つのCardにbind"]
+    X[Execution authorityは別のまま]
+
+    E --> C --> H --> A
+    A -.-> X
+```
+
+**Decision Card**（`evidence/contracts/decision-card.v0.schema.json`）は人間向けの判断材料です。question、
+recommendation、named unknowns、そしてpresentation専用の`consequence_if_approved`を持ちます。statusを持たず、
+workerも選択しません。
+
+**Decision Approval**（`evidence/contracts/decision-approval.v0.schema.json`）は、人間がまさにそのCardをreviewした
+ことを記録します。`mothership.contracts`からexportされる`validate_decision_approval_binding()`が機械的に検証します。
+CardのcanonicalJSON SHA-256を再計算し、Approvalが持つdigestと`decision_id`が厳密一致することを要求します。approval
+後にCardを編集するとbindingは無効になります。
+
+似た名前の既存2 schemaとは明確に別物です。
+
+- `decision`（`frontdoor/contracts/decision.schema.json`）：Agent Frontdoorのadvisory routing結果。machineの
+  recommendationであり、human judgmentの記録ではありません。
+- `approval-event`（`evidence/contracts/approval-event.schema.json`）：invocation/execution側のevidence
+  （`attempt_started` / `attempt_finished`）。binding codeのどこにもDecision Approvalとの接続はありません。
+
+Decision Approvalはcommand・worker選択・invocation・実行済みの証拠のいずれでもありません。
+
 ## 導入パス
 
 ### 1. Mothershipだけ — 最初の推奨
@@ -167,7 +203,7 @@ model routerの隣に置けます。
 | `mothership.scope` | bounded path、measurement、staging、locking |
 | `mothership.approval` | single-use approval-bound attempt evidence |
 | `mothership.adapters` | immutable adapter planとfixed diagnostic |
-| `mothership.contracts` | strict JSON、hash、contract、registry helper |
+| `mothership.contracts` | strict JSON、hash、contract、registry helper（Decision Card / Decision Approval binding: `validate_decision_approval_binding`を含む） |
 | `mothership.protocols` | ecosystem interchange documentの検証 |
 
 0.2.0ではlegacy import pathも維持します。削除する場合は将来のmajor-version decisionが必要です。

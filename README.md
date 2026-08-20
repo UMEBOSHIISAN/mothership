@@ -146,6 +146,42 @@ supplied data against frozen compatibility snapshots.
 
 Read the full [architecture](docs/architecture.md) and [composition guide](docs/composition.md).
 
+### Human decision boundary
+
+The chain above is protocol composition: versioned compatibility between independently owned tools. It answers "do
+these documents fit together," not "what should happen next." That second question has its own primitive, added as a
+library-level contract (no CLI subcommand yet):
+
+```mermaid
+flowchart TD
+    E[Evidence / context]
+    C["Decision Card<br/>authority_effect: false<br/>execution_effect: false"]
+    H{{Human}}
+    A["Decision Approval<br/>bound to one exact Card by SHA-256"]
+    X[Execution authority stays separate]
+
+    E --> C --> H --> A
+    A -.-> X
+```
+
+A **Decision Card** (`evidence/contracts/decision-card.v0.schema.json`) is a human-facing proposition: a question, a
+recommendation, named unknowns, and a `consequence_if_approved` field that is presentation-only text — never a shell
+command, executor input, or execution plan. It carries no status and selects no worker.
+
+A **Decision Approval** (`evidence/contracts/decision-approval.v0.schema.json`) records that a human reviewed *exactly*
+that Card. `validate_decision_approval_binding()`, exported from `mothership.contracts`, checks this mechanically: it
+recomputes the canonical-JSON SHA-256 of the Card and requires an exact match against the digest the Approval carries,
+plus exact `decision_id` agreement. Editing the Card after approval invalidates the binding.
+
+This is deliberately distinct from two existing, similarly named schemas:
+
+- `decision` (`frontdoor/contracts/decision.schema.json`) is the Agent Frontdoor's advisory routing result — a
+  machine recommendation, not a human judgment record.
+- `approval-event` (`evidence/contracts/approval-event.schema.json`) is invocation/execution-side evidence for the
+  `attempt_started` / `attempt_finished` chain. Nothing in the binding code connects it to a Decision Approval.
+
+A Decision Approval is not a command, a worker selection, an invocation, or proof that execution happened.
+
 ## Choose your adoption path
 
 ### 1. Mothership alone — recommended first step
@@ -221,7 +257,7 @@ The compatibility modules keep current implementations authoritative while provi
 | `mothership.scope` | bounded path validation, measurement, staging, and locking |
 | `mothership.approval` | single-use approval-bound attempt evidence |
 | `mothership.adapters` | immutable adapter plans and fixed diagnostics |
-| `mothership.contracts` | strict JSON, hashing, contract, and registry helpers |
+| `mothership.contracts` | strict JSON, hashing, contract, and registry helpers, plus Decision Card/Approval binding |
 | `mothership.protocols` | inspect and validate ecosystem interchange documents |
 
 Mothership 0.2 keeps the legacy import paths available. A future removal would require a major-version decision.
@@ -312,6 +348,10 @@ synthetic, versioned interchange documents compose under the frozen local suite.
 **Is it portable everywhere?** The package declares Python 3.12+, while the
 file-boundary implementation is POSIX-oriented and the measured Wave 1 platform
 is macOS. Unmeasured platforms remain unclaimed.
+
+**Does a Decision Approval authorize execution?** No. It records that a human reviewed one exact Decision Card, bound
+by a SHA-256 digest check. Execution authority is a separate, unconnected concern — nothing in the schema or the
+binding code grants it, and no CLI subcommand currently exposes this primitive.
 
 ## Contributing
 
