@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision-approval.v0.schema.json",
+  "title": "Mothership Decision Approval v0",
+  "description": "A human judgment bound cryptographically to exactly one Decision Card via canonical JSON SHA-256 digest. Valid only while unexpired. DISTINCT from approval-event.schema.json, which is invocation/execution-side evidence binding alias + registry + task + prompt + scope. decision-approval does NOT constitute execution authority; it records that a human reviewed this exact Card content. Card mutation invalidates this approval. Use validate_decision_approval_binding() from mothership.contracts to verify the binding mechanically.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "approval_id",
+    "decision_id",
+    "decision_card_sha256",
+    "approver_class",
+    "event",
+    "recorded_at",
+    "expires_at"
+  ],
+  "properties": {
+    "schema_version":        { "const": "decision-approval.v0" },
+    "approval_id":           { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+    "decision_id":           { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+    "decision_card_sha256":  { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "approver_class":        { "const": "human" },
+    "event":                 { "const": "approve" },
+    "recorded_at":           { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "expires_at":            { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" }
+  }
+}

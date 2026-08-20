@@ -434,3 +434,225 @@ class ContractTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+import pytest
+
+class TestDecisionApprovalBinding:
+    def _card(self):
+        return {
+            "schema_version": "decision-card.v0",
+            "decision_id": "dc-001",
+            "task_id": "task-001",
+            "question": "Should we proceed?",
+            "recommendation": "Yes.",
+            "reasons": ["tests pass"],
+            "evidence_refs": [],
+            "unknowns": [],
+            "risk": "low",
+            "authority_required": "human",
+            "consequence_if_approved": "Task becomes eligible for Router input.",
+            "authority_effect": False,
+            "execution_effect": False,
+        }
+
+    def _approval(self, card):
+        from orchestration.lib.canonical import canonical_json_sha256
+        from orchestration.lib.contracts import validate_contract
+        validated = validate_contract("decision-card", card)
+        digest = canonical_json_sha256(validated)
+        return {
+            "schema_version": "decision-approval.v0",
+            "approval_id": "ap-001",
+            "decision_id": "dc-001",
+            "decision_card_sha256": digest,
+            "approver_class": "human",
+            "event": "approve",
+            "recorded_at": "2026-08-20T12:00:00Z",
+            "expires_at": "2026-08-20T13:00:00Z",
+        }
+
+    def test_binding_passes_for_matching_card_and_approval(self):
+        from orchestration.lib.decision import validate_decision_approval_binding
+        card = self._card()
+        approval = self._approval(card)
+        validated_card, validated_approval = validate_decision_approval_binding(card, approval)
+        assert validated_card["decision_id"] == "dc-001"
+        assert validated_approval["approval_id"] == "ap-001"
+
+    def test_binding_fails_when_card_content_changes_after_approval(self):
+        from orchestration.lib.decision import DecisionBindingError, validate_decision_approval_binding
+        card = self._card()
+        approval = self._approval(card)
+        # Mutate the card AFTER approval was issued
+        mutated_card = {**card, "question": "A completely different question?"}
+        with pytest.raises(DecisionBindingError, match="mismatch"):
+            validate_decision_approval_binding(mutated_card, approval)
+
+    def test_binding_fails_for_wrong_digest(self):
+        from orchestration.lib.decision import DecisionBindingError, validate_decision_approval_binding
+        card = self._card()
+        bad_approval = {**self._approval(card), "decision_card_sha256": "b" * 64}
+        with pytest.raises(DecisionBindingError, match="mismatch"):
+            validate_decision_approval_binding(card, bad_approval)
+
+    def test_binding_fails_for_decision_id_mismatch(self):
+        from orchestration.lib.decision import DecisionBindingError, validate_decision_approval_binding
+        card = self._card()
+        approval = self._approval(card)
+        mismatched = {**approval, "decision_id": "dc-WRONG"}
+        with pytest.raises(DecisionBindingError, match="decision_id mismatch"):
+            validate_decision_approval_binding(card, mismatched)
+
+    def test_key_ordering_does_not_affect_binding(self):
+        from orchestration.lib.decision import validate_decision_approval_binding
+        card = self._card()
+        card_reordered = dict(reversed(list(card.items())))
+        approval = self._approval(card)
+        # Both orderings must produce the same digest and pass binding
+        validate_decision_approval_binding(card, approval)
+        validate_decision_approval_binding(card_reordered, approval)
+
+    def test_binding_is_not_execution_authority(self):
+        """Binding returns (card, approval); neither has authority or execution effect."""
+        from orchestration.lib.decision import validate_decision_approval_binding
+        card = self._card()
+        approval = self._approval(card)
+        validated_card, validated_approval = validate_decision_approval_binding(card, approval)
+        assert validated_card["authority_effect"] is False
+        assert validated_card["execution_effect"] is False
+        # decision-approval schema has no authority_effect/execution_effect fields by design
+        assert "authority_effect" not in validated_approval
+        assert "execution_effect" not in validated_approval
+
+
+def _valid_decision_card():
+    return {
+        "schema_version": "decision-card.v0",
+        "decision_id": "dc-001",
+        "task_id": "task-001",
+        "question": "Should we proceed?",
+        "recommendation": "Yes, proceed with low-risk path.",
+        "reasons": ["tests pass", "scope is narrow"],
+        "evidence_refs": ["ev-001", "ev-002"],
+        "unknowns": ["portability on friend-PC"],
+        "risk": "low",
+        "authority_required": "human",
+        "consequence_if_approved": "The task-card becomes eligible to be passed to the Router as input.",
+        "authority_effect": False,
+        "execution_effect": False,
+    }
+
+
+def _valid_decision_approval():
+    return {
+        "schema_version": "decision-approval.v0",
+        "approval_id": "ap-001",
+        "decision_id": "dc-001",
+        "decision_card_sha256": "a" * 64,
+        "approver_class": "human",
+        "event": "approve",
+        "recorded_at": "2026-08-19T12:00:00Z",
+        "expires_at": "2026-08-19T13:00:00Z",
+    }
+
+
+class TestDecisionPlaneContracts:
+    def test_decision_card_accept_cases(self):
+        from orchestration.lib.contracts import validate_contract
+
+        card = _valid_decision_card()
+        assert validate_contract("decision-card", card) == card
+
+        high_risk = {**card, "recommendation": None, "risk": "high"}
+        assert validate_contract("decision-card", high_risk) == high_risk
+
+        empty_arrays = {**card, "reasons": [], "evidence_refs": [], "unknowns": []}
+        assert validate_contract("decision-card", empty_arrays) == empty_arrays
+
+        max_consequence = {**card, "consequence_if_approved": "x" * 1024}
+        assert validate_contract("decision-card", max_consequence) == max_consequence
+
+    def test_decision_card_reject_cases(self):
+        from orchestration.lib.contracts import ContractError, validate_contract
+
+        card = _valid_decision_card()
+        required = [
+            "schema_version",
+            "decision_id",
+            "task_id",
+            "question",
+            "recommendation",
+            "reasons",
+            "evidence_refs",
+            "unknowns",
+            "risk",
+            "authority_required",
+            "consequence_if_approved",
+            "authority_effect",
+            "execution_effect",
+        ]
+        for field in required:
+            candidate = {key: value for key, value in card.items() if key != field}
+            with pytest.raises(ContractError):
+                validate_contract("decision-card", candidate)
+
+        invalid_values = [
+            {"authority_effect": True},
+            {"execution_effect": True},
+            {"authority_required": "agent"},
+            {"risk": "critical"},
+            {"decision_id": "-dc-001"},
+            {"evidence_refs": ["ev/001"]},
+            {"consequence_if_approved": ""},
+            {"consequence_if_approved": "x" * 1025},
+            {"approved": True},
+            {"recommendation": 42},
+        ]
+        for change in invalid_values:
+            with pytest.raises(ContractError):
+                validate_contract("decision-card", {**card, **change})
+
+        for field in (
+            "approved",
+            "rejected",
+            "execution_status",
+            "worker",
+            "selected_model",
+            "retry_count",
+        ):
+            with pytest.raises(ContractError):
+                validate_contract("decision-card", {**card, field: True})
+
+    def test_decision_approval_accept_case(self):
+        from orchestration.lib.contracts import validate_contract
+
+        approval = _valid_decision_approval()
+        assert validate_contract("decision-approval", approval) == approval
+
+    def test_decision_approval_reject_cases(self):
+        from orchestration.lib.contracts import ContractError, validate_contract
+
+        approval = _valid_decision_approval()
+        for change in (
+            {"approver_class": "agent"},
+            {"event": "deny"},
+            {"decision_card_sha256": "A" * 64},
+            {"decision_card_sha256": "abc"},
+            {"extra": True},
+        ):
+            with pytest.raises(ContractError):
+                validate_contract("decision-approval", {**approval, **change})
+
+        for field in approval:
+            candidate = {key: value for key, value in approval.items() if key != field}
+            with pytest.raises(ContractError):
+                validate_contract("decision-approval", candidate)
+
+    def test_decision_card_digest_binding_invariant(self):
+        from orchestration.lib.canonical import canonical_json_sha256
+
+        card_a = _valid_decision_card()
+        card_b = {**card_a, "question": "Should we NOT proceed?"}
+        card_reordered = dict(reversed(list(card_a.items())))
+
+        assert canonical_json_sha256(card_a) != canonical_json_sha256(card_b)
+        assert canonical_json_sha256(card_a) == canonical_json_sha256(card_reordered)

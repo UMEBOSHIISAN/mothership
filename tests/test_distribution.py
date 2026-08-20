@@ -100,7 +100,9 @@ class BuiltDistributionTests(unittest.TestCase):
                 "orchestration/config/executors.json",
                 "orchestration/contracts/executor-registry.schema.json",
                 "orchestration/contracts/invocation-request.schema.json",
-                "safety/contracts/assessment.schema.json",
+            "safety/contracts/assessment.schema.json",
+            "evidence/contracts/decision-card.v0.schema.json",
+            "evidence/contracts/decision-approval.v0.schema.json",
             )
             for resource in compatibility_resources:
                 self.assertIn(resource, names)
@@ -171,6 +173,48 @@ class BuiltDistributionTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             check=False,
         )
+
+    def test_installed_package_validates_decision_card_and_approval_outside_source(self) -> None:
+        """Prove decision-card and decision-approval schemas are usable after wheel install."""
+        environment, binary = self._environment("decision-wheel-env", editable=False)
+
+        script = (
+            "from orchestration.lib.contracts import validate_contract; "
+            "from orchestration.lib.canonical import canonical_json_sha256; "
+            "from orchestration.lib.decision import validate_decision_approval_binding; "
+            "card = {"
+            "  'schema_version': 'decision-card.v0',"
+            "  'decision_id': 'dc-pkg-001',"
+            "  'task_id': 'task-pkg-001',"
+            "  'question': 'Installed?',"
+            "  'recommendation': 'Yes.',"
+            "  'reasons': ['wheel test'],"
+            "  'evidence_refs': [],"
+            "  'unknowns': [],"
+            "  'risk': 'low',"
+            "  'authority_required': 'human',"
+            "  'consequence_if_approved': 'Package is verified.',"
+            "  'authority_effect': False,"
+            "  'execution_effect': False,"
+            "}; "
+            "validated_card = validate_contract('decision-card', card); "
+            "digest = canonical_json_sha256(validated_card); "
+            "approval = {"
+            "  'schema_version': 'decision-approval.v0',"
+            "  'approval_id': 'ap-pkg-001',"
+            "  'decision_id': 'dc-pkg-001',"
+            "  'decision_card_sha256': digest,"
+            "  'approver_class': 'human',"
+            "  'event': 'approve',"
+            "  'recorded_at': '2026-08-20T00:00:00Z',"
+            "  'expires_at': '2026-08-21T00:00:00Z',"
+            "}; "
+            "validate_decision_approval_binding(card, approval); "
+            "print('DECISION_BINDING_OK')"
+        )
+        result = self._run([str(binary), "-c", script], self.root)
+        self.assertEqual(0, result.returncode, result.stderr.decode("utf-8", "replace"))
+        self.assertIn(b"DECISION_BINDING_OK", result.stdout)
 
     def test_wheel_console_and_module_forms_match_outside_repository(self) -> None:
         environment, binary = self._environment("wheel-env", editable=False)
