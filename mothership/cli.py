@@ -12,6 +12,7 @@ import sys
 
 from orchestration.lib.adapters import _ALIASES, _diagnostic_environment, doctor_adapter
 from orchestration.lib.canonical import canonical_json_bytes
+from orchestration.lib.decision import build_decision_batch, format_decision_batch
 
 from .demo import DemoError, run_demo
 from .protocols import ProtocolError, list_protocols, validate_protocol_file
@@ -54,6 +55,48 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("file")
 
     commands.add_parser("demo", help="validate the synthetic golden path")
+
+    decision_batch = commands.add_parser(
+        "decision-batch",
+        help="render an ephemeral human decision batch",
+    )
+    decision_batch.add_argument(
+        "--frontdoor",
+        dest="frontdoor_paths",
+        action="append",
+        type=Path,
+        required=True,
+        help="absolute Frontdoor intake JSON path; repeat for more inputs",
+    )
+    decision_batch.add_argument(
+        "--wgm",
+        dest="wgm_paths",
+        action="append",
+        type=Path,
+        required=True,
+        help="absolute WGM handoff JSON path; repeat for more inputs",
+    )
+    decision_batch.add_argument(
+        "--router",
+        dest="router_paths",
+        action="append",
+        type=Path,
+        help="optional absolute Router manifest JSON path",
+    )
+    decision_batch.add_argument(
+        "--question",
+        dest="questions",
+        action="append",
+        required=True,
+        help="explicit human-facing question; repeat per input",
+    )
+    decision_batch.add_argument(
+        "--consequence-if-approved",
+        dest="consequences",
+        action="append",
+        required=True,
+        help="explicit presentation-only consequence; repeat per input",
+    )
     return parser
 
 
@@ -165,6 +208,56 @@ def command_demo() -> tuple[int, dict[str, object]]:
         }
 
 
+def _load_decision_protocol(kind: str, path: Path) -> tuple[object, bool]:
+    try:
+        return validate_protocol_file(kind, path), True
+    except ProtocolError:
+        return None, False
+
+
+def command_decision_batch(
+    frontdoor_paths: Sequence[Path],
+    wgm_paths: Sequence[Path],
+    *,
+    questions: Sequence[str],
+    consequences: Sequence[str],
+    router_paths: Sequence[Path] = (),
+) -> tuple[int, str]:
+    """Render explicit Decision Discovery inputs in memory."""
+
+    count = len(frontdoor_paths)
+    if not (
+        count == len(wgm_paths) == len(questions) == len(consequences)
+        and len(router_paths) in (0, count)
+    ):
+        raise ValueError("decision-batch arguments must have matching counts")
+
+    entries: list[dict[str, object]] = []
+    for index in range(count):
+        frontdoor, frontdoor_valid = _load_decision_protocol(
+            "frontdoor-task", frontdoor_paths[index]
+        )
+        handoff, handoff_valid = _load_decision_protocol(
+            "governance-handoff", wgm_paths[index]
+        )
+        entry: dict[str, object] = {
+            "frontdoor_task": frontdoor if frontdoor_valid else {},
+            "governance_handoff": handoff if handoff_valid else {},
+            "question": questions[index],
+            "consequence_if_approved": consequences[index],
+        }
+        if router_paths:
+            router, router_valid = _load_decision_protocol(
+                "router-manifest", router_paths[index]
+            )
+            entry["router_manifest"] = router if router_valid else {}
+        entries.append(entry)
+
+    batch = build_decision_batch(entries)
+    exit_code = 1 if batch["fail_closed"] else 0
+    return exit_code, format_decision_batch(batch)
+
+
 def _emit(document: object) -> bool:
     try:
         sys.stdout.write(canonical_json_bytes(document).decode("utf-8") + "\n")
@@ -173,14 +266,42 @@ def _emit(document: object) -> bool:
         return False
 
 
+def _emit_text(document: str) -> bool:
+    try:
+        sys.stdout.write(document + "\n")
+        return True
+    except (BrokenPipeError, OSError, UnicodeError):
+        return False
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    arguments = build_parser().parse_args(argv)
+    parser = build_parser()
+    arguments = parser.parse_args(argv)
     if arguments.command == "verify":
         exit_code, document = command_verify()
     elif arguments.command == "doctor":
         exit_code, document = command_doctor(tuple(arguments.aliases))
     elif arguments.command == "demo":
         exit_code, document = command_demo()
+    elif arguments.command == "decision-batch":
+        if len(arguments.router_paths or ()) not in (0, len(arguments.frontdoor_paths)):
+            parser.error("--router must be omitted or repeated once per input")
+        if len(arguments.frontdoor_paths) != len(arguments.wgm_paths):
+            parser.error("--frontdoor and --wgm must be repeated equally")
+        if len(arguments.frontdoor_paths) != len(arguments.questions):
+            parser.error("--question must be repeated once per input")
+        if len(arguments.frontdoor_paths) != len(arguments.consequences):
+            parser.error("--consequence-if-approved must be repeated once per input")
+        exit_code, document = command_decision_batch(
+            arguments.frontdoor_paths,
+            arguments.wgm_paths,
+            questions=arguments.questions,
+            consequences=arguments.consequences,
+            router_paths=arguments.router_paths or (),
+        )
+        if not _emit_text(document):
+            return 1
+        return exit_code
     elif arguments.protocol_command == "list":
         exit_code, document = command_protocol_list()
     else:
@@ -195,6 +316,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 __all__ = (
     "build_parser",
+    "command_decision_batch",
     "command_demo",
     "command_doctor",
     "command_protocol_list",
