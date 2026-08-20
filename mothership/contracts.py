@@ -10,7 +10,9 @@ from orchestration.lib.contracts import ContractError, validate_contract
 from orchestration.lib.decision import (
     DecisionBindingError,
     DecisionCardProductionError,
+    build_decision_batch,
     build_decision_card,
+    format_decision_batch,
     validate_decision_approval_binding,
 )
 from orchestration.lib.jsonio import load_strict, loads_strict
@@ -21,10 +23,12 @@ __all__ = (
     "ContractError",
     "DecisionBindingError",
     "DecisionCardProductionError",
+    "build_decision_batch",
     "build_decision_card",
     "canonical_json_bytes",
     "canonical_json_sha256",
     "eligible_aliases",
+    "format_decision_batch",
     "load_registry",
     "load_strict",
     "loads_strict",

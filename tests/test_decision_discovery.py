@@ -4,7 +4,9 @@ import unittest
 
 from mothership.contracts import (
     DecisionCardProductionError,
+    build_decision_batch,
     build_decision_card,
+    format_decision_batch,
     validate_decision_approval_binding,
 )
 from orchestration.lib.canonical import canonical_json_sha256
@@ -236,6 +238,123 @@ class DecisionDiscoveryTests(unittest.TestCase):
         validated_card, validated_approval = validate_decision_approval_binding(card, approval)
         self.assertEqual(card, validated_card)
         self.assertEqual(approval, validated_approval)
+
+    def test_ephemeral_batch_keeps_card_no_card_and_fail_closed_separate(self) -> None:
+        card_frontdoor, card_handoff = build_inputs()
+        card_router = router_manifest()
+
+        no_card_frontdoor, no_card_handoff = build_inputs(human_gate="NONE")
+
+        failed_frontdoor, failed_handoff = build_inputs(human_gate="NONE")
+        failed_handoff["risk"] = "high"
+
+        batch = build_decision_batch(
+            [
+                {
+                    "frontdoor_task": card_frontdoor,
+                    "governance_handoff": card_handoff,
+                    "question": "Should the supplied change receive human review?",
+                    "consequence_if_approved": "The separately owned review boundary may proceed.",
+                    "router_manifest": card_router,
+                },
+                {
+                    "frontdoor_task": no_card_frontdoor,
+                    "governance_handoff": no_card_handoff,
+                    "question": "Should the ordinary task receive human review?",
+                    "consequence_if_approved": "No automatic action follows.",
+                },
+                {
+                    "frontdoor_task": failed_frontdoor,
+                    "governance_handoff": failed_handoff,
+                    "question": "Should the high-risk task receive human review?",
+                    "consequence_if_approved": "The separately owned boundary may proceed.",
+                },
+            ]
+        )
+
+        self.assertEqual(1, len(batch["decision_cards"]))
+        self.assertEqual(1, len(batch["no_cards"]))
+        self.assertEqual(1, len(batch["fail_closed"]))
+        self.assertEqual("demo-review-001", batch["decision_cards"][0]["input_id"])
+        self.assertEqual("router-manifest.recommended_alias", batch["decision_cards"][0]["recommendation_provenance"])
+        self.assertEqual("NO_CARD", batch["no_cards"][0]["classification"])
+        self.assertEqual("FAIL_CLOSED", batch["fail_closed"][0]["classification"])
+        self.assertEqual(
+            {"input_count": 3, "decision_card_count": 1, "no_card_count": 1, "fail_closed_count": 1},
+            batch["summary"],
+        )
+
+    def test_ephemeral_batch_preserves_unknowns_and_near_duplicate_identity(self) -> None:
+        first_frontdoor, first_handoff = build_inputs(unknowns=["which files are in scope"])
+        second_frontdoor, second_handoff = build_inputs(unknowns=["which records are in scope"])
+        second_frontdoor["request_id"] = "demo-review-002"
+        second_handoff["task_id"] = "demo-review-002"
+
+        batch = build_decision_batch(
+            [
+                {
+                    "frontdoor_task": first_frontdoor,
+                    "governance_handoff": first_handoff,
+                    "question": "Which bounded scope should the human select?",
+                    "consequence_if_approved": "Only the selected scope may proceed.",
+                },
+                {
+                    "frontdoor_task": second_frontdoor,
+                    "governance_handoff": second_handoff,
+                    "question": "Which bounded scope should the human select?",
+                    "consequence_if_approved": "Only the selected scope may proceed.",
+                },
+            ]
+        )
+
+        cards = batch["decision_cards"]
+        self.assertEqual(2, len(cards))
+        self.assertEqual(["demo-review-001", "demo-review-002"], [card["input_id"] for card in cards])
+        self.assertEqual(["which files are in scope"], cards[0]["unknowns"])
+        self.assertEqual(["which records are in scope"], cards[1]["unknowns"])
+        self.assertNotEqual(cards[0]["decision_id"], cards[1]["decision_id"])
+
+    def test_ephemeral_batch_malformed_item_fails_closed_without_stopping_other_items(self) -> None:
+        frontdoor, handoff = build_inputs()
+
+        batch = build_decision_batch(
+            [
+                {"frontdoor_task": frontdoor},
+                {
+                    "frontdoor_task": frontdoor,
+                    "governance_handoff": handoff,
+                    "question": "Should the supplied change receive human review?",
+                    "consequence_if_approved": "The separately owned review boundary may proceed.",
+                },
+            ]
+        )
+
+        self.assertEqual(1, len(batch["decision_cards"]))
+        self.assertEqual(1, len(batch["fail_closed"]))
+        self.assertEqual("batch_input_invalid", batch["fail_closed"][0]["reason"])
+
+    def test_ephemeral_batch_formatter_is_human_readable_and_not_prioritized(self) -> None:
+        frontdoor, handoff = build_inputs()
+        batch = build_decision_batch(
+            [
+                {
+                    "frontdoor_task": frontdoor,
+                    "governance_handoff": handoff,
+                    "question": "Should the supplied change receive human review?",
+                    "consequence_if_approved": "The separately owned review boundary may proceed.",
+                }
+            ]
+        )
+
+        rendered = format_decision_batch(batch)
+        self.assertIn("EPHEMERAL DECISION BATCH", rendered)
+        self.assertIn("DECISION_CARD (1)", rendered)
+        self.assertIn("question:", rendered)
+        self.assertIn("evidence_refs:", rendered)
+        self.assertIn("authority_effect: false", rendered)
+        self.assertIn("execution_effect: false", rendered)
+        self.assertNotIn("priority", rendered.lower())
+        self.assertNotIn("queue", rendered.lower())
 
 
 if __name__ == "__main__":
