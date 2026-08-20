@@ -188,6 +188,137 @@ class CliTests(unittest.TestCase):
         self.assertEqual(b"", completed.stdout)
         self.assertIn(b"usage:", completed.stderr)
 
+    def _write_decision_inputs(
+        self,
+        directory: Path,
+        *,
+        request_id: str,
+        human_gate: str,
+        risk: str,
+        unknowns: list[str] | None = None,
+    ) -> tuple[Path, Path, Path]:
+        frontdoor = json.loads(
+            (PACKAGE_ROOT / "mothership/resources/golden-path/01-frontdoor-task.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        handoff = json.loads(
+            (PACKAGE_ROOT / "mothership/resources/golden-path/02-governance-handoff.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        router = json.loads(
+            (PACKAGE_ROOT / "mothership/resources/golden-path/03-router-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        frontdoor.update(
+            request_id=request_id,
+            human_gate=human_gate,
+            unknowns=[] if unknowns is None else unknowns,
+        )
+        handoff.update(task_id=request_id, risk=risk)
+        router.update(task_id=request_id)
+        paths = (
+            directory / f"{request_id}-frontdoor.json",
+            directory / f"{request_id}-handoff.json",
+            directory / f"{request_id}-router.json",
+        )
+        for path, document in zip(paths, (frontdoor, handoff, router), strict=True):
+            path.write_text(json.dumps(document), encoding="utf-8")
+        return paths
+
+    def test_decision_batch_cli_renders_card_with_optional_router_and_unknowns(self) -> None:
+        with tempfile.TemporaryDirectory(dir=os.path.join(os.sep, "private", "tmp")) as directory_name:
+            directory = Path(directory_name)
+            frontdoor, handoff, router = self._write_decision_inputs(
+                directory,
+                request_id="cli-card-001",
+                human_gate="CONFIRM",
+                risk="low",
+                unknowns=["scope is not yet confirmed"],
+            )
+            before = set(directory.iterdir())
+            completed = self._module(
+                "decision-batch",
+                "--frontdoor",
+                str(frontdoor),
+                "--wgm",
+                str(handoff),
+                "--router",
+                str(router),
+                "--question",
+                "Should the human review this item?",
+                "--consequence-if-approved",
+                "The separately owned next boundary may be considered.",
+            )
+            after = set(directory.iterdir())
+
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual(b"", completed.stderr)
+        output = completed.stdout.decode("utf-8")
+        self.assertIn("EPHEMERAL DECISION BATCH", output)
+        self.assertIn("DECISION_CARD (1)", output)
+        self.assertIn("router-manifest.recommended_alias", output)
+        self.assertIn("scope is not yet confirmed", output)
+        self.assertIn("authority_effect: false", output)
+        self.assertIn("execution_effect: false", output)
+        self.assertEqual(before, after)
+
+    def test_decision_batch_cli_keeps_multiple_outcomes_and_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory(dir=os.path.join(os.sep, "private", "tmp")) as directory_name:
+            directory = Path(directory_name)
+            card = self._write_decision_inputs(
+                directory,
+                request_id="cli-card-002",
+                human_gate="CONFIRM",
+                risk="low",
+            )
+            no_card = self._write_decision_inputs(
+                directory,
+                request_id="cli-no-card-001",
+                human_gate="NONE",
+                risk="low",
+            )
+            fail_closed = self._write_decision_inputs(
+                directory,
+                request_id="cli-fail-closed-001",
+                human_gate="NONE",
+                risk="high",
+            )
+            arguments = ["decision-batch"]
+            for paths, question in (
+                (card, "Should the card item be reviewed?"),
+                (no_card, "Should the ordinary item be reviewed?"),
+                (fail_closed, "Should the high-risk item be reviewed?"),
+            ):
+                frontdoor, handoff, _router = paths
+                arguments.extend(
+                    (
+                        "--frontdoor",
+                        str(frontdoor),
+                        "--wgm",
+                        str(handoff),
+                        "--question",
+                        question,
+                        "--consequence-if-approved",
+                        "The separately owned next boundary may be considered.",
+                    )
+                )
+            before = set(directory.iterdir())
+            completed = self._module(*arguments)
+            after = set(directory.iterdir())
+
+        self.assertEqual(1, completed.returncode)
+        self.assertEqual(b"", completed.stderr)
+        output = completed.stdout.decode("utf-8")
+        self.assertIn("DECISION_CARD (1)", output)
+        self.assertIn("NO_CARD (1)", output)
+        self.assertIn("FAIL_CLOSED (1)", output)
+        self.assertIn("high-risk", output)
+        self.assertIn("SUMMARY: inputs=3 cards=1 no_card=1 fail_closed=1", output)
+        self.assertEqual(before, after)
+
     def test_broken_pipe_returns_one_without_traceback(self) -> None:
         from mothership.cli import main
 
