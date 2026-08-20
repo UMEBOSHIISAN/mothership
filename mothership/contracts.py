@@ -7,7 +7,12 @@ from orchestration.lib.canonical import (
     sha256_file,
 )
 from orchestration.lib.contracts import ContractError, validate_contract
-from orchestration.lib.decision import DecisionBindingError, validate_decision_approval_binding
+from orchestration.lib.decision import (
+    DecisionBindingError,
+    DecisionCardProductionError,
+    build_decision_card,
+    validate_decision_approval_binding,
+)
 from orchestration.lib.jsonio import load_strict, loads_strict
 from orchestration.lib.registry import eligible_aliases, load_registry
 
@@ -15,6 +20,8 @@ from orchestration.lib.registry import eligible_aliases, load_registry
 __all__ = (
     "ContractError",
     "DecisionBindingError",
+    "DecisionCardProductionError",
+    "build_decision_card",
     "canonical_json_bytes",
     "canonical_json_sha256",
     "eligible_aliases",

@@ -79,6 +79,8 @@ class PublicFacadeTests(unittest.TestCase):
         expected_sources = {
             "ContractError": old_contracts,
             "DecisionBindingError": old_decision,
+            "DecisionCardProductionError": old_decision,
+            "build_decision_card": old_decision,
             "canonical_json_bytes": canonical,
             "canonical_json_sha256": canonical,
             "eligible_aliases": old_registry,
