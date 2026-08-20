@@ -52,6 +52,15 @@ execution-capable entry. Router and observation fixtures require `authority_effe
 The default CLI is read-only. Explicit library calls for staging or ledger evidence can write only to a caller-supplied
 target. Those APIs cannot make an external action approved merely by recording data.
 
+Decision Cards and Decision Approvals (`evidence/contracts/decision-card.v0.schema.json`,
+`evidence/contracts/decision-approval.v0.schema.json`) fix `authority_effect: false` and `execution_effect: false` at
+the schema level — the constants cannot be set to `true` and still validate. `validate_decision_approval_binding()`
+(`mothership.contracts`) only proves that a human's Approval was recorded for one exact Card content, by exact
+canonical-JSON SHA-256 digest and `decision_id` match. A successful binding is evidence of *review*, not a grant of
+execution authority: nothing in the schemas or the pure binding function connects a Decision Approval to
+`approval-event.schema.json` (the separate invocation/execution-side evidence) or to any worker invocation. Treating a
+valid binding as execution authorization would be a caller error outside what this contract asserts.
+
 ## Installation boundary
 
 Pip and Git are external tools with their own side effects and supply-chain risks. Review the source or wheel, verify

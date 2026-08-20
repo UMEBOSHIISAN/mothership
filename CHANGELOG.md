@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added the Decision Card / Decision Approval contracts (`evidence/contracts/decision-card.v0.schema.json`,
+  `evidence/contracts/decision-approval.v0.schema.json`) and `validate_decision_approval_binding()`, exported from
+  `mothership.contracts`. A Decision Approval binds to exactly one Decision Card by canonical-JSON SHA-256 digest and
+  `decision_id`; both schemas fix `authority_effect: false` and `execution_effect: false`. This is a distinct primitive
+  from the existing `decision` (frontdoor routing recommendation) and `approval-event` (invocation/execution-side
+  evidence) schemas. Library-level only; no CLI subcommand yet.
+
 ## 0.2.1 - 2026-08-11
 
 - Restored the public architecture diagrams and added deliberate, read-only
