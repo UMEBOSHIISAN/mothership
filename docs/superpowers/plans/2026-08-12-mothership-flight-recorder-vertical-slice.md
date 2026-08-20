@@ -985,7 +985,7 @@ If `build` or `setuptools>=77` is absent, record the exact skip as unverified lo
 - [ ] **Step 5: Run security and placeholder scans**
 
 ```sh
-git grep -n -I -E '(api[_-]?key|access[_-]?token|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|/Users/|/private/)' -- . ':!docs/superpowers/*'
+git grep -n -I -E '(api[_-]?key|access[_-]?token|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|/Users/|/priv[a]te/)' -- . ':!docs/superpowers/*'
 git grep -n -E 'TODO|TBD|FIXME|PLACEHOLDER' -- mothership tests README.md docs ':!docs/superpowers/*'
 git diff --check bd04f20..HEAD
 ```
