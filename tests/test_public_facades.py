@@ -4,6 +4,7 @@ import unittest
 
 from orchestration.lib import adapters as old_adapters
 from orchestration.lib import canonical, contracts as old_contracts, jsonio, ledger, paths
+from orchestration.lib import decision as old_decision
 from orchestration.lib import registry as old_registry
 
 
@@ -77,6 +78,7 @@ class PublicFacadeTests(unittest.TestCase):
 
         expected_sources = {
             "ContractError": old_contracts,
+            "DecisionBindingError": old_decision,
             "canonical_json_bytes": canonical,
             "canonical_json_sha256": canonical,
             "eligible_aliases": old_registry,
@@ -86,6 +88,7 @@ class PublicFacadeTests(unittest.TestCase):
             "sha256_bytes": canonical,
             "sha256_file": canonical,
             "validate_contract": old_contracts,
+            "validate_decision_approval_binding": old_decision,
         }
         self.assertEqual(tuple(sorted(expected_sources)), contracts.__all__)
         for name, source in expected_sources.items():

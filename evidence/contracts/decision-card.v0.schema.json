@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision-card.v0.schema.json",
+  "title": "Mothership Decision Card v0",
+  "description": "A human-facing decision proposition. Never grants authority or execution permission. consequence_if_approved is human-readable presentation only: MUST NOT be consumed as a shell command, executor input, invocation request, approval evidence, or execution plan. Approval is a separate object (decision-approval.v0). Execution is an Invocation (approval-event.schema.json). Completion is a Verification. Terminology: 'decision' (frontdoor routing result) and 'decision-card' (human decision surface) are distinct schemas with non-overlapping semantics. Use validate_decision_approval_binding() from mothership.contracts to verify Card-Approval binding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "decision_id",
+    "task_id",
+    "question",
+    "recommendation",
+    "reasons",
+    "evidence_refs",
+    "unknowns",
+    "risk",
+    "authority_required",
+    "consequence_if_approved",
+    "authority_effect",
+    "execution_effect"
+  ],
+  "properties": {
+    "schema_version":          { "const": "decision-card.v0" },
+    "decision_id":             { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+    "task_id":                 { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+    "question":                { "type": "string", "minLength": 1 },
+    "recommendation":          { "type": ["string", "null"] },
+    "reasons":                 { "type": "array", "minItems": 0, "items": { "type": "string", "minLength": 1 } },
+    "evidence_refs":           { "type": "array", "minItems": 0, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" } },
+    "unknowns":                { "type": "array", "minItems": 0, "items": { "type": "string", "minLength": 1 } },
+    "risk":                    { "enum": ["low", "medium", "high", "unknown"] },
+    "authority_required":      { "const": "human" },
+    "consequence_if_approved": { "type": "string", "minLength": 1, "maxLength": 1024 },
+    "authority_effect":        { "const": false },
+    "execution_effect":        { "const": false }
+  }
+}
