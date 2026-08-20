@@ -35,6 +35,8 @@ consequence_if_approved
 
 from __future__ import annotations
 
+from mothership.protocols import ProtocolError, validate_protocol
+
 from .canonical import canonical_json_sha256
 from .contracts import validate_contract
 from .errors import ContractError
@@ -42,6 +44,90 @@ from .errors import ContractError
 
 class DecisionBindingError(ContractError):
     """Card and Approval do not match or one fails contract validation."""
+
+
+class DecisionCardProductionError(ContractError):
+    """Required source metadata or explicit Card proposal data is invalid."""
+
+
+def build_decision_card(
+    frontdoor_task: object,
+    governance_handoff: object,
+    *,
+    decision_id: object,
+    question: object,
+    consequence_if_approved: object,
+    router_manifest: object | None = None,
+) -> dict[str, object] | None:
+    """Build one ephemeral Decision Card from validated companion metadata.
+
+    The function validates each owner-owned input, preserves the existing
+    values used by the Card contract, and accepts human-facing synthesis as
+    explicit caller input. It never invokes a model, creates an Approval, or
+    performs execution. None means the Frontdoor gate says no human decision
+    is needed for a non-high-risk handoff.
+    """
+    try:
+        frontdoor = validate_protocol("frontdoor-task", frontdoor_task)
+        handoff = validate_protocol("governance-handoff", governance_handoff)
+        router = (
+            None
+            if router_manifest is None
+            else validate_protocol("router-manifest", router_manifest)
+        )
+    except ProtocolError as exc:
+        raise DecisionCardProductionError(f"source protocol validation failed: {exc}") from exc
+
+    if frontdoor["request_id"] != handoff["task_id"]:
+        raise DecisionCardProductionError(
+            "Frontdoor request_id and WGM handoff task_id do not match"
+        )
+
+    human_gate = frontdoor["human_gate"]
+    risk = handoff["risk"]
+    if human_gate == "NONE":
+        if risk == "high":
+            raise DecisionCardProductionError(
+                "high-risk WGM handoff cannot bypass a human Frontdoor gate"
+            )
+        return None
+    if human_gate not in {"CONFIRM", "BLOCKING"}:
+        raise DecisionCardProductionError("Frontdoor human_gate is unsupported")
+
+    if router is not None and router["task_id"] != handoff["task_id"]:
+        raise DecisionCardProductionError(
+            "Router manifest task_id does not match the WGM handoff"
+        )
+
+    reasons = [f"frontdoor.human_gate={human_gate}"]
+    reasons.extend(f"frontdoor.risk_tag={tag}" for tag in frontdoor["risk_tags"])
+    recommendation = None
+    if router is not None:
+        recommendation = router["recommended_alias"]
+        reasons.append(f"router-manifest.status={router['status']}")
+        reasons.extend(
+            f"router-manifest.reason={reason}" for reason in router["reasons"]
+        )
+
+    card = {
+        "schema_version": "decision-card.v0",
+        "decision_id": decision_id,
+        "task_id": handoff["task_id"],
+        "question": question,
+        "recommendation": recommendation,
+        "reasons": reasons,
+        "evidence_refs": list(handoff["evidence_references"]),
+        "unknowns": list(frontdoor["unknowns"]),
+        "risk": risk,
+        "authority_required": "human",
+        "consequence_if_approved": consequence_if_approved,
+        "authority_effect": False,
+        "execution_effect": False,
+    }
+    try:
+        return validate_contract("decision-card", card)
+    except ContractError as exc:
+        raise DecisionCardProductionError(f"Decision Card proposal is invalid: {exc}") from exc
 
 
 def validate_decision_approval_binding(
