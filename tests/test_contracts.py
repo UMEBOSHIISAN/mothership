@@ -432,11 +432,7 @@ class ContractTestCase(unittest.TestCase):
             validate_contract("executor", {})
 
 
-if __name__ == "__main__":
-    unittest.main()
-import pytest
-
-class TestDecisionApprovalBinding:
+class TestDecisionApprovalBinding(unittest.TestCase):
     def _card(self):
         return {
             "schema_version": "decision-card.v0",
@@ -484,14 +480,14 @@ class TestDecisionApprovalBinding:
         approval = self._approval(card)
         # Mutate the card AFTER approval was issued
         mutated_card = {**card, "question": "A completely different question?"}
-        with pytest.raises(DecisionBindingError, match="mismatch"):
+        with self.assertRaisesRegex(DecisionBindingError, "mismatch"):
             validate_decision_approval_binding(mutated_card, approval)
 
     def test_binding_fails_for_wrong_digest(self):
         from orchestration.lib.decision import DecisionBindingError, validate_decision_approval_binding
         card = self._card()
         bad_approval = {**self._approval(card), "decision_card_sha256": "b" * 64}
-        with pytest.raises(DecisionBindingError, match="mismatch"):
+        with self.assertRaisesRegex(DecisionBindingError, "mismatch"):
             validate_decision_approval_binding(card, bad_approval)
 
     def test_binding_fails_for_decision_id_mismatch(self):
@@ -499,7 +495,7 @@ class TestDecisionApprovalBinding:
         card = self._card()
         approval = self._approval(card)
         mismatched = {**approval, "decision_id": "dc-WRONG"}
-        with pytest.raises(DecisionBindingError, match="decision_id mismatch"):
+        with self.assertRaisesRegex(DecisionBindingError, "decision_id mismatch"):
             validate_decision_approval_binding(card, mismatched)
 
     def test_key_ordering_does_not_affect_binding(self):
@@ -555,7 +551,7 @@ def _valid_decision_approval():
     }
 
 
-class TestDecisionPlaneContracts:
+class TestDecisionPlaneContracts(unittest.TestCase):
     def test_decision_card_accept_cases(self):
         from orchestration.lib.contracts import validate_contract
 
@@ -592,7 +588,7 @@ class TestDecisionPlaneContracts:
         ]
         for field in required:
             candidate = {key: value for key, value in card.items() if key != field}
-            with pytest.raises(ContractError):
+            with self.assertRaises(ContractError):
                 validate_contract("decision-card", candidate)
 
         invalid_values = [
@@ -608,7 +604,7 @@ class TestDecisionPlaneContracts:
             {"recommendation": 42},
         ]
         for change in invalid_values:
-            with pytest.raises(ContractError):
+            with self.assertRaises(ContractError):
                 validate_contract("decision-card", {**card, **change})
 
         for field in (
@@ -619,7 +615,7 @@ class TestDecisionPlaneContracts:
             "selected_model",
             "retry_count",
         ):
-            with pytest.raises(ContractError):
+            with self.assertRaises(ContractError):
                 validate_contract("decision-card", {**card, field: True})
 
     def test_decision_approval_accept_case(self):
@@ -639,12 +635,12 @@ class TestDecisionPlaneContracts:
             {"decision_card_sha256": "abc"},
             {"extra": True},
         ):
-            with pytest.raises(ContractError):
+            with self.assertRaises(ContractError):
                 validate_contract("decision-approval", {**approval, **change})
 
         for field in approval:
             candidate = {key: value for key, value in approval.items() if key != field}
-            with pytest.raises(ContractError):
+            with self.assertRaises(ContractError):
                 validate_contract("decision-approval", candidate)
 
     def test_decision_card_digest_binding_invariant(self):
@@ -656,3 +652,7 @@ class TestDecisionPlaneContracts:
 
         assert canonical_json_sha256(card_a) != canonical_json_sha256(card_b)
         assert canonical_json_sha256(card_a) == canonical_json_sha256(card_reordered)
+
+
+if __name__ == "__main__":
+    unittest.main()
