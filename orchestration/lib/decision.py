@@ -57,11 +57,20 @@ _BATCH_ENTRY_KEYS = frozenset(
         "frontdoor_task",
         "governance_handoff",
         "question",
+        "recommendation",
+        "reasons",
         "consequence_if_approved",
         "router_manifest",
     }
 )
-_BATCH_REQUIRED_KEYS = _BATCH_ENTRY_KEYS - {"router_manifest"}
+_BATCH_REQUIRED_KEYS = frozenset(
+    {
+        "frontdoor_task",
+        "governance_handoff",
+        "question",
+        "consequence_if_approved",
+    }
+)
 
 
 def build_decision_card(
@@ -70,16 +79,20 @@ def build_decision_card(
     *,
     decision_id: object,
     question: object,
+    recommendation: object = None,
+    reasons: object = (),
     consequence_if_approved: object,
     router_manifest: object | None = None,
 ) -> dict[str, object] | None:
     """Build one ephemeral Decision Card from validated companion metadata.
 
     The function validates each owner-owned input, preserves the existing
-    values used by the Card contract, and accepts human-facing synthesis as
-    explicit caller input. It never invokes a model, creates an Approval, or
-    performs execution. None means the Frontdoor gate says no human decision
-    is needed for a non-high-risk handoff.
+    values used by the Card contract, and accepts human-facing decision
+    synthesis as explicit caller input. Router metadata remains advisory
+    context and never supplies the Decision Card recommendation. It never
+    invokes a model, creates an Approval, or performs execution. None means
+    the Frontdoor gate says no human decision is needed for a non-high-risk
+    handoff.
     """
     try:
         frontdoor = validate_protocol("frontdoor-task", frontdoor_task)
@@ -113,13 +126,15 @@ def build_decision_card(
             "Router manifest task_id does not match the WGM handoff"
         )
 
-    reasons = [f"frontdoor.human_gate={human_gate}"]
-    reasons.extend(f"frontdoor.risk_tag={tag}" for tag in frontdoor["risk_tags"])
-    recommendation = None
+    if type(reasons) not in (list, tuple):
+        raise DecisionCardProductionError("Decision Card reasons must be a list")
+
+    card_reasons = [f"frontdoor.human_gate={human_gate}"]
+    card_reasons.extend(f"frontdoor.risk_tag={tag}" for tag in frontdoor["risk_tags"])
+    card_reasons.extend(reasons)
     if router is not None:
-        recommendation = router["recommended_alias"]
-        reasons.append(f"router-manifest.status={router['status']}")
-        reasons.extend(
+        card_reasons.append(f"router-manifest.status={router['status']}")
+        card_reasons.extend(
             f"router-manifest.reason={reason}" for reason in router["reasons"]
         )
 
@@ -129,7 +144,7 @@ def build_decision_card(
         "task_id": handoff["task_id"],
         "question": question,
         "recommendation": recommendation,
-        "reasons": reasons,
+        "reasons": card_reasons,
         "evidence_refs": list(handoff["evidence_references"]),
         "unknowns": list(frontdoor["unknowns"]),
         "risk": risk,
@@ -191,6 +206,8 @@ def build_decision_batch(entries: object) -> dict[str, object]:
                 entry["governance_handoff"],
                 decision_id=entry["frontdoor_task"].get("request_id"),
                 question=entry["question"],
+                recommendation=entry.get("recommendation"),
+                reasons=entry.get("reasons", []),
                 consequence_if_approved=entry["consequence_if_approved"],
                 router_manifest=entry.get("router_manifest"),
             )
@@ -223,8 +240,8 @@ def build_decision_batch(entries: object) -> dict[str, object]:
                 "question": card["question"],
                 "recommendation": card["recommendation"],
                 "recommendation_provenance": (
-                    "router-manifest.recommended_alias"
-                    if entry.get("router_manifest") is not None
+                    "explicit-decision-input"
+                    if entry.get("recommendation") is not None
                     else None
                 ),
                 "reasons": list(card["reasons"]),

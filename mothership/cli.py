@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -88,6 +89,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicit human-facing question",
     )
     decision_card.add_argument(
+        "--recommendation",
+        help="optional explicit human-facing recommendation",
+    )
+    decision_card.add_argument(
+        "--reason",
+        dest="reasons",
+        action="append",
+        default=[],
+        help="explicit human-facing reason; repeat as needed",
+    )
+    decision_card.add_argument(
         "--consequence-if-approved",
         required=True,
         help="explicit presentation-only consequence",
@@ -126,6 +138,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         required=True,
         help="explicit human-facing question; repeat per input",
+    )
+    decision_batch.add_argument(
+        "--recommendation",
+        dest="recommendations",
+        action="append",
+        help="explicit human-facing recommendation; repeat once per input",
+    )
+    decision_batch.add_argument(
+        "--reasons-json",
+        dest="reasons_json",
+        action="append",
+        help="JSON array of explicit reasons; repeat once per input",
     )
     decision_batch.add_argument(
         "--consequence-if-approved",
@@ -259,6 +283,8 @@ def command_decision_batch(
     questions: Sequence[str],
     consequences: Sequence[str],
     router_paths: Sequence[Path] = (),
+    recommendations: Sequence[object] = (),
+    reasons: Sequence[object] = (),
 ) -> tuple[int, str]:
     """Render explicit Decision Discovery inputs in memory."""
 
@@ -266,8 +292,15 @@ def command_decision_batch(
     if not (
         count == len(wgm_paths) == len(questions) == len(consequences)
         and len(router_paths) in (0, count)
+        and len(recommendations) in (0, count)
+        and len(reasons) in (0, count)
     ):
         raise ValueError("decision-batch arguments must have matching counts")
+
+    recommendation_values = (
+        list(recommendations) if recommendations else [None for _ in range(count)]
+    )
+    reason_values = list(reasons) if reasons else [[] for _ in range(count)]
 
     entries: list[dict[str, object]] = []
     for index in range(count):
@@ -281,6 +314,8 @@ def command_decision_batch(
             "frontdoor_task": frontdoor if frontdoor_valid else {},
             "governance_handoff": handoff if handoff_valid else {},
             "question": questions[index],
+            "recommendation": recommendation_values[index],
+            "reasons": reason_values[index],
             "consequence_if_approved": consequences[index],
         }
         if router_paths:
@@ -301,6 +336,8 @@ def command_decision_card(
     *,
     question: str,
     consequence_if_approved: str,
+    recommendation: object = None,
+    reasons: Sequence[object] = (),
     router_path: Path | None = None,
 ) -> dict[str, object]:
     """Emit one existing Decision Card contract without adding semantics."""
@@ -330,6 +367,8 @@ def command_decision_card(
             handoff_input,
             decision_id=decision_id,
             question=question,
+            recommendation=recommendation,
+            reasons=reasons,
             consequence_if_approved=consequence_if_approved,
             router_manifest=router,
         )
@@ -372,6 +411,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 arguments.wgm,
                 router_path=arguments.router,
                 question=arguments.question,
+                recommendation=arguments.recommendation,
+                reasons=arguments.reasons,
                 consequence_if_approved=arguments.consequence_if_approved,
             )
         except DecisionCardProductionError:
@@ -392,12 +433,32 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--question must be repeated once per input")
         if len(arguments.frontdoor_paths) != len(arguments.consequences):
             parser.error("--consequence-if-approved must be repeated once per input")
+        count = len(arguments.frontdoor_paths)
+        recommendations = arguments.recommendations or [None for _ in range(count)]
+        if len(recommendations) != count:
+            parser.error("--recommendation must be omitted or repeated once per input")
+        raw_reasons = arguments.reasons_json or []
+        if len(raw_reasons) not in (0, count):
+            parser.error("--reasons-json must be omitted or repeated once per input")
+        reasons: list[object] = []
+        for raw in raw_reasons:
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                parser.error("--reasons-json values must be JSON arrays")
+            if type(parsed) is not list:
+                parser.error("--reasons-json values must be JSON arrays")
+            reasons.append(parsed)
+        if not reasons:
+            reasons = [[] for _ in range(count)]
         exit_code, document = command_decision_batch(
             arguments.frontdoor_paths,
             arguments.wgm_paths,
             questions=arguments.questions,
             consequences=arguments.consequences,
             router_paths=arguments.router_paths or (),
+            recommendations=recommendations,
+            reasons=reasons,
         )
         if not _emit_text(document):
             return 1
