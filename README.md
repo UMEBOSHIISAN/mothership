@@ -321,22 +321,6 @@ schema bytes with Mothership's snapshots, validates each public example, and che
 repositories automatically. See the [measured compatibility matrix](docs/compatibility.md) for the exact local commits;
 those commits are reachable from their public main branches.
 
-### The wider constellation
-
-The four protocols above are the frozen, versioned surface. They sit inside a larger set of small, independently
-adoptable projects that share one rule rather than a dependency.
-
-<p align="center">
-  <img src="assets/constellation.svg" alt="The wider constellation: control-plane, device, and workshop projects sharing one safety boundary" width="100%">
-</p>
-
-**This diagram describes an architectural relationship — not a dependency, an installer, or an automatic integration.**
-Nothing here is discovered, installed, or invoked by Mothership. Adopt any single project and ignore the rest.
-
-The workshop row is not decoration. A control plane whose only feeling is *restriction* gets abandoned, so the same rule
-points at your mood as well as your machine: `git-vibes` cannot block a commit even if it crashes. That is the boundary
-again, not an exception to it.
-
 ## Compatibility
 
 - Declared Python support: Python 3.12+.
