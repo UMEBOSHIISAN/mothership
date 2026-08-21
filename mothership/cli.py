@@ -12,7 +12,12 @@ import sys
 
 from orchestration.lib.adapters import _ALIASES, _diagnostic_environment, doctor_adapter
 from orchestration.lib.canonical import canonical_json_bytes
-from orchestration.lib.decision import build_decision_batch, format_decision_batch
+from orchestration.lib.decision import (
+    DecisionCardProductionError,
+    build_decision_batch,
+    build_decision_card,
+    format_decision_batch,
+)
 
 from .demo import DemoError, run_demo
 from .protocols import ProtocolError, list_protocols, validate_protocol_file
@@ -55,6 +60,38 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("file")
 
     commands.add_parser("demo", help="validate the synthetic golden path")
+
+    decision_card = commands.add_parser(
+        "decision-card",
+        help="emit one validated decision-card.v0 JSON object",
+    )
+    decision_card.add_argument(
+        "--frontdoor",
+        type=Path,
+        required=True,
+        help="absolute Frontdoor intake JSON path",
+    )
+    decision_card.add_argument(
+        "--wgm",
+        type=Path,
+        required=True,
+        help="absolute WGM handoff JSON path",
+    )
+    decision_card.add_argument(
+        "--router",
+        type=Path,
+        help="optional absolute Router manifest JSON path",
+    )
+    decision_card.add_argument(
+        "--question",
+        required=True,
+        help="explicit human-facing question",
+    )
+    decision_card.add_argument(
+        "--consequence-if-approved",
+        required=True,
+        help="explicit presentation-only consequence",
+    )
 
     decision_batch = commands.add_parser(
         "decision-batch",
@@ -258,6 +295,51 @@ def command_decision_batch(
     return exit_code, format_decision_batch(batch)
 
 
+def command_decision_card(
+    frontdoor_path: Path,
+    wgm_path: Path,
+    *,
+    question: str,
+    consequence_if_approved: str,
+    router_path: Path | None = None,
+) -> dict[str, object]:
+    """Emit one existing Decision Card contract without adding semantics."""
+
+    frontdoor, frontdoor_valid = _load_decision_protocol(
+        "frontdoor-task", frontdoor_path
+    )
+    handoff, handoff_valid = _load_decision_protocol(
+        "governance-handoff", wgm_path
+    )
+    router = None
+    if router_path is not None:
+        router, router_valid = _load_decision_protocol("router-manifest", router_path)
+        if not router_valid:
+            router = {}
+
+    frontdoor_input = frontdoor if frontdoor_valid else {}
+    handoff_input = handoff if handoff_valid else {}
+    decision_id = (
+        frontdoor_input.get("request_id")
+        if type(frontdoor_input) is dict
+        else None
+    )
+    try:
+        card = build_decision_card(
+            frontdoor_input,
+            handoff_input,
+            decision_id=decision_id,
+            question=question,
+            consequence_if_approved=consequence_if_approved,
+            router_manifest=router,
+        )
+    except (AttributeError, DecisionCardProductionError) as exc:
+        raise DecisionCardProductionError("decision card production failed") from exc
+    if card is None:
+        raise DecisionCardProductionError("human decision card was not produced")
+    return card
+
+
 def _emit(document: object) -> bool:
     try:
         sys.stdout.write(canonical_json_bytes(document).decode("utf-8") + "\n")
@@ -283,6 +365,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         exit_code, document = command_doctor(tuple(arguments.aliases))
     elif arguments.command == "demo":
         exit_code, document = command_demo()
+    elif arguments.command == "decision-card":
+        try:
+            document = command_decision_card(
+                arguments.frontdoor,
+                arguments.wgm,
+                router_path=arguments.router,
+                question=arguments.question,
+                consequence_if_approved=arguments.consequence_if_approved,
+            )
+        except DecisionCardProductionError:
+            try:
+                sys.stderr.write("decision-card: unable to produce card\n")
+            except (BrokenPipeError, OSError, UnicodeError):
+                pass
+            return 1
+        if not _emit(document):
+            return 1
+        return 0
     elif arguments.command == "decision-batch":
         if len(arguments.router_paths or ()) not in (0, len(arguments.frontdoor_paths)):
             parser.error("--router must be omitted or repeated once per input")
@@ -318,6 +418,7 @@ __all__ = (
     "build_parser",
     "command_decision_batch",
     "command_demo",
+    "command_decision_card",
     "command_doctor",
     "command_protocol_list",
     "command_protocol_validate",

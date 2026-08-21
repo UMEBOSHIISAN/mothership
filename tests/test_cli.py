@@ -319,6 +319,85 @@ class CliTests(unittest.TestCase):
         self.assertIn("SUMMARY: inputs=3 cards=1 no_card=1 fail_closed=1", output)
         self.assertEqual(before, after)
 
+    def test_decision_card_cli_emits_the_existing_card_contract_as_json(self) -> None:
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
+            frontdoor, handoff, router = self._write_decision_inputs(
+                directory,
+                request_id="cli-card-json-001",
+                human_gate="CONFIRM",
+                risk="medium",
+                unknowns=["scope is not yet confirmed"],
+            )
+            completed = self._module(
+                "decision-card",
+                "--frontdoor",
+                str(frontdoor),
+                "--wgm",
+                str(handoff),
+                "--router",
+                str(router),
+                "--question",
+                "Should the human review this item?",
+                "--consequence-if-approved",
+                "The separately owned next boundary may be considered.",
+            )
+
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual(b"", completed.stderr)
+        card = json.loads(completed.stdout)
+        self.assertEqual(
+            [
+                "authority_effect",
+                "authority_required",
+                "consequence_if_approved",
+                "decision_id",
+                "evidence_refs",
+                "execution_effect",
+                "question",
+                "reasons",
+                "recommendation",
+                "risk",
+                "schema_version",
+                "task_id",
+                "unknowns",
+            ],
+            sorted(card),
+        )
+        self.assertEqual("decision-card.v0", card["schema_version"])
+        self.assertEqual("cli-card-json-001", card["decision_id"])
+        self.assertEqual("cli-card-json-001", card["task_id"])
+        self.assertEqual("fictional-code-reviewer", card["recommendation"])
+        self.assertEqual(["scope is not yet confirmed"], card["unknowns"])
+        self.assertIs(False, card["authority_effect"])
+        self.assertIs(False, card["execution_effect"])
+        self.assertEqual(canonical_json_bytes(card) + b"\n", completed.stdout)
+
+    def test_decision_card_cli_fails_closed_without_fabricating_no_card_json(self) -> None:
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
+            frontdoor, handoff, _router = self._write_decision_inputs(
+                directory,
+                request_id="cli-no-card-json-001",
+                human_gate="NONE",
+                risk="low",
+            )
+            completed = self._module(
+                "decision-card",
+                "--frontdoor",
+                str(frontdoor),
+                "--wgm",
+                str(handoff),
+                "--question",
+                "Should the ordinary item be reviewed?",
+                "--consequence-if-approved",
+                "The separately owned next boundary may be considered.",
+            )
+
+        self.assertEqual(1, completed.returncode)
+        self.assertEqual(b"", completed.stdout)
+        self.assertNotEqual(b"", completed.stderr)
+
     def test_broken_pipe_returns_one_without_traceback(self) -> None:
         from mothership.cli import main
 
