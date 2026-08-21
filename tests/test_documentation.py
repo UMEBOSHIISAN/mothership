@@ -164,7 +164,11 @@ class ReadmeContractTests(unittest.TestCase):
 
     def test_claims_and_rendering_structure_are_closed(self) -> None:
         lowered = self.text.casefold()
-        self.assertIn("tests-225%20passing", self.text)
+        self.assertIn(
+            "https://github.com/UMEBOSHIISAN/mothership/actions/workflows/test.yml/badge.svg",
+            self.text,
+        )
+        self.assertNotIn("tests-225%20passing", self.text)
         self.assertIn("reachable from their public main branches", lowered)
         self.assertNotIn("publication-pending", lowered)
         for forbidden in (

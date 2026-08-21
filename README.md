@@ -4,24 +4,51 @@
 
 # Mothership
 
+<p align="center"><strong>Keep AI agents useful without giving them authority.</strong></p>
+
 <p align="center"><strong>The portable, safety-first control plane for AI coding environments.</strong></p>
 
 <p align="center">
   <img alt="Python 3.12 or newer" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
   <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20dependencies-0-16A34A">
   <img alt="Offline verification" src="https://img.shields.io/badge/verification-offline-7C3AED">
-  <img alt="Test suite passing" src="https://img.shields.io/badge/tests-225%20passing-16A34A">
+  <a href="https://github.com/UMEBOSHIISAN/mothership/actions/workflows/test.yml"><img alt="GitHub Actions CI status" src="https://github.com/UMEBOSHIISAN/mothership/actions/workflows/test.yml/badge.svg"></a>
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0F172A">
 </p>
 
 <p align="center"><strong>Move the control plane. Keep secrets and authority local.</strong></p>
 
-Mothership packages the contracts, protocol snapshots, integrity checks, and local diagnostics that make an AI coding
-setup inspectable across machines. It does not invoke a model, select an executor, or turn a recommendation into
-permission.
+Mothership is a vendor-neutral control plane for the space around Codex, Claude Code, local agents, and model routers.
+It packages contracts, protocol snapshots, integrity checks, and local diagnostics so an AI coding setup stays
+inspectable across machines. It does not invoke a model, select an executor, or turn a recommendation into permission.
 
 [日本語](docs/ja/README.md) · [Architecture](docs/architecture.md) · [Install](docs/installation.md) ·
 [Protocols](docs/protocols.md) · [Security](docs/security.md) · [Research evidence](docs/research/paper-evidence.md)
+
+**What you can do now:** validate explicit cross-tool documents, surface only the
+items that need a human decision, and keep approval separate from execution.
+
+`mothership decision-batch` is the human-facing entry point for that decision
+surface. It accepts explicit Frontdoor and WGM files, with an optional advisory
+Router manifest, and renders an ephemeral foreground result:
+
+```text
+EPHEMERAL DECISION BATCH
+DECISION_CARD (1)
+- question: Should the human review this item?
+  recommendation: fictional-code-reviewer
+  unknowns: ["scope is not yet confirmed"]
+  authority_effect: false
+  execution_effect: false
+NO_CARD (1)
+- reason: human_decision_not_required
+FAIL_CLOSED (1)
+- reason: high-risk WGM handoff cannot bypass a human Frontdoor gate
+SUMMARY: inputs=3 cards=1 no_card=1 fail_closed=1
+```
+
+The excerpt is from a real CLI run. The command only presents outcomes; it
+does not approve, execute, persist, or create a durable queue.
 
 ## Quick start
 
