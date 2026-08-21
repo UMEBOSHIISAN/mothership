@@ -149,8 +149,8 @@ Read the full [architecture](docs/architecture.md) and [composition guide](docs/
 ### Human decision boundary
 
 The chain above is protocol composition: versioned compatibility between independently owned tools. It answers "do
-these documents fit together," not "what should happen next." That second question has its own primitive, added as a
-library-level contract (no CLI subcommand yet):
+these documents fit together," not "what should happen next." That second question has its own primitive, exposed as a
+library-level contract and through the foreground `mothership decision-batch` command:
 
 ```mermaid
 flowchart TD
@@ -167,6 +167,10 @@ flowchart TD
 A **Decision Card** (`evidence/contracts/decision-card.v0.schema.json`) is a human-facing proposition: a question, a
 recommendation, named unknowns, and a `consequence_if_approved` field that is presentation-only text — never a shell
 command, executor input, or execution plan. It carries no status and selects no worker.
+
+`mothership decision-batch` renders an ephemeral batch from explicitly supplied Frontdoor intake and WGM handoff
+documents. A Router manifest is optional and advisory; the command preserves `DECISION_CARD`, `NO_CARD`, and
+`FAIL_CLOSED` outcomes in foreground output only. It does not approve, execute, persist, or create a durable queue.
 
 A **Decision Approval** (`evidence/contracts/decision-approval.v0.schema.json`) records that a human reviewed *exactly*
 that Card. `validate_decision_approval_binding()`, exported from `mothership.contracts`, checks this mechanically: it
