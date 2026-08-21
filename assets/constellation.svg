@@ -20,7 +20,7 @@
   </g>
 
   <text x="600" y="42" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="24" font-weight="700" fill="#e8eef7">One safety boundary. Fourteen ways in.</text>
-  <text x="600" y="68" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#8fa4c8">the whole constellation shares one rule — nothing acts without a human</text>
+  <text x="600" y="68" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#8fa4c8">automation may observe, recommend, or entertain — authority stays separate</text>
 
   <!-- orbit guides -->
   <g fill="none" stroke="#2c4a86" stroke-opacity="0.35">
@@ -45,7 +45,6 @@
   <circle cx="600" cy="400" r="52" fill="#0d2244" stroke="#5fd3d3" stroke-width="2"/>
   <text x="600" y="394" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#9de8e8">MOTHER</text>
   <text x="600" y="412" text-anchor="middle" font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#9de8e8">SHIP</text>
-  <text x="600" y="430" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="9" fill="#5f9dc4">v0.2.0</text>
 
   <g font-family="ui-sans-serif,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" text-anchor="middle">
 

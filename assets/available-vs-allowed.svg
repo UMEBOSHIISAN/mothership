@@ -68,9 +68,9 @@
 
     <!-- bottom -->
     <rect x="44" y="508" width="1112" height="96" rx="10" fill="#180f22" stroke="#6b4a8a"/>
-    <text x="68" y="536" font-size="14" font-weight="700" fill="#d8bff0">Every result this package emits carries <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">"authority_effect": "none"</tspan>. There is no code path that emits anything else.</text>
-    <text x="68" y="559" font-size="12" fill="#a894c0">A diagnostic that quietly upgraded “found it” into “go ahead” would be the most useful — and the most dangerous — thing in the package.</text>
-    <text x="68" y="577" font-size="12" fill="#a894c0">So the three unknowns keep their own field, and permission is never inferred from presence.</text>
-    <text x="68" y="596" font-size="12" fill="#a894c0">「見つけた」を「やっていい」に静かに昇格させないこと。未知は未知の欄に残し、存在から権限を推論しない。</text>
+    <text x="68" y="536" font-size="13" font-weight="700" fill="#d8bff0">The command-level result carries <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">"authority_effect": false</tspan> and</text>
+    <text x="68" y="557" font-size="13" font-weight="700" fill="#d8bff0"><tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">"execution_effect": false</tspan>. Diagnostics never turn presence into permission.</text>
+    <text x="68" y="578" font-size="11.5" fill="#a894c0">A diagnostic that quietly upgraded “found it” into “go ahead” would be the most useful — and the most dangerous — thing in the package.</text>
+    <text x="68" y="598" font-size="11.5" fill="#a894c0">So the three unknowns keep their own field, and permission is never inferred from presence.</text>
   </g>
 </svg>

@@ -42,7 +42,7 @@
     <g transform="translate(60,200)">
       <rect width="480" height="52" rx="8" fill="#132449" stroke="#2c4a86"/>
       <text x="18" y="23" font-size="15" font-weight="600" fill="#e8eef7">Closed contracts &amp; JSON schemas</text>
-      <text x="18" y="41" font-size="12" fill="#8fa4c8">task · decision · registry · invocation · assessment · approval-event</text>
+      <text x="18" y="41" font-size="12" fill="#8fa4c8">decision cards · approvals · protocol bindings — examples, not an exhaustive list</text>
     </g>
     <g transform="translate(60,262)">
       <rect width="480" height="52" rx="8" fill="#132449" stroke="#2c4a86"/>
@@ -62,7 +62,7 @@
     <g transform="translate(60,448)">
       <rect width="480" height="52" rx="8" fill="#132449" stroke="#2c4a86"/>
       <text x="18" y="23" font-size="15" font-weight="600" fill="#e8eef7">Tests, checksums, licenses</text>
-      <text x="18" y="41" font-size="12" fill="#8fa4c8">221 stdlib tests — a rebuilt environment can prove itself before use</text>
+      <text x="18" y="41" font-size="12" fill="#8fa4c8">tests · checksums · integrity verification — rebuilds can prove themselves before use</text>
     </g>
   </g>
 
