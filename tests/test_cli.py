@@ -249,6 +249,10 @@ class CliTests(unittest.TestCase):
                 str(router),
                 "--question",
                 "Should the human review this item?",
+                "--recommendation",
+                "REVIEW",
+                "--reasons-json",
+                '["explicit batch reason", "second batch reason"]',
                 "--consequence-if-approved",
                 "The separately owned next boundary may be considered.",
             )
@@ -259,7 +263,9 @@ class CliTests(unittest.TestCase):
         output = completed.stdout.decode("utf-8")
         self.assertIn("EPHEMERAL DECISION BATCH", output)
         self.assertIn("DECISION_CARD (1)", output)
-        self.assertIn("router-manifest.recommended_alias", output)
+        self.assertIn("recommendation: REVIEW", output)
+        self.assertIn("recommendation_provenance: explicit-decision-input", output)
+        self.assertIn("explicit batch reason", output)
         self.assertIn("scope is not yet confirmed", output)
         self.assertIn("authority_effect: false", output)
         self.assertIn("execution_effect: false", output)
@@ -339,6 +345,12 @@ class CliTests(unittest.TestCase):
                 str(router),
                 "--question",
                 "Should the human review this item?",
+                "--recommendation",
+                "DO NOT MERGE AS-IS",
+                "--reason",
+                "PR branch materially diverged from current main",
+                "--reason",
+                "runtime authority impact remains UNKNOWN",
                 "--consequence-if-approved",
                 "The separately owned next boundary may be considered.",
             )
@@ -367,7 +379,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual("decision-card.v0", card["schema_version"])
         self.assertEqual("cli-card-json-001", card["decision_id"])
         self.assertEqual("cli-card-json-001", card["task_id"])
-        self.assertEqual("fictional-code-reviewer", card["recommendation"])
+        self.assertEqual("DO NOT MERGE AS-IS", card["recommendation"])
+        self.assertIn("PR branch materially diverged from current main", card["reasons"])
+        self.assertIn("runtime authority impact remains UNKNOWN", card["reasons"])
         self.assertEqual(["scope is not yet confirmed"], card["unknowns"])
         self.assertIs(False, card["authority_effect"])
         self.assertIs(False, card["execution_effect"])

@@ -61,13 +61,22 @@ def build_inputs(**kwargs: object) -> tuple[dict[str, object], dict[str, object]
 
 
 class DecisionDiscoveryTests(unittest.TestCase):
-    def _build(self, *, router: object | None = None, **kwargs: object) -> dict[str, object] | None:
+    def _build(
+        self,
+        *,
+        router: object | None = None,
+        recommendation: object = None,
+        reasons: list[str] | None = None,
+        **kwargs: object,
+    ) -> dict[str, object] | None:
         frontdoor, handoff = build_inputs(**kwargs)
         return build_decision_card(
             frontdoor,
             handoff,
             decision_id="decision-demo-review-001",
             question="Should this supplied change receive human review?",
+            recommendation=recommendation,
+            reasons=[] if reasons is None else reasons,
             consequence_if_approved="The reviewed proposal may proceed to the separately owned next boundary.",
             router_manifest=router,
         )
@@ -94,10 +103,35 @@ class DecisionDiscoveryTests(unittest.TestCase):
 
         self.assertIsNotNone(card)
         assert card is not None
-        self.assertEqual("fictional-code-reviewer", card["recommendation"])
+        self.assertIsNone(card["recommendation"])
         self.assertEqual(
             [
                 "frontdoor.human_gate=CONFIRM",
+                "router-manifest.status=approval_required",
+                "router-manifest.reason=manifest_only",
+                "router-manifest.reason=manual_execution_not_implemented",
+            ],
+            card["reasons"],
+        )
+
+    def test_explicit_decision_recommendation_and_reasons_are_preserved(self) -> None:
+        card = self._build(
+            router=router_manifest(),
+            recommendation="DO NOT MERGE AS-IS",
+            reasons=[
+                "PR branch materially diverged from current main",
+                "runtime authority impact remains UNKNOWN",
+            ],
+        )
+
+        self.assertIsNotNone(card)
+        assert card is not None
+        self.assertEqual("DO NOT MERGE AS-IS", card["recommendation"])
+        self.assertEqual(
+            [
+                "frontdoor.human_gate=CONFIRM",
+                "PR branch materially diverged from current main",
+                "runtime authority impact remains UNKNOWN",
                 "router-manifest.status=approval_required",
                 "router-manifest.reason=manifest_only",
                 "router-manifest.reason=manual_execution_not_implemented",
@@ -254,6 +288,8 @@ class DecisionDiscoveryTests(unittest.TestCase):
                     "frontdoor_task": card_frontdoor,
                     "governance_handoff": card_handoff,
                     "question": "Should the supplied change receive human review?",
+                    "recommendation": "REVIEW",
+                    "reasons": ["explicit batch reason"],
                     "consequence_if_approved": "The separately owned review boundary may proceed.",
                     "router_manifest": card_router,
                 },
@@ -276,7 +312,9 @@ class DecisionDiscoveryTests(unittest.TestCase):
         self.assertEqual(1, len(batch["no_cards"]))
         self.assertEqual(1, len(batch["fail_closed"]))
         self.assertEqual("demo-review-001", batch["decision_cards"][0]["input_id"])
-        self.assertEqual("router-manifest.recommended_alias", batch["decision_cards"][0]["recommendation_provenance"])
+        self.assertEqual("REVIEW", batch["decision_cards"][0]["recommendation"])
+        self.assertEqual("explicit-decision-input", batch["decision_cards"][0]["recommendation_provenance"])
+        self.assertIn("explicit batch reason", batch["decision_cards"][0]["reasons"])
         self.assertEqual("NO_CARD", batch["no_cards"][0]["classification"])
         self.assertEqual("FAIL_CLOSED", batch["fail_closed"][0]["classification"])
         self.assertEqual(
