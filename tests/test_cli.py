@@ -229,8 +229,8 @@ class CliTests(unittest.TestCase):
         return paths
 
     def test_decision_batch_cli_renders_card_with_optional_router_and_unknowns(self) -> None:
-        with tempfile.TemporaryDirectory(dir=os.path.join(os.sep, "private", "tmp")) as directory_name:
-            directory = Path(directory_name)
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
             frontdoor, handoff, router = self._write_decision_inputs(
                 directory,
                 request_id="cli-card-001",
@@ -266,8 +266,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(before, after)
 
     def test_decision_batch_cli_keeps_multiple_outcomes_and_fails_closed(self) -> None:
-        with tempfile.TemporaryDirectory(dir=os.path.join(os.sep, "private", "tmp")) as directory_name:
-            directory = Path(directory_name)
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
             card = self._write_decision_inputs(
                 directory,
                 request_id="cli-card-002",
