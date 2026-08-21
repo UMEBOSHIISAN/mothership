@@ -28,6 +28,14 @@ inspectable across machines. It does not invoke a model, select an executor, or 
 **What you can do now:** validate explicit cross-tool documents, surface only the
 items that need a human decision, and keep approval separate from execution.
 
+**Human approval is still not execution authority.**
+
+```text
+Evidence → Decision Card → Human → Decision Approval
+                                      ≠
+                              Execution Authority
+```
+
 `mothership decision-batch` is the human-facing entry point for that decision
 surface. It accepts explicit Frontdoor and WGM files, with an optional advisory
 Router manifest, and renders an ephemeral foreground result:
