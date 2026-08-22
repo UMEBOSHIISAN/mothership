@@ -22,6 +22,7 @@ _GITHUB_HOST = "github.com"
 _TIMEOUT_SECONDS = 5.0
 _MAX_RESPONSE_BYTES = 1_048_576
 _MAX_NUMBER_DIGITS = 19
+_MAX_CANDIDATES = 20
 _SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
@@ -44,6 +45,16 @@ class GitHubRef:
     source_url: str
     api_url: str
     evidence_ref: str
+
+
+@dataclass(frozen=True)
+class GitHubRepositoryRef:
+    """A canonical public GitHub repository reference and PR list endpoint."""
+
+    owner: str
+    repo: str
+    source_url: str
+    api_url: str
 
 
 @dataclass(frozen=True)
@@ -156,6 +167,49 @@ def parse_github_ref(ref: object) -> GitHubRef:
     return GitHubRef(owner, repo, kind, number, source_url, api_url, evidence_ref)
 
 
+def parse_github_repository(ref: object) -> GitHubRepositoryRef:
+    """Parse one explicit public GitHub repository web URL."""
+
+    if type(ref) is not str:
+        raise _invalid("GitHub repository ref is invalid")
+    try:
+        parsed = urlsplit(ref)
+        port = parsed.port
+    except ValueError:
+        raise _invalid("GitHub repository ref is invalid") from None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != _GITHUB_HOST
+        or port is not None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise _invalid("GitHub repository ref is invalid")
+
+    parts = parsed.path.split("/")
+    if len(parts) != 3 or parts[0] or parts[1] == "" or parts[2] == "":
+        raise _invalid("GitHub repository ref is invalid")
+    owner, repo = parts[1:]
+    if (
+        _SAFE_COMPONENT.fullmatch(owner) is None
+        or _SAFE_COMPONENT.fullmatch(repo) is None
+        or repo.endswith(".git")
+    ):
+        raise _invalid("GitHub repository ref is invalid")
+    source_url = f"https://github.com/{owner}/{repo}"
+    if ref != source_url:
+        raise _invalid("GitHub repository ref is invalid")
+
+    return GitHubRepositoryRef(
+        owner=owner,
+        repo=repo,
+        source_url=source_url,
+        api_url=f"{_API_ROOT}/repos/{owner}/{repo}/pulls",
+    )
+
+
 def _payload_object(payload: object) -> dict[str, object]:
     if type(payload) is not dict:
         raise _invalid("GitHub response is not an object")
@@ -204,6 +258,48 @@ def _parse_observation(ref: GitHubRef, payload: object) -> GitHubObservation:
     )
 
 
+def _pull_request_ref(repository: GitHubRepositoryRef, number: int) -> GitHubRef:
+    source_url = f"{repository.source_url}/pull/{number}"
+    return GitHubRef(
+        owner=repository.owner,
+        repo=repository.repo,
+        kind="pull_request",
+        number=number,
+        source_url=source_url,
+        api_url=f"{_API_ROOT}/repos/{repository.owner}/{repository.repo}/pulls/{number}",
+        evidence_ref=f"github-pr-{repository.owner}-{repository.repo}-{number}",
+    )
+
+
+def _fetch_json(request: Request, *, opener: Callable[..., object] | None) -> object:
+    open_request = _default_open if opener is None else opener
+    try:
+        with open_request(request, timeout=_TIMEOUT_SECONDS) as response:
+            status = getattr(response, "status", None)
+            if status is None:
+                status = response.getcode()
+            if status != 200:
+                raise _invalid("GitHub response status is not successful")
+            raw = response.read(_MAX_RESPONSE_BYTES + 1)
+            if type(raw) not in (bytes, str) or len(raw) > _MAX_RESPONSE_BYTES:
+                raise _invalid("GitHub response is too large")
+            return loads_strict(raw)
+    except GitHubObservationError:
+        raise
+    except (
+        HTTPError,
+        HTTPException,
+        URLError,
+        TimeoutError,
+        OSError,
+        RecursionError,
+        TypeError,
+        ValueError,
+        ContractError,
+    ) as exc:
+        raise GitHubObservationError("GitHub observation failed") from exc
+
+
 def fetch_github_observation(
     ref: object,
     *,
@@ -221,32 +317,49 @@ def fetch_github_observation(
         },
         method="GET",
     )
-    open_request = _default_open if opener is None else opener
-    try:
-        with open_request(request, timeout=_TIMEOUT_SECONDS) as response:
-            status = getattr(response, "status", None)
-            if status is None:
-                status = response.getcode()
-            if status != 200:
-                raise _invalid("GitHub response status is not successful")
-            raw = response.read(_MAX_RESPONSE_BYTES + 1)
-            if type(raw) not in (bytes, str) or len(raw) > _MAX_RESPONSE_BYTES:
-                raise _invalid("GitHub response is too large")
-            payload = loads_strict(raw)
-    except GitHubObservationError:
-        raise
-    except (
-        HTTPError,
-        HTTPException,
-        URLError,
-        TimeoutError,
-        OSError,
-        TypeError,
-        ValueError,
-        ContractError,
-    ) as exc:
-        raise GitHubObservationError("GitHub observation failed") from exc
+    payload = _fetch_json(request, opener=opener)
     return _parse_observation(parsed_ref, payload)
+
+
+def fetch_github_candidates(
+    ref: object,
+    *,
+    opener: Callable[..., object] | None = None,
+) -> tuple[GitHubObservation, ...]:
+    """Fetch one bounded page of open PR observations with one GET."""
+
+    repository = parse_github_repository(ref)
+
+    request = Request(
+        f"{repository.api_url}?state=open&sort=updated&direction=desc"
+        f"&per_page={_MAX_CANDIDATES}&page=1",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "mothership-github-observation/0",
+        },
+        method="GET",
+    )
+    payload = _fetch_json(request, opener=opener)
+    if type(payload) is not list or len(payload) > _MAX_CANDIDATES:
+        raise GitHubObservationError("GitHub candidate response is invalid")
+
+    observations: list[GitHubObservation] = []
+    for item in payload:
+        if type(item) is not dict:
+            raise GitHubObservationError("GitHub candidate item is invalid")
+        number = item.get("number")
+        if (
+            type(number) is not int
+            or number < 1
+            or number >= 10**_MAX_NUMBER_DIGITS
+        ):
+            raise GitHubObservationError("GitHub candidate number is invalid")
+        observation = _parse_observation(_pull_request_ref(repository, number), item)
+        if observation.state != "open":
+            raise GitHubObservationError("GitHub candidate state is invalid")
+        observations.append(observation)
+    return tuple(observations)
 
 
 def map_observation_to_contracts(
@@ -318,8 +431,11 @@ __all__ = (
     "GitHubObservation",
     "GitHubObservationError",
     "GitHubRef",
+    "GitHubRepositoryRef",
     "build_github_decision_card",
+    "fetch_github_candidates",
     "fetch_github_observation",
     "map_observation_to_contracts",
+    "parse_github_repository",
     "parse_github_ref",
 )
