@@ -257,6 +257,7 @@ def _restore_preappend_state(
     handle: typing.BinaryIO,
     preappend_size: int,
     prior_events: list[dict[str, object]],
+    ledger_path: pathlib.Path,
 ) -> bool:
     try:
         os.ftruncate(descriptor, preappend_size)
@@ -268,11 +269,13 @@ def _restore_preappend_state(
             raise OSError("ledger rollback state mismatch")
         return True
     except (ActionAuthorityLedgerError, OSError, TypeError, ValueError):
-        _quarantine_unconfirmed_ledger(descriptor, preappend_size)
+        _quarantine_unconfirmed_ledger(descriptor, preappend_size, ledger_path)
         return False
 
 
-def _quarantine_unconfirmed_ledger(descriptor: int, preappend_size: int) -> None:
+def _quarantine_unconfirmed_ledger(
+    descriptor: int, preappend_size: int, ledger_path: pathlib.Path
+) -> None:
     try:
         os.fchmod(descriptor, 0o000)
         if stat.S_IMODE(os.fstat(descriptor).st_mode) == 0o000:
@@ -294,6 +297,30 @@ def _quarantine_unconfirmed_ledger(descriptor: int, preappend_size: int) -> None
             return
         raise OSError("ledger poison remained readable")
     except (ActionAuthorityLedgerError, OSError, TypeError, ValueError):
+        pass
+
+    try:
+        descriptor_before = os.fstat(descriptor)
+        path_before = os.lstat(ledger_path)
+        inode = (descriptor_before.st_dev, descriptor_before.st_ino)
+        if not stat.S_ISREG(path_before.st_mode) or (
+            path_before.st_dev,
+            path_before.st_ino,
+        ) != inode:
+            raise OSError("ledger quarantine path identity mismatch")
+        os.chmod(ledger_path, 0o000, follow_symlinks=False)
+        descriptor_after = os.fstat(descriptor)
+        path_after = os.lstat(ledger_path)
+        if (
+            not stat.S_ISREG(path_after.st_mode)
+            or (descriptor_after.st_dev, descriptor_after.st_ino) != inode
+            or (path_after.st_dev, path_after.st_ino) != inode
+            or stat.S_IMODE(descriptor_after.st_mode) != 0o000
+            or stat.S_IMODE(path_after.st_mode) != 0o000
+        ):
+            raise OSError("ledger path quarantine could not be verified")
+        return
+    except (OSError, TypeError, ValueError, NotImplementedError):
         raise LedgerIOError("ledger quarantine could not be confirmed") from None
 
 
@@ -383,6 +410,7 @@ def _append_on_locked_fd(
     handle: typing.BinaryIO,
     prior_events: list[dict[str, object]],
     event: dict[str, object],
+    ledger_path: pathlib.Path,
 ) -> dict[str, object]:
     try:
         checked = _validated_event(event)
@@ -404,6 +432,7 @@ def _append_on_locked_fd(
             handle,
             preappend_size,
             prior_events,
+            ledger_path,
         )
         if restored:
             raise LedgerIOError("ledger append failed and was rolled back") from None
@@ -469,7 +498,7 @@ def record_action_decision(
             "expires_at": frozen_action.expires_at,
             "max_uses": 1,
         }
-        return _append_on_locked_fd(descriptor, handle, events, event)
+        return _append_on_locked_fd(descriptor, handle, events, event, ledger_path)
 
 
 def consume_action(
@@ -521,5 +550,7 @@ def consume_action(
             "consumed_at": _format_utc(now),
             "expires_at": approval["expires_at"],
         }
-        durable_event = _append_on_locked_fd(descriptor, handle, events, event)
+        durable_event = _append_on_locked_fd(
+            descriptor, handle, events, event, ledger_path
+        )
         return durable_event, copy.deepcopy(action)

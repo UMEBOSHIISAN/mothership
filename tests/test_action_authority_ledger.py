@@ -490,6 +490,39 @@ class ConsumeTests(AuthorityActionLedgerTestCase):
             self.consume(approval)
         self.assertEqual(poisoned, self.path.read_bytes())
 
+    def test_failed_mode_and_poison_quarantine_uses_verified_path_mode(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+
+        with (
+            mock.patch.object(self.ledger, "_fsync", side_effect=OSError("private")),
+            mock.patch.object(
+                self.ledger.os, "ftruncate", side_effect=OSError("private")
+            ),
+            mock.patch.object(
+                self.ledger.os, "fchmod", side_effect=OSError("private")
+            ),
+        ):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+
+        failed_size = self.path.stat().st_size
+        self.assertGreater(failed_size, len(before))
+        self.assertEqual(0o000, self.path.stat().st_mode & 0o777)
+        with self.assertRaises(self.ledger.LedgerIOError):
+            self.consume(approval)
+        self.assertEqual(failed_size, self.path.stat().st_size)
+
+        os.chmod(self.path, 0o600)
+        events = self.read_events()
+        self.assertEqual(
+            1,
+            sum(
+                event["event_type"] == "authority_action_consume"
+                for event in events
+            ),
+        )
+
     def test_descriptor_opened_before_quarantine_rechecks_mode_after_lock(self):
         approval = self.record()
         before = self.path.read_bytes()
@@ -552,9 +585,11 @@ class ConsumeTests(AuthorityActionLedgerTestCase):
             trace.append("now")
             return _EPOCH + datetime.timedelta(seconds=2)
 
-        def append(descriptor, handle, events, event):
+        def append(descriptor, handle, events, event, ledger_path):
             trace.append("append")
-            return originals["append"](descriptor, handle, events, event)
+            return originals["append"](
+                descriptor, handle, events, event, ledger_path
+            )
 
         def flush(handle):
             trace.append("flush")
