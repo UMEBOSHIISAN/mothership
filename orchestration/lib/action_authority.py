@@ -47,17 +47,8 @@ ActionExpiredError = ExpiredActionError
 UnsupportedActionError = UnsupportedOperationError
 
 
-@dataclass(frozen=True)
-class _IssuedSnapshot:
-    action: Mapping[str, object]
-    action_sha256: str
-    expires_at: str
-
-
-_ISSUED_SNAPSHOTS: weakref.WeakKeyDictionary[object, _IssuedSnapshot] = (
-    weakref.WeakKeyDictionary()
-)
 _PUBLIC_FIELDS = frozenset({"action", "action_sha256", "expires_at"})
+_PUBLIC_FIELD_ORDER = ("action", "action_sha256", "expires_at")
 
 
 @dataclass(frozen=True, eq=False, init=False)
@@ -73,37 +64,85 @@ class FrozenAction:
 
     def __getattribute__(self, name: str) -> object:
         if name in _PUBLIC_FIELDS:
-            return getattr(_issued_snapshot_for(self), name)
+            return _issued_values_for(self)[_PUBLIC_FIELD_ORDER.index(name)]
         return object.__getattribute__(self, name)
 
 
-def freeze_action(
-    action_id: str,
-    operation: str,
-    execution_parameters: dict[str, object],
-) -> FrozenAction:
-    """Validate and freeze one closed github.merge_pr action instance."""
+def _make_authority_core():
+    @dataclass(frozen=True)
+    class IssuedSnapshot:
+        action: Mapping[str, object]
+        action_sha256: str
+        expires_at: str
 
-    action = _validated_action(
-        {
-            "action_id": action_id,
-            "operation": operation,
-            "execution_parameters": execution_parameters,
-            "display": _display_for(operation, execution_parameters),
-        }
-    )
-    frozen_at = _utc_now()
-    snapshot = _IssuedSnapshot(
-        _freeze_value(action),
-        canonical_json_sha256(action),
-        _format_utc(frozen_at + _APPROVAL_TTL),
-    )
-    context = object.__new__(FrozenAction)
-    object.__setattr__(context, "action", snapshot.action)
-    object.__setattr__(context, "action_sha256", snapshot.action_sha256)
-    object.__setattr__(context, "expires_at", snapshot.expires_at)
-    _ISSUED_SNAPSHOTS[context] = snapshot
-    return context
+    snapshots: dict[int, tuple[weakref.ReferenceType, IssuedSnapshot]] = {}
+
+    def freeze_action(
+        action_id: str,
+        operation: str,
+        execution_parameters: dict[str, object],
+    ) -> FrozenAction:
+        """Validate and freeze one closed github.merge_pr action instance."""
+
+        action = _validated_action(
+            {
+                "action_id": action_id,
+                "operation": operation,
+                "execution_parameters": execution_parameters,
+                "display": _display_for(operation, execution_parameters),
+            }
+        )
+        frozen_at = _utc_now()
+        context = object.__new__(FrozenAction)
+        snapshot = IssuedSnapshot(
+            _freeze_value(action),
+            canonical_json_sha256(action),
+            _format_utc(frozen_at + _APPROVAL_TTL),
+        )
+        key = id(context)
+
+        def discard(reference: weakref.ReferenceType, *, key: int = key) -> None:
+            entry = snapshots.get(key)
+            if entry is not None and entry[0] is reference:
+                snapshots.pop(key, None)
+
+        snapshots[key] = (weakref.ref(context, discard), snapshot)
+        object.__setattr__(context, "action", snapshot.action)
+        object.__setattr__(context, "action_sha256", snapshot.action_sha256)
+        object.__setattr__(context, "expires_at", snapshot.expires_at)
+        return context
+
+    def issued_values_for(
+        frozen_action: FrozenAction,
+    ) -> tuple[Mapping[str, object], str, str]:
+        if type(frozen_action) is not FrozenAction:
+            raise MalformedActionError("frozen action context must be core-issued")
+        key = id(frozen_action)
+        entry = snapshots.get(key)
+        if entry is None:
+            raise MalformedActionError("frozen action issuance is not recognized")
+        reference, snapshot = entry
+        if reference() is not frozen_action:
+            if snapshots.get(key) is entry:
+                snapshots.pop(key, None)
+            raise MalformedActionError("frozen action issuance is not recognized")
+        raw = object.__getattribute__(frozen_action, "__dict__")
+        if not all(
+            raw.get(field) is expected
+            for field, expected in (
+                ("action", snapshot.action),
+                ("action_sha256", snapshot.action_sha256),
+                ("expires_at", snapshot.expires_at),
+            )
+        ):
+            raise MalformedActionError("frozen action public state was tampered with")
+        return snapshot.action, snapshot.action_sha256, snapshot.expires_at
+
+    return freeze_action, issued_values_for
+
+
+freeze_action, _issued_values_for = _make_authority_core()
+del _make_authority_core
 
 
 def action_sha256(action: dict[str, object]) -> str:
@@ -141,36 +180,18 @@ def validate_decision_transport(
 def _validated_frozen_action(frozen_action: FrozenAction) -> dict[str, object]:
     if type(frozen_action) is not FrozenAction:
         raise MalformedActionError("frozen action context must be core-issued")
-    issued = _issued_snapshot_for(frozen_action)
-    action = _validated_action(issued.action)
+    action, issued_digest, expires_at = _issued_values_for(frozen_action)
+    action = _validated_action(action)
     expected_digest = canonical_json_sha256(action)
-    if type(issued.action_sha256) is not str or issued.action_sha256 != expected_digest:
+    if type(issued_digest) is not str or issued_digest != expected_digest:
         raise MalformedActionError("frozen action digest is invalid")
-    expires_at = _parse_utc(issued.expires_at)
+    expires_at = _parse_utc(expires_at)
     now = _utc_now()
     if expires_at > now + _APPROVAL_TTL:
         raise MalformedActionError("frozen action expiry exceeds the fixed policy window")
     if expires_at <= now:
         raise ExpiredActionError("frozen action has expired")
     return action
-
-
-def _issued_snapshot_for(frozen_action: FrozenAction) -> _IssuedSnapshot:
-    if type(frozen_action) is not FrozenAction:
-        raise MalformedActionError("frozen action context must be core-issued")
-    try:
-        issued = _ISSUED_SNAPSHOTS.get(frozen_action)
-    except (TypeError, ValueError):
-        issued = None
-    if issued is None:
-        raise MalformedActionError("frozen action issuance is not recognized")
-    raw = object.__getattribute__(frozen_action, "__dict__")
-    if any(
-        raw.get(field) is not getattr(issued, field)
-        for field in _PUBLIC_FIELDS
-    ):
-        raise MalformedActionError("frozen action public state was tampered with")
-    return issued
 
 
 def _validated_action(value: object) -> dict[str, object]:
