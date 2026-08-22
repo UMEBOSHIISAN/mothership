@@ -392,19 +392,82 @@ class ConsumeTests(AuthorityActionLedgerTestCase):
         self.assertEqual(before, self.path.read_bytes())
         self.assertEqual(1, sum(row["event_type"] == "authority_action_consume" for row in self.read_events()))
 
-    def test_fsync_failure_returns_no_authority_and_is_not_retried(self):
+    def test_short_write_then_error_restores_exact_preconsume_state(self):
         approval = self.record()
+        before = self.path.read_bytes()
+        original_write = self.ledger._write_chunk
         calls = 0
+
+        def short_then_fail(handle, raw):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                amount = max(1, len(raw) // 2)
+                return original_write(handle, raw[:amount])
+            raise OSError("private")
+
+        with mock.patch.object(self.ledger, "_write_chunk", side_effect=short_then_fail):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+        self.assertEqual(2, calls)
+        self.assertEqual(before, self.path.read_bytes())
+
+        consume_event, action = self.consume(approval)
+        self.assertEqual(approval["action"], action)
+        self.assertEqual(consume_event, self.read_events()[-1])
+
+    def test_fsync_failure_restores_exact_preconsume_state_without_event_retry(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+        original_fsync = self.ledger._fsync
+        original_write = self.ledger._write_chunk
+        calls = 0
+        writes = 0
+
+        def write(handle, raw):
+            nonlocal writes
+            writes += 1
+            return original_write(handle, raw)
 
         def fail(_descriptor):
             nonlocal calls
             calls += 1
-            raise OSError("private")
+            if calls == 1:
+                raise OSError("private")
+            return original_fsync(_descriptor)
 
-        with mock.patch.object(self.ledger, "_fsync", side_effect=fail):
+        with (
+            mock.patch.object(self.ledger, "_write_chunk", side_effect=write),
+            mock.patch.object(self.ledger, "_fsync", side_effect=fail),
+        ):
             with self.assertRaises(self.ledger.LedgerIOError):
                 self.consume(approval)
-        self.assertEqual(1, calls)
+        self.assertEqual(2, calls)
+        self.assertEqual(1, writes)
+        self.assertEqual(before, self.path.read_bytes())
+
+        consume_event, action = self.consume(approval)
+        self.assertEqual(approval["action"], action)
+        self.assertEqual(consume_event, self.read_events()[-1])
+
+    def test_unconfirmed_rollback_quarantines_ledger_and_cannot_return_authority(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+
+        with mock.patch.object(
+            self.ledger, "_fsync", side_effect=OSError("private")
+        ):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+
+        metadata = self.path.stat()
+        self.assertEqual(len(before), metadata.st_size)
+        self.assertEqual(0o000, metadata.st_mode & 0o777)
+        with self.assertRaises(self.ledger.LedgerIOError):
+            self.consume(approval)
+
+        os.chmod(self.path, 0o600)
+        self.assertEqual(before, self.path.read_bytes())
 
     def test_lock_covers_read_time_replay_checks_append_flush_and_fsync(self):
         approval = self.record()

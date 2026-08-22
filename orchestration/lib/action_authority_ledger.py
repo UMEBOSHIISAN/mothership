@@ -252,6 +252,29 @@ def _fsync(descriptor: int) -> None:
     os.fsync(descriptor)
 
 
+def _restore_preappend_state(
+    descriptor: int,
+    handle: typing.BinaryIO,
+    preappend_size: int,
+    prior_events: list[dict[str, object]],
+) -> bool:
+    try:
+        os.ftruncate(descriptor, preappend_size)
+        if os.fstat(descriptor).st_size != preappend_size:
+            raise OSError("ledger rollback size mismatch")
+        _flush(handle)
+        _fsync(descriptor)
+        if _read_locked(descriptor) != prior_events:
+            raise OSError("ledger rollback state mismatch")
+        return True
+    except (ActionAuthorityLedgerError, OSError, TypeError, ValueError):
+        try:
+            os.fchmod(descriptor, 0o000)
+        except OSError:
+            pass
+        return False
+
+
 @contextlib.contextmanager
 def _locked_ledger(path: pathlib.Path):
     checked_path = _require_ledger_path(path)
@@ -345,12 +368,26 @@ def _append_on_locked_fd(
     except _EventValidationError:
         raise ActionAuthorityLedgerError("generated event violates the closed ledger") from None
     raw = canonical.canonical_json_bytes(checked) + b"\n"
-    _write_all(handle, raw)
     try:
+        preappend_size = os.fstat(descriptor).st_size
+    except OSError:
+        raise LedgerIOError("ledger size could not be captured") from None
+    try:
+        _write_all(handle, raw)
         _flush(handle)
         _fsync(descriptor)
-    except OSError:
-        raise LedgerIOError("ledger durability step failed") from None
+    except (LedgerIOError, OSError):
+        restored = _restore_preappend_state(
+            descriptor,
+            handle,
+            preappend_size,
+            prior_events,
+        )
+        if restored:
+            raise LedgerIOError("ledger append failed and was rolled back") from None
+        raise LedgerIOError(
+            "ledger append failed and rollback could not be confirmed"
+        ) from None
     return copy.deepcopy(checked)
 
 
