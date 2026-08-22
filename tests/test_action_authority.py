@@ -182,6 +182,64 @@ class ActionAuthorityTests(unittest.TestCase):
                     replacement_digest,
                 )
 
+    def test_subclass_registry_alias_is_rejected_before_subclass_reads(self) -> None:
+        frozen_at = datetime.datetime(2026, 8, 22, 10, 0, tzinfo=datetime.UTC)
+        with patch("orchestration.lib.action_authority._utc_now", return_value=frozen_at):
+            issued = self.freeze()
+        replacement_action = {
+            "action_id": "act-merge-pr-001",
+            "operation": "github.merge_pr",
+            "execution_parameters": {**EXECUTION_PARAMETERS, "pull_request": 6},
+            "display": {
+                "target": "PR #6 -> main",
+                "scope": (
+                    "repository=UMEBOSHIISAN/mothership; "
+                    "expected_head_sha=e2161c0c27af68221ad507a05583a5fbdaecefe1; "
+                    "expected_base=main; merge_method=merge"
+                ),
+                "excluded_operations": ["squash", "rebase", "force_push", "branch_delete"],
+                "consequence_if_approved": "PR #6 changes will be integrated into main.",
+            },
+        }
+        replacement_digest = canonical_json_sha256(replacement_action)
+        reads: list[str] = []
+
+        class AliasedFrozenAction(FrozenAction):
+            def __hash__(self) -> int:
+                return hash(issued)
+
+            def __eq__(self, other: object) -> bool:
+                return other is issued
+
+            def __getattribute__(self, name: str) -> object:
+                if name == "action":
+                    reads.append(name)
+                    return replacement_action
+                if name == "action_sha256":
+                    reads.append(name)
+                    return replacement_digest
+                if name == "expires_at":
+                    reads.append(name)
+                    return "2026-08-22T10:15:00Z"
+                return super().__getattribute__(name)
+
+        aliased = object.__new__(AliasedFrozenAction)
+        object.__setattr__(aliased, "action", issued.action)
+        object.__setattr__(aliased, "action_sha256", issued.action_sha256)
+        object.__setattr__(aliased, "expires_at", issued.expires_at)
+        with patch(
+            "orchestration.lib.action_authority._utc_now",
+            return_value=frozen_at + datetime.timedelta(minutes=5),
+        ):
+            with self.assertRaises(MalformedActionError):
+                validate_decision_transport(
+                    aliased,
+                    "approve",
+                    "act-merge-pr-001",
+                    replacement_digest,
+                )
+        self.assertEqual([], reads)
+
     def test_validate_transport_returns_only_bound_approve_or_reject_decisions(self) -> None:
         frozen = self.freeze()
         for decision in ("approve", "reject"):
