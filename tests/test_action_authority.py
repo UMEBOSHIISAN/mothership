@@ -6,6 +6,7 @@ import inspect
 import unittest
 from unittest.mock import patch
 
+from orchestration.lib import action_authority
 from orchestration.lib.canonical import canonical_json_sha256
 from orchestration.lib.action_authority import (
     ActionBindingError,
@@ -138,6 +139,27 @@ class ActionAuthorityTests(unittest.TestCase):
                 frozen.action_sha256,
                 replacement_expiry.strftime("%Y-%m-%dT%H:%M:%SZ"),
             )
+
+    def test_direct_constructor_cannot_use_a_private_issuance_mechanism(self) -> None:
+        issued = self.freeze()
+        obtained_or_guessed_token = getattr(action_authority, "_ISSUANCE_TOKEN", object())
+        with self.assertRaises(TypeError):
+            FrozenAction(
+                issued.action,
+                issued.action_sha256,
+                "2026-08-22T10:15:00Z",
+                _issuance_token=obtained_or_guessed_token,
+            )
+        self.assertIs(type(issued), FrozenAction)
+        self.assertEqual(
+            "act-merge-pr-001",
+            validate_decision_transport(
+                issued,
+                "approve",
+                "act-merge-pr-001",
+                issued.action_sha256,
+            )["action_id"],
+        )
 
     def test_object_tampering_cannot_extend_the_issued_expiry(self) -> None:
         frozen_at = datetime.datetime(2026, 8, 22, 10, 0, tzinfo=datetime.UTC)
