@@ -4,6 +4,7 @@ import copy
 import datetime
 import inspect
 import unittest
+from unittest.mock import patch
 
 from orchestration.lib.canonical import canonical_json_sha256
 from orchestration.lib.action_authority import (
@@ -97,9 +98,8 @@ class ActionAuthorityTests(unittest.TestCase):
             "display": copy.deepcopy(EXPECTED_DISPLAY),
         }
         altered["display"] = {**EXPECTED_DISPLAY, "excluded_operations": ["squash", "squash", "rebase", "force_push"]}
-        reconstructed = FrozenAction(altered, frozen.action_sha256, frozen.expires_at)
-        with self.assertRaises(MalformedActionError):
-            validate_decision_transport(reconstructed, "approve", "act-merge-pr-001", frozen.action_sha256)
+        with self.assertRaises(TypeError):
+            FrozenAction(altered, frozen.action_sha256, frozen.expires_at)
 
     def test_action_digest_is_canonical_sha256_of_the_exact_action_not_expiry(self) -> None:
         action = {
@@ -120,9 +120,24 @@ class ActionAuthorityTests(unittest.TestCase):
         deadline = datetime.datetime.strptime(frozen.expires_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.UTC)
         self.assertLessEqual(deadline, after + datetime.timedelta(minutes=10))
         self.assertGreaterEqual(deadline, before + datetime.timedelta(minutes=9, seconds=58))
-        later = FrozenAction(frozen.action, frozen.action_sha256, "2099-01-01T00:00:00Z")
-        with self.assertRaises(MalformedActionError):
-            validate_decision_transport(later, "approve", "act-merge-pr-001", frozen.action_sha256)
+        with self.assertRaises(TypeError):
+            FrozenAction(frozen.action, frozen.action_sha256, "2099-01-01T00:00:00Z")
+
+    def test_public_constructor_cannot_renew_an_expired_action_within_a_new_policy_window(self) -> None:
+        frozen_at = datetime.datetime(2026, 8, 22, 10, 0, tzinfo=datetime.UTC)
+        with patch("orchestration.lib.action_authority._utc_now", return_value=frozen_at):
+            frozen = self.freeze()
+        after_original_expiry = frozen_at + datetime.timedelta(minutes=11)
+        replacement_expiry = after_original_expiry + datetime.timedelta(minutes=10)
+        original_expiry = datetime.datetime.strptime(frozen.expires_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.UTC)
+        self.assertLess(original_expiry, after_original_expiry)
+        self.assertLessEqual(replacement_expiry, after_original_expiry + datetime.timedelta(minutes=10))
+        with self.assertRaises(TypeError):
+            FrozenAction(
+                frozen.action,
+                frozen.action_sha256,
+                replacement_expiry.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            )
 
     def test_validate_transport_returns_only_bound_approve_or_reject_decisions(self) -> None:
         frozen = self.freeze()
@@ -175,18 +190,17 @@ class ActionAuthorityTests(unittest.TestCase):
                 with self.assertRaises(MalformedActionError):
                     freeze_action(action_id, "github.merge_pr", EXECUTION_PARAMETERS)  # type: ignore[arg-type]
         frozen = self.freeze()
-        malformed = FrozenAction(
-            {
-                "action_id": "act-merge-pr-001",
-                "operation": "github.merge_pr",
-                "execution_parameters": copy.deepcopy(EXECUTION_PARAMETERS),
-                "display": ["not", "a", "mapping"],
-            },
-            frozen.action_sha256,
-            frozen.expires_at,
-        )
-        with self.assertRaises(MalformedActionError):
-            validate_decision_transport(malformed, "approve", "act-merge-pr-001", frozen.action_sha256)
+        with self.assertRaises(TypeError):
+            FrozenAction(
+                {
+                    "action_id": "act-merge-pr-001",
+                    "operation": "github.merge_pr",
+                    "execution_parameters": copy.deepcopy(EXECUTION_PARAMETERS),
+                    "display": ["not", "a", "mapping"],
+                },
+                frozen.action_sha256,
+                frozen.expires_at,
+            )
 
 
 if __name__ == "__main__":

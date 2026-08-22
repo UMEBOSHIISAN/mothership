@@ -19,6 +19,7 @@ _HEAD_SHA = re.compile(r"[0-9a-f]{40}\Z")
 _BASE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
 _UTC_TIMESTAMP = "%Y-%m-%dT%H:%M:%SZ"
 _EXCLUDED_OPERATIONS = ("squash", "rebase", "force_push", "branch_delete")
+_ISSUANCE_TOKEN = object()
 
 
 class ActionAuthorityError(ContractError):
@@ -41,7 +42,7 @@ class ExpiredActionError(MalformedActionError):
     """Raised when a frozen action context is no longer within its deadline."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class FrozenAction:
     """An in-memory immutable action, its canonical digest, and its deadline."""
 
@@ -49,10 +50,21 @@ class FrozenAction:
     action_sha256: str
     expires_at: str
 
-    def __post_init__(self) -> None:
-        if not isinstance(self.action, Mapping):
+    def __init__(
+        self,
+        action: Mapping[str, object],
+        action_sha256: str,
+        expires_at: str,
+        *,
+        _issuance_token: object | None = None,
+    ) -> None:
+        if _issuance_token is not _ISSUANCE_TOKEN:
+            raise TypeError("FrozenAction contexts can only be issued by freeze_action")
+        if not isinstance(action, Mapping):
             raise MalformedActionError("frozen action must be a mapping")
-        object.__setattr__(self, "action", _freeze_value(self.action))
+        object.__setattr__(self, "action", _freeze_value(action))
+        object.__setattr__(self, "action_sha256", action_sha256)
+        object.__setattr__(self, "expires_at", expires_at)
 
 
 def freeze_action(
@@ -71,7 +83,7 @@ def freeze_action(
         }
     )
     frozen_at = _utc_now()
-    return FrozenAction(
+    return _issue_frozen_action(
         action=action,
         action_sha256=canonical_json_sha256(action),
         expires_at=_format_utc(frozen_at + _APPROVAL_TTL),
@@ -82,6 +94,17 @@ def action_sha256(action: dict[str, object]) -> str:
     """Return the canonical SHA-256 of one exact, validated frozen action."""
 
     return canonical_json_sha256(_validated_action(action))
+
+
+def _issue_frozen_action(
+    action: Mapping[str, object], action_sha256: str, expires_at: str
+) -> FrozenAction:
+    return FrozenAction(
+        action,
+        action_sha256,
+        expires_at,
+        _issuance_token=_ISSUANCE_TOKEN,
+    )
 
 
 def validate_decision_transport(
