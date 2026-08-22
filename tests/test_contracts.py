@@ -374,6 +374,8 @@ class ContractTestCase(unittest.TestCase):
     def test_all_bundled_schemas_are_recursive_closed_draft_2020_12_documents(self) -> None:
         paths = (
             "evidence/contracts/approval-event.schema.json",
+            "evidence/contracts/authority-action-approval.v0.schema.json",
+            "evidence/contracts/authority-action-consume.v0.schema.json",
             "frontdoor/contracts/decision.schema.json",
             "frontdoor/contracts/task.schema.json",
             "orchestration/contracts/executor-registry.schema.json",

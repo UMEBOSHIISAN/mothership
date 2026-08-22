@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 
 from orchestration.lib import adapters as old_adapters
+from orchestration.lib import action_authority as old_action_authority
+from orchestration.lib import action_authority_ledger as old_action_authority_ledger
 from orchestration.lib import canonical, contracts as old_contracts, jsonio, ledger, paths
 from orchestration.lib import decision as old_decision
 from orchestration.lib import registry as old_registry
@@ -99,10 +101,38 @@ class PublicFacadeTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIs(getattr(source, name), getattr(contracts, name))
 
-    def test_facades_publish_no_implicit_extra_names(self) -> None:
-        from mothership import adapters, approval, contracts, scope
+    def test_action_authority_facade_reexports_authoritative_objects(self) -> None:
+        from mothership import action_authority
 
-        for module in (adapters, approval, contracts, scope):
+        expected_sources = {
+            "ActionAlreadyConsumedActionError": old_action_authority_ledger.ActionReplayError,
+            "ActionAlreadyConsumedError": old_action_authority_ledger.ApprovalReplayError,
+            "ActionAuthorityError": old_action_authority.ActionAuthorityError,
+            "ActionBindingError": old_action_authority.ActionBindingError,
+            "ActionEventValidationError": old_action_authority_ledger.ActionEventValidationError,
+            "ActionExpiredError": old_action_authority.ExpiredActionError,
+            "ActionLedgerError": old_action_authority_ledger.ActionAuthorityLedgerError,
+            "ActionLedgerIOError": old_action_authority_ledger.LedgerIOError,
+            "ActionMalformedLedgerError": old_action_authority_ledger.MalformedLedgerStateError,
+            "ActionMissingApprovalError": old_action_authority_ledger.MissingApprovalError,
+            "ActionRejectedError": old_action_authority_ledger.RejectedApprovalError,
+            "FrozenAction": old_action_authority.FrozenAction,
+            "UnsupportedActionError": old_action_authority.UnsupportedOperationError,
+            "action_sha256": old_action_authority.action_sha256,
+            "consume_action": old_action_authority_ledger.consume_action,
+            "freeze_action": old_action_authority.freeze_action,
+            "record_action_decision": old_action_authority_ledger.record_action_decision,
+            "validate_decision_transport": old_action_authority.validate_decision_transport,
+        }
+        self.assertEqual(tuple(expected_sources), action_authority.__all__)
+        for name, source in expected_sources.items():
+            with self.subTest(name=name):
+                self.assertIs(source, getattr(action_authority, name))
+
+    def test_facades_publish_no_implicit_extra_names(self) -> None:
+        from mothership import action_authority, adapters, approval, contracts, scope
+
+        for module in (action_authority, adapters, approval, contracts, scope):
             with self.subTest(module=module.__name__):
                 public = tuple(sorted(name for name in vars(module) if not name.startswith("_")))
                 self.assertEqual(module.__all__, public)
