@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import datetime
 import re
 from types import MappingProxyType
+import weakref
 
 from .canonical import canonical_json_sha256
 from .errors import ContractError
@@ -42,7 +43,20 @@ class ExpiredActionError(MalformedActionError):
     """Raised when a frozen action context is no longer within its deadline."""
 
 
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True)
+class _IssuedSnapshot:
+    action: Mapping[str, object]
+    action_sha256: str
+    expires_at: str
+
+
+_ISSUED_SNAPSHOTS: weakref.WeakKeyDictionary[object, _IssuedSnapshot] = (
+    weakref.WeakKeyDictionary()
+)
+_PUBLIC_FIELDS = frozenset({"action", "action_sha256", "expires_at"})
+
+
+@dataclass(frozen=True, eq=False, init=False)
 class FrozenAction:
     """An in-memory immutable action, its canonical digest, and its deadline."""
 
@@ -62,9 +76,20 @@ class FrozenAction:
             raise TypeError("FrozenAction contexts can only be issued by freeze_action")
         if not isinstance(action, Mapping):
             raise MalformedActionError("frozen action must be a mapping")
-        object.__setattr__(self, "action", _freeze_value(action))
+        issued_action = _freeze_value(action)
+        object.__setattr__(self, "action", issued_action)
         object.__setattr__(self, "action_sha256", action_sha256)
         object.__setattr__(self, "expires_at", expires_at)
+        _ISSUED_SNAPSHOTS[self] = _IssuedSnapshot(
+            issued_action,
+            action_sha256,
+            expires_at,
+        )
+
+    def __getattribute__(self, name: str) -> object:
+        if name in _PUBLIC_FIELDS:
+            return getattr(_issued_snapshot_for(self), name)
+        return object.__getattribute__(self, name)
 
 
 def freeze_action(
@@ -136,17 +161,34 @@ def validate_decision_transport(
 def _validated_frozen_action(frozen_action: FrozenAction) -> dict[str, object]:
     if not isinstance(frozen_action, FrozenAction):
         raise MalformedActionError("frozen action context is invalid")
-    action = _validated_action(frozen_action.action)
+    issued = _issued_snapshot_for(frozen_action)
+    action = _validated_action(issued.action)
     expected_digest = canonical_json_sha256(action)
-    if type(frozen_action.action_sha256) is not str or frozen_action.action_sha256 != expected_digest:
+    if type(issued.action_sha256) is not str or issued.action_sha256 != expected_digest:
         raise MalformedActionError("frozen action digest is invalid")
-    expires_at = _parse_utc(frozen_action.expires_at)
+    expires_at = _parse_utc(issued.expires_at)
     now = _utc_now()
     if expires_at > now + _APPROVAL_TTL:
         raise MalformedActionError("frozen action expiry exceeds the fixed policy window")
     if expires_at <= now:
         raise ExpiredActionError("frozen action has expired")
     return action
+
+
+def _issued_snapshot_for(frozen_action: FrozenAction) -> _IssuedSnapshot:
+    try:
+        issued = _ISSUED_SNAPSHOTS.get(frozen_action)
+    except (TypeError, ValueError):
+        issued = None
+    if issued is None:
+        raise MalformedActionError("frozen action issuance is not recognized")
+    raw = object.__getattribute__(frozen_action, "__dict__")
+    if any(
+        raw.get(field) is not getattr(issued, field)
+        for field in _PUBLIC_FIELDS
+    ):
+        raise MalformedActionError("frozen action public state was tampered with")
+    return issued
 
 
 def _validated_action(value: object) -> dict[str, object]:
