@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authority-action-consume.v0.schema.json",
+  "title": "Mothership Authority Action Consume v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_type",
+    "event_id",
+    "approval_event_id",
+    "action_id",
+    "action_sha256",
+    "consumed_at",
+    "expires_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "authority-action-consume.v0"
+    },
+    "event_type": {
+      "const": "authority_action_consume"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{32}$"
+    },
+    "approval_event_id": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{32}$"
+    },
+    "action_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^act-[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "action_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "consumed_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    }
+  }
+}
