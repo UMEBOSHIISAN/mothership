@@ -161,6 +161,57 @@ class ActionAuthorityTests(unittest.TestCase):
             )["action_id"],
         )
 
+    def test_fresh_forged_context_cannot_use_module_issuance_storage(self) -> None:
+        forged_parameters = {**EXECUTION_PARAMETERS, "pull_request": 6}
+        forged_action = {
+            "action_id": "act-merge-pr-001",
+            "operation": "github.merge_pr",
+            "execution_parameters": forged_parameters,
+            "display": {
+                "target": "PR #6 -> main",
+                "scope": (
+                    "repository=UMEBOSHIISAN/mothership; "
+                    "expected_head_sha=e2161c0c27af68221ad507a05583a5fbdaecefe1; "
+                    "expected_base=main; merge_method=merge"
+                ),
+                "excluded_operations": ["squash", "rebase", "force_push", "branch_delete"],
+                "consequence_if_approved": "PR #6 changes will be integrated into main.",
+            },
+        }
+        forged_digest = canonical_json_sha256(forged_action)
+        forged_expiry = "2026-08-22T10:15:00Z"
+        forged = object.__new__(FrozenAction)
+        object.__setattr__(forged, "action", forged_action)
+        object.__setattr__(forged, "action_sha256", forged_digest)
+        object.__setattr__(forged, "expires_at", forged_expiry)
+
+        exposed_registry = getattr(action_authority, "_ISSUED_SNAPSHOTS", None)
+        exposed_snapshot_type = getattr(action_authority, "_IssuedSnapshot", None)
+        if exposed_registry is not None and exposed_snapshot_type is not None:
+            exposed_registry[forged] = exposed_snapshot_type(
+                forged_action,
+                forged_digest,
+                forged_expiry,
+            )
+        try:
+            with patch(
+                "orchestration.lib.action_authority._utc_now",
+                return_value=datetime.datetime(2026, 8, 22, 10, 5, tzinfo=datetime.UTC),
+            ):
+                with self.assertRaises(MalformedActionError):
+                    validate_decision_transport(
+                        forged,
+                        "approve",
+                        "act-merge-pr-001",
+                        forged_digest,
+                    )
+        finally:
+            if exposed_registry is not None:
+                exposed_registry.pop(forged, None)
+
+        self.assertIsNone(getattr(action_authority, "_ISSUED_SNAPSHOTS", None))
+        self.assertIsNone(getattr(action_authority, "_ISSUANCE_TOKEN", None))
+
     def test_object_tampering_cannot_extend_the_issued_expiry(self) -> None:
         frozen_at = datetime.datetime(2026, 8, 22, 10, 0, tzinfo=datetime.UTC)
         with patch("orchestration.lib.action_authority._utc_now", return_value=frozen_at):
