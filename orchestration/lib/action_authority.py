@@ -42,6 +42,11 @@ class ExpiredActionError(MalformedActionError):
     """Raised when a frozen action context is no longer within its deadline."""
 
 
+# Stable public vocabulary used by the Mothership facade.
+ActionExpiredError = ExpiredActionError
+UnsupportedActionError = UnsupportedOperationError
+
+
 @dataclass(frozen=True)
 class _IssuedSnapshot:
     action: Mapping[str, object]
