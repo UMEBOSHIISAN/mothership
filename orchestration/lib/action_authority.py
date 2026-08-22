@@ -159,8 +159,8 @@ def validate_decision_transport(
 
 
 def _validated_frozen_action(frozen_action: FrozenAction) -> dict[str, object]:
-    if not isinstance(frozen_action, FrozenAction):
-        raise MalformedActionError("frozen action context is invalid")
+    if type(frozen_action) is not FrozenAction:
+        raise MalformedActionError("frozen action context must be core-issued")
     issued = _issued_snapshot_for(frozen_action)
     action = _validated_action(issued.action)
     expected_digest = canonical_json_sha256(action)
@@ -176,6 +176,8 @@ def _validated_frozen_action(frozen_action: FrozenAction) -> dict[str, object]:
 
 
 def _issued_snapshot_for(frozen_action: FrozenAction) -> _IssuedSnapshot:
+    if type(frozen_action) is not FrozenAction:
+        raise MalformedActionError("frozen action context must be core-issued")
     try:
         issued = _ISSUED_SNAPSHOTS.get(frozen_action)
     except (TypeError, ValueError):
