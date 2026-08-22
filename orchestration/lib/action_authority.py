@@ -20,7 +20,6 @@ _HEAD_SHA = re.compile(r"[0-9a-f]{40}\Z")
 _BASE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
 _UTC_TIMESTAMP = "%Y-%m-%dT%H:%M:%SZ"
 _EXCLUDED_OPERATIONS = ("squash", "rebase", "force_push", "branch_delete")
-_ISSUANCE_TOKEN = object()
 
 
 class ActionAuthorityError(ContractError):
@@ -64,27 +63,8 @@ class FrozenAction:
     action_sha256: str
     expires_at: str
 
-    def __init__(
-        self,
-        action: Mapping[str, object],
-        action_sha256: str,
-        expires_at: str,
-        *,
-        _issuance_token: object | None = None,
-    ) -> None:
-        if _issuance_token is not _ISSUANCE_TOKEN:
-            raise TypeError("FrozenAction contexts can only be issued by freeze_action")
-        if not isinstance(action, Mapping):
-            raise MalformedActionError("frozen action must be a mapping")
-        issued_action = _freeze_value(action)
-        object.__setattr__(self, "action", issued_action)
-        object.__setattr__(self, "action_sha256", action_sha256)
-        object.__setattr__(self, "expires_at", expires_at)
-        _ISSUED_SNAPSHOTS[self] = _IssuedSnapshot(
-            issued_action,
-            action_sha256,
-            expires_at,
-        )
+    def __init__(self) -> None:
+        raise TypeError("FrozenAction contexts can only be issued by freeze_action")
 
     def __getattribute__(self, name: str) -> object:
         if name in _PUBLIC_FIELDS:
@@ -108,28 +88,23 @@ def freeze_action(
         }
     )
     frozen_at = _utc_now()
-    return _issue_frozen_action(
-        action=action,
-        action_sha256=canonical_json_sha256(action),
-        expires_at=_format_utc(frozen_at + _APPROVAL_TTL),
+    snapshot = _IssuedSnapshot(
+        _freeze_value(action),
+        canonical_json_sha256(action),
+        _format_utc(frozen_at + _APPROVAL_TTL),
     )
+    context = object.__new__(FrozenAction)
+    object.__setattr__(context, "action", snapshot.action)
+    object.__setattr__(context, "action_sha256", snapshot.action_sha256)
+    object.__setattr__(context, "expires_at", snapshot.expires_at)
+    _ISSUED_SNAPSHOTS[context] = snapshot
+    return context
 
 
 def action_sha256(action: dict[str, object]) -> str:
     """Return the canonical SHA-256 of one exact, validated frozen action."""
 
     return canonical_json_sha256(_validated_action(action))
-
-
-def _issue_frozen_action(
-    action: Mapping[str, object], action_sha256: str, expires_at: str
-) -> FrozenAction:
-    return FrozenAction(
-        action,
-        action_sha256,
-        expires_at,
-        _issuance_token=_ISSUANCE_TOKEN,
-    )
 
 
 def validate_decision_transport(
