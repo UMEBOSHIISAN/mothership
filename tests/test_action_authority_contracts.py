@@ -70,6 +70,23 @@ def consume_event() -> dict[str, object]:
     }
 
 
+def legacy_approval_event() -> dict[str, object]:
+    return {
+        "schema_version": "0.1.0",
+        "event_id": "event-" + "1" * 32,
+        "event_type": "approval_granted",
+        "alias": "codex-cli",
+        "invocation_id": "invocation-001",
+        "registry_sha256": "1" * 64,
+        "task_sha256": "2" * 64,
+        "prompt_sha256": "3" * 64,
+        "scope_sha256": "4" * 64,
+        "invocation_sha256": "5" * 64,
+        "recorded_at": "2026-08-02T10:00:00Z",
+        "expires_at": "2026-08-02T10:15:00Z",
+    }
+
+
 class AuthorityActionContractTests(unittest.TestCase):
     def test_approve_and_reject_events_validate_with_exact_frozen_action(self) -> None:
         for decision in ("approve", "reject"):
@@ -241,14 +258,10 @@ class AuthorityActionContractTests(unittest.TestCase):
                     validate_consume_binding(approval, mismatch)
 
     def test_authority_action_events_are_distinct_from_existing_approval_event(self) -> None:
+        legacy = legacy_approval_event()
+        self.assertEqual(legacy, validate_contract("approval-event", legacy))
         with self.assertRaises(ContractError):
-            validate_contract("approval-event", approval_event())
-        with self.assertRaises(ContractError):
-            validate_contract("authority-action-approval", {
-                **approval_event(),
-                "schema_version": "0.1.0",
-                "event_type": "approval_granted",
-            })
+            validate_contract("authority-action-approval", legacy)
         with self.assertRaises(ContractError):
             validate_contract("authority-action-consume", approval_event())
 
