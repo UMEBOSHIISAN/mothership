@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from http.client import HTTPException
 import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -234,7 +235,16 @@ def fetch_github_observation(
             payload = loads_strict(raw)
     except GitHubObservationError:
         raise
-    except (HTTPError, URLError, TimeoutError, OSError, TypeError, ValueError, ContractError) as exc:
+    except (
+        HTTPError,
+        HTTPException,
+        URLError,
+        TimeoutError,
+        OSError,
+        TypeError,
+        ValueError,
+        ContractError,
+    ) as exc:
         raise GitHubObservationError("GitHub observation failed") from exc
     return _parse_observation(parsed_ref, payload)
 

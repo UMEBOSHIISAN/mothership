@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from http.client import IncompleteRead
 from typing import Any
 import unittest
 from urllib.error import HTTPError
@@ -33,6 +34,11 @@ class _Response:
 
     def geturl(self) -> str:
         return "https://api.github.com/repos/UMEBOSHIISAN/mothership/pulls/3"
+
+
+class _TruncatedResponse(_Response):
+    def read(self, _limit: int) -> bytes:
+        raise IncompleteRead(b'{"number": 3}', 128)
 
 
 def pull_request_payload() -> dict[str, Any]:
@@ -200,6 +206,21 @@ class GitHubObservationTests(unittest.TestCase):
                 "https://github.com/UMEBOSHIISAN/mothership/pull/3",
                 opener=opener_for(b"not-json", []),
             )
+
+    def test_truncated_http_response_is_fail_closed_without_retry(self) -> None:
+        calls: list[object] = []
+
+        def opener(request: object, timeout: float) -> _TruncatedResponse:
+            calls.append((request, timeout))
+            return _TruncatedResponse(pull_request_payload())
+
+        with self.assertRaises(GitHubObservationError):
+            fetch_github_observation(
+                "https://github.com/UMEBOSHIISAN/mothership/pull/3",
+                opener=opener,
+            )
+
+        self.assertEqual(1, len(calls))
 
     def test_malformed_state_types_fail_closed_after_one_get(self) -> None:
         for bad_state in ([], {}):

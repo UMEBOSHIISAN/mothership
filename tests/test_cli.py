@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import json
 import os
+from http.client import IncompleteRead
 from pathlib import Path
 import subprocess
 import sys
@@ -39,6 +41,11 @@ class _GitHubResponse:
 
     def getcode(self) -> int:
         return self.status
+
+
+class _TruncatedGitHubResponse(_GitHubResponse):
+    def read(self, _limit: int) -> bytes:
+        raise IncompleteRead(b'{"number": 3}', 128)
 
 
 def _github_opener(payload: dict[str, object], calls: list[object]):
@@ -561,6 +568,55 @@ class CliTests(unittest.TestCase):
         self.assertEqual(1, completed.returncode)
         self.assertEqual(b"", completed.stdout)
         self.assertEqual(b"github-decision-card: unable to produce card\n", completed.stderr)
+
+    def test_github_decision_card_cli_rejects_truncated_response_without_card(self) -> None:
+        from mothership.cli import main
+        import orchestration.lib.github_observation as github_observation
+
+        class _Opener:
+            def __init__(self) -> None:
+                self.calls: list[object] = []
+
+            def open(self, request: object, timeout: float) -> _TruncatedGitHubResponse:
+                self.calls.append((request, timeout))
+                return _TruncatedGitHubResponse({})
+
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
+            frontdoor, handoff, _router = self._write_decision_inputs(
+                directory,
+                request_id="github-truncated-response",
+                human_gate="CONFIRM",
+                risk="medium",
+            )
+            opener = _Opener()
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with (
+                mock.patch.object(github_observation, "_DEFAULT_OPENER", opener),
+                mock.patch("sys.stdout", stdout),
+                mock.patch("sys.stderr", stderr),
+            ):
+                exit_code = main(
+                    [
+                        "github-decision-card",
+                        "--ref",
+                        "https://github.com/UMEBOSHIISAN/mothership/pull/3",
+                        "--frontdoor",
+                        str(frontdoor),
+                        "--wgm",
+                        str(handoff),
+                        "--question",
+                        "Should the human review this GitHub observation?",
+                        "--consequence-if-approved",
+                        "Only the separately owned review boundary may proceed.",
+                    ]
+                )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertEqual("github-decision-card: unable to produce card\n", stderr.getvalue())
+        self.assertEqual(1, len(opener.calls))
 
     def test_broken_pipe_returns_one_without_traceback(self) -> None:
         from mothership.cli import main
