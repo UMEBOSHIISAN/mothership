@@ -95,6 +95,8 @@ class BuiltDistributionTests(unittest.TestCase):
             self.assertIn("safety/policy.py", names)
             compatibility_resources = (
                 "evidence/contracts/approval-event.schema.json",
+                "evidence/contracts/authority-action-approval.v0.schema.json",
+                "evidence/contracts/authority-action-consume.v0.schema.json",
                 "frontdoor/contracts/decision.schema.json",
                 "frontdoor/contracts/task.schema.json",
                 "orchestration/config/executors.json",
@@ -116,6 +118,28 @@ class BuiltDistributionTests(unittest.TestCase):
                     raw = archive.read(name)
                     self.assertNotIn(b"/private" + b"/", raw)
                     self.assertNotIn(b"/Users/", raw)
+
+    def test_wheel_authority_facade_freezes_without_ledger_or_execution(self) -> None:
+        _environment, binary = self._environment("authority-facade", editable=False)
+        script = b"""
+from mothership.action_authority import action_sha256, freeze_action
+
+parameters = {
+    "repository": "UMEBOSHIISAN/mothership",
+    "pull_request": 5,
+    "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
+    "expected_base": "main",
+    "merge_method": "merge",
+}
+frozen = freeze_action("act-pkg-001", "github.merge_pr", parameters)
+assert frozen.action["operation"] == "github.merge_pr"
+assert action_sha256(dict(frozen.action)) == frozen.action_sha256
+assert frozen.expires_at.endswith("Z")
+print("AUTHORITY_FACADE_OK")
+"""
+        result = self._run([str(binary), "-c", script], self.root)
+        self.assertEqual(0, result.returncode, result.stderr.decode("utf-8", "replace"))
+        self.assertIn(b"AUTHORITY_FACADE_OK", result.stdout)
 
     def test_wheel_metadata_has_version_python_license_and_no_runtime_requirement(self) -> None:
         with zipfile.ZipFile(self.wheel) as archive:

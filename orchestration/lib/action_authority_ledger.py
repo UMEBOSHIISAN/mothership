@@ -30,6 +30,10 @@ class ActionAuthorityLedgerError(ContractError):
     """Base error for the closed authority-action ledger boundary."""
 
 
+class ActionEventValidationError(ActionAuthorityLedgerError):
+    """Raised internally when one authority-action event is malformed."""
+
+
 class MalformedLedgerStateError(ActionAuthorityLedgerError):
     """The complete ledger cannot be accepted as closed authority-action state."""
 
@@ -62,8 +66,18 @@ class ActionReplayError(ActionAuthorityLedgerError):
     """The one-time action instance has already been consumed."""
 
 
-class _EventValidationError(Exception):
+class _EventValidationError(ActionEventValidationError):
     pass
+
+
+# Stable public vocabulary used by the Mothership facade.
+ActionLedgerError = ActionAuthorityLedgerError
+ActionLedgerIOError = LedgerIOError
+ActionMalformedLedgerError = MalformedLedgerStateError
+ActionMissingApprovalError = MissingApprovalError
+ActionRejectedError = RejectedApprovalError
+ActionAlreadyConsumedError = ApprovalReplayError
+ActionAlreadyConsumedActionError = ActionReplayError
 
 
 def _utc_now() -> datetime.datetime:
