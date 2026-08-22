@@ -70,6 +70,22 @@ def _github_pull_payload() -> dict[str, object]:
     }
 
 
+def _github_candidate_payload(
+    number: int,
+    *,
+    title: str,
+    draft: bool = False,
+) -> dict[str, object]:
+    return {
+        "number": number,
+        "title": title,
+        "state": "open",
+        "draft": draft,
+        "updated_at": "2026-08-22T00:00:00Z",
+        "head": {"sha": f"{number:02d}" * 20},
+    }
+
+
 class CliTests(unittest.TestCase):
     def _module(self, *arguments: str) -> subprocess.CompletedProcess[bytes]:
         environment = dict(os.environ)
@@ -514,6 +530,87 @@ class CliTests(unittest.TestCase):
             arguments.ref,
         )
         self.assertIsNone(arguments.recommendation)
+
+    def test_github_candidate_window_is_ephemeral_and_preserves_api_order(self) -> None:
+        from mothership.cli import command_github_candidate_window
+
+        calls: list[object] = []
+        output = command_github_candidate_window(
+            "https://github.com/UMEBOSHIISAN/mothership",
+            opener=_github_opener(
+                [
+                    _github_candidate_payload(3, title="newer", draft=True),
+                    _github_candidate_payload(2, title="older"),
+                ],
+                calls,
+            ),
+        )
+
+        self.assertEqual(1, len(calls))
+        self.assertLess(output.index("#3"), output.index("#2"))
+        self.assertIn("EPHEMERAL GITHUB CANDIDATE WINDOW", output)
+        self.assertIn("WINDOW: open PRs / updated desc / page 1 / max 20", output)
+        self.assertIn("COMPLETENESS: UNKNOWN", output)
+        self.assertIn("#3  draft=true", output)
+        self.assertIn("https://github.com/UMEBOSHIISAN/mothership/pull/3", output)
+        self.assertIn("state: open", output)
+        self.assertIn("updated: 2026-08-22T00:00:00Z", output)
+        self.assertNotIn("schema_version", output)
+        self.assertNotIn("recommendation", output)
+        self.assertNotIn("authority_effect", output)
+        self.assertNotIn("execution_effect", output)
+
+    def test_github_candidate_window_cli_fails_closed_without_partial_output(self) -> None:
+        from mothership.cli import main
+        import orchestration.lib.github_observation as github_observation
+
+        class _Opener:
+            def __init__(self) -> None:
+                self.calls: list[object] = []
+
+            def open(self, request: object, timeout: float) -> _GitHubResponse:
+                self.calls.append((request, timeout))
+                malformed = _github_candidate_payload(2, title="bad")
+                malformed["draft"] = []
+                return _GitHubResponse(
+                    [_github_candidate_payload(3, title="valid"), malformed]
+                )
+
+        opener = _Opener()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(github_observation, "_DEFAULT_OPENER", opener),
+            mock.patch("sys.stdout", stdout),
+            mock.patch("sys.stderr", stderr),
+        ):
+            exit_code = main(
+                [
+                    "github-candidate-window",
+                    "--repo",
+                    "https://github.com/UMEBOSHIISAN/mothership",
+                ]
+            )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertEqual(
+            "github-candidate-window: unable to produce candidate window\n",
+            stderr.getvalue(),
+        )
+        self.assertEqual(1, len(opener.calls))
+
+    def test_github_candidate_window_empty_success_is_not_a_decision_result(self) -> None:
+        from mothership.cli import command_github_candidate_window
+
+        output = command_github_candidate_window(
+            "https://github.com/UMEBOSHIISAN/mothership",
+            opener=_github_opener([], []),
+        )
+
+        self.assertIn("CANDIDATES (0)", output)
+        self.assertIn("- none", output)
+        self.assertNotIn("NO_CARD", output)
 
     def test_github_decision_card_cli_rejects_invalid_source_without_card(self) -> None:
         with tempfile.TemporaryDirectory() as directory_name:

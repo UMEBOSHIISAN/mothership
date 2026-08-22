@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import json
 from http.client import IncompleteRead
+import sys
 from typing import Any
 import unittest
+from unittest import mock
 from urllib.error import HTTPError
 
 from orchestration.lib.github_observation import (
     GitHubObservationError,
     build_github_decision_card,
+    fetch_github_candidates,
     fetch_github_observation,
     map_observation_to_contracts,
+    parse_github_repository,
     parse_github_ref,
 )
 
@@ -69,6 +73,23 @@ def issue_payload() -> dict[str, Any]:
     }
 
 
+def candidate_payload(
+    number: int,
+    *,
+    title: str,
+    state: str = "open",
+    draft: bool = False,
+) -> dict[str, Any]:
+    return {
+        "number": number,
+        "title": title,
+        "state": state,
+        "draft": draft,
+        "updated_at": "2026-08-22T00:00:00Z",
+        "head": {"sha": f"{number:02d}" * 20},
+    }
+
+
 def opener_for(payload: object, calls: list[object], *, error: BaseException | None = None):
     def opener(request: object, timeout: float) -> _Response:
         calls.append((request, timeout))
@@ -110,6 +131,141 @@ def governance_handoff() -> dict[str, object]:
 
 
 class GitHubObservationTests(unittest.TestCase):
+    def test_repository_ref_is_strict_and_candidate_fetch_uses_one_bounded_get(self) -> None:
+        calls: list[object] = []
+        payload = [
+            candidate_payload(3, title="newer", draft=True),
+            candidate_payload(2, title="older"),
+        ]
+
+        repository = parse_github_repository(
+            "https://github.com/UMEBOSHIISAN/mothership"
+        )
+        observations = fetch_github_candidates(
+            repository.source_url,
+            opener=opener_for(payload, calls),
+        )
+
+        self.assertEqual([3, 2], [observation.number for observation in observations])
+        self.assertTrue(observations[0].draft)
+        self.assertEqual(1, len(calls))
+        request, timeout = calls[0]
+        self.assertEqual(5.0, timeout)
+        self.assertEqual(
+            "https://api.github.com/repos/UMEBOSHIISAN/mothership/pulls"
+            "?state=open&sort=updated&direction=desc&per_page=20&page=1",
+            request.full_url,
+        )
+        self.assertEqual("GET", request.get_method())
+        self.assertIsNone(request.get_header("Authorization"))
+
+    def test_repository_ref_rejects_noncanonical_public_urls_before_network(self) -> None:
+        for ref in (
+            "http://github.com/owner/repo",
+            "https://evil.example/owner/repo",
+            "https://github.com/owner/repo/",
+            "https://github.com/owner/repo.git",
+            "https://github.com/owner/repo?state=open",
+            "https://github.com/owner/repo?",
+            "https://github.com/owner/repo#",
+            "\nhttps://github.com/owner/repo",
+        ):
+            with self.subTest(ref=ref):
+                with self.assertRaises(GitHubObservationError):
+                    parse_github_repository(ref)
+
+    def test_candidate_window_rejects_any_non_200_without_retry(self) -> None:
+        for status in (302, 401, 403, 404, 422, 500):
+            with self.subTest(status=status):
+                calls: list[object] = []
+
+                def opener(request: object, timeout: float, *, status: int = status) -> _Response:
+                    calls.append((request, timeout))
+                    return _Response([], status=status)
+
+                with self.assertRaises(GitHubObservationError):
+                    fetch_github_candidates(
+                        "https://github.com/UMEBOSHIISAN/mothership",
+                        opener=opener,
+                    )
+
+                self.assertEqual(1, len(calls))
+
+    def test_candidate_window_rejects_malformed_json_and_oversized_body(self) -> None:
+        for payload in (b"not-json", b"x" * 1_048_577):
+            with self.subTest(payload_size=len(payload)):
+                calls: list[object] = []
+                with self.assertRaises(GitHubObservationError):
+                    fetch_github_candidates(
+                        "https://github.com/UMEBOSHIISAN/mothership",
+                        opener=opener_for(payload, calls),
+                    )
+                self.assertEqual(1, len(calls))
+
+    def test_candidate_window_deeply_nested_json_fails_closed(self) -> None:
+        calls: list[object] = []
+        payload = b"[" * 5_000 + b"0" + b"]" * 5_000
+        previous_limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(1_000)
+            with mock.patch(
+                "orchestration.lib.github_observation.loads_strict",
+                side_effect=RecursionError(),
+            ):
+                with self.assertRaises(GitHubObservationError):
+                    fetch_github_candidates(
+                        "https://github.com/UMEBOSHIISAN/mothership",
+                        opener=opener_for(payload, calls),
+                    )
+        finally:
+            sys.setrecursionlimit(previous_limit)
+
+        self.assertEqual(1, len(calls))
+
+    def test_candidate_window_validates_all_items_before_returning(self) -> None:
+        calls: list[object] = []
+        malformed = candidate_payload(2, title="bad", state="open")
+        malformed["draft"] = []
+
+        with self.assertRaises(GitHubObservationError):
+            fetch_github_candidates(
+                "https://github.com/UMEBOSHIISAN/mothership",
+                opener=opener_for(
+                    [candidate_payload(3, title="valid"), malformed],
+                    calls,
+                ),
+            )
+
+        self.assertEqual(1, len(calls))
+
+    def test_candidate_window_rejects_oversized_item_number(self) -> None:
+        calls: list[object] = []
+        malformed = candidate_payload(3, title="bad")
+        malformed["number"] = 10**20
+
+        with self.assertRaises(GitHubObservationError):
+            fetch_github_candidates(
+                "https://github.com/UMEBOSHIISAN/mothership",
+                opener=opener_for([malformed], calls),
+            )
+
+        self.assertEqual(1, len(calls))
+
+    def test_candidate_window_truncated_response_fails_closed_without_retry(self) -> None:
+        calls: list[object] = []
+
+        def opener(request: object, timeout: float) -> _TruncatedResponse:
+            calls.append((request, timeout))
+            return _TruncatedResponse([])
+
+        with self.assertRaises(GitHubObservationError):
+            fetch_github_candidates(
+                "https://github.com/UMEBOSHIISAN/mothership",
+                opener=opener,
+            )
+
+        self.assertEqual(1, len(calls))
+
     def test_pull_request_fetch_is_one_get_and_preserves_observation_boundary(self) -> None:
         calls: list[object] = []
 

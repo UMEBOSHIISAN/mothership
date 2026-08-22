@@ -20,8 +20,10 @@ from orchestration.lib.decision import (
     format_decision_batch,
 )
 from orchestration.lib.github_observation import (
+    GitHubObservation,
     GitHubObservationError,
     build_github_decision_card,
+    fetch_github_candidates,
 )
 
 from .demo import DemoError, run_demo
@@ -155,6 +157,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--consequence-if-approved",
         required=True,
         help="explicit presentation-only consequence",
+    )
+
+    github_candidate_window = commands.add_parser(
+        "github-candidate-window",
+        help="render one ephemeral bounded window of open GitHub PRs",
+    )
+    github_candidate_window.add_argument(
+        "--repo",
+        required=True,
+        help="explicit public GitHub repository URL",
     )
 
     decision_batch = commands.add_parser(
@@ -484,6 +496,54 @@ def command_github_decision_card(
     return card
 
 
+def format_github_candidate_window(
+    observations: Sequence[GitHubObservation],
+) -> str:
+    """Render source observations without creating a machine contract."""
+
+    lines = [
+        "EPHEMERAL GITHUB CANDIDATE WINDOW",
+        "WINDOW: open PRs / updated desc / page 1 / max 20",
+        "COMPLETENESS: UNKNOWN",
+        f"CANDIDATES ({len(observations)})",
+    ]
+    if not observations:
+        lines.append("- none")
+        return "\n".join(lines)
+
+    for observation in observations:
+        draft = (
+            "true"
+            if observation.draft is True
+            else "false"
+            if observation.draft is False
+            else "unknown"
+        )
+        lines.extend(
+            (
+                f"#{observation.number}  draft={draft}",
+                observation.title,
+                observation.ref.source_url,
+                f"state: {observation.state}",
+                f"updated: {observation.updated_at}",
+                f"head: {observation.head_sha or 'unknown'}",
+                "",
+            )
+        )
+    return "\n".join(lines).rstrip()
+
+
+def command_github_candidate_window(
+    repo: str,
+    *,
+    opener: Callable[..., object] | None = None,
+) -> str:
+    """Fetch and render one bounded, presentation-only candidate window."""
+
+    observations = fetch_github_candidates(repo, opener=opener)
+    return format_github_candidate_window(observations)
+
+
 def _emit(document: object) -> bool:
     try:
         sys.stdout.write(canonical_json_bytes(document).decode("utf-8") + "\n")
@@ -550,6 +610,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not _emit(document):
             return 1
         return 0
+    elif arguments.command == "github-candidate-window":
+        try:
+            document = command_github_candidate_window(
+                arguments.repo,
+            )
+        except (GitHubObservationError, ValueError):
+            try:
+                sys.stderr.write(
+                    "github-candidate-window: unable to produce candidate window\n"
+                )
+            except (BrokenPipeError, OSError, UnicodeError):
+                pass
+            return 1
+        if not _emit_text(document):
+            return 1
+        return 0
     elif arguments.command == "decision-batch":
         if len(arguments.router_paths or ()) not in (0, len(arguments.frontdoor_paths)):
             parser.error("--router must be omitted or repeated once per input")
@@ -606,10 +682,12 @@ __all__ = (
     "command_decision_batch",
     "command_demo",
     "command_decision_card",
+    "command_github_candidate_window",
     "command_github_decision_card",
     "command_doctor",
     "command_protocol_list",
     "command_protocol_validate",
     "command_verify",
+    "format_github_candidate_window",
     "main",
 )
