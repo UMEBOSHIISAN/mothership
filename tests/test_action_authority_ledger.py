@@ -12,6 +12,7 @@ import os
 import pathlib
 import re
 import tempfile
+import threading
 import unittest
 from collections.abc import Mapping, Sequence
 from unittest import mock
@@ -392,19 +393,174 @@ class ConsumeTests(AuthorityActionLedgerTestCase):
         self.assertEqual(before, self.path.read_bytes())
         self.assertEqual(1, sum(row["event_type"] == "authority_action_consume" for row in self.read_events()))
 
-    def test_fsync_failure_returns_no_authority_and_is_not_retried(self):
+    def test_short_write_then_error_restores_exact_preconsume_state(self):
         approval = self.record()
+        before = self.path.read_bytes()
+        original_write = self.ledger._write_chunk
         calls = 0
+
+        def short_then_fail(handle, raw):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                amount = max(1, len(raw) // 2)
+                return original_write(handle, raw[:amount])
+            raise OSError("private")
+
+        with mock.patch.object(self.ledger, "_write_chunk", side_effect=short_then_fail):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+        self.assertEqual(2, calls)
+        self.assertEqual(before, self.path.read_bytes())
+
+        consume_event, action = self.consume(approval)
+        self.assertEqual(approval["action"], action)
+        self.assertEqual(consume_event, self.read_events()[-1])
+
+    def test_fsync_failure_restores_exact_preconsume_state_without_event_retry(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+        original_fsync = self.ledger._fsync
+        original_write = self.ledger._write_chunk
+        calls = 0
+        writes = 0
+
+        def write(handle, raw):
+            nonlocal writes
+            writes += 1
+            return original_write(handle, raw)
 
         def fail(_descriptor):
             nonlocal calls
             calls += 1
-            raise OSError("private")
+            if calls == 1:
+                raise OSError("private")
+            return original_fsync(_descriptor)
 
-        with mock.patch.object(self.ledger, "_fsync", side_effect=fail):
+        with (
+            mock.patch.object(self.ledger, "_write_chunk", side_effect=write),
+            mock.patch.object(self.ledger, "_fsync", side_effect=fail),
+        ):
             with self.assertRaises(self.ledger.LedgerIOError):
                 self.consume(approval)
-        self.assertEqual(1, calls)
+        self.assertEqual(2, calls)
+        self.assertEqual(1, writes)
+        self.assertEqual(before, self.path.read_bytes())
+
+        consume_event, action = self.consume(approval)
+        self.assertEqual(approval["action"], action)
+        self.assertEqual(consume_event, self.read_events()[-1])
+
+    def test_unconfirmed_rollback_quarantines_ledger_and_cannot_return_authority(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+
+        with mock.patch.object(
+            self.ledger, "_fsync", side_effect=OSError("private")
+        ):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+
+        metadata = self.path.stat()
+        self.assertEqual(len(before), metadata.st_size)
+        self.assertEqual(0o000, metadata.st_mode & 0o777)
+        with self.assertRaises(self.ledger.LedgerIOError):
+            self.consume(approval)
+
+        os.chmod(self.path, 0o600)
+        self.assertEqual(before, self.path.read_bytes())
+
+    def test_failed_mode_quarantine_writes_verified_poison_and_fails_closed(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+
+        with (
+            mock.patch.object(self.ledger, "_fsync", side_effect=OSError("private")),
+            mock.patch.object(
+                self.ledger.os, "fchmod", side_effect=OSError("private")
+            ),
+        ):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+
+        poisoned = self.path.read_bytes()
+        self.assertEqual(before + b"\x00", poisoned)
+        self.assertEqual(0o600, self.path.stat().st_mode & 0o777)
+        with self.assertRaises(self.ledger.MalformedLedgerStateError):
+            self.consume(approval)
+        self.assertEqual(poisoned, self.path.read_bytes())
+
+    def test_failed_mode_and_poison_quarantine_uses_verified_path_mode(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+
+        with (
+            mock.patch.object(self.ledger, "_fsync", side_effect=OSError("private")),
+            mock.patch.object(
+                self.ledger.os, "ftruncate", side_effect=OSError("private")
+            ),
+            mock.patch.object(
+                self.ledger.os, "fchmod", side_effect=OSError("private")
+            ),
+        ):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+
+        failed_size = self.path.stat().st_size
+        self.assertGreater(failed_size, len(before))
+        self.assertEqual(0o000, self.path.stat().st_mode & 0o777)
+        with self.assertRaises(self.ledger.LedgerIOError):
+            self.consume(approval)
+        self.assertEqual(failed_size, self.path.stat().st_size)
+
+        os.chmod(self.path, 0o600)
+        events = self.read_events()
+        self.assertEqual(
+            1,
+            sum(
+                event["event_type"] == "authority_action_consume"
+                for event in events
+            ),
+        )
+
+    def test_descriptor_opened_before_quarantine_rechecks_mode_after_lock(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+        reached_lock = threading.Event()
+        release_lock = threading.Event()
+        original_flock = self.ledger._flock
+        outcomes: list[str] = []
+
+        def delayed_flock(descriptor, operation):
+            if operation == self.ledger.fcntl.LOCK_EX:
+                reached_lock.set()
+                if not release_lock.wait(5):
+                    raise OSError("visible lock wait cap exceeded")
+            return original_flock(descriptor, operation)
+
+        def consume_waiting_descriptor():
+            try:
+                self.consume(approval)
+                outcomes.append("success")
+            except self.ledger.ActionAuthorityLedgerError as exc:
+                outcomes.append(type(exc).__name__)
+
+        worker = threading.Thread(target=consume_waiting_descriptor)
+        with mock.patch.object(self.ledger, "_flock", side_effect=delayed_flock):
+            worker.start()
+            try:
+                self.assertTrue(reached_lock.wait(5), "consumer did not reach lock gate")
+                os.chmod(self.path, 0o000)
+                release_lock.set()
+                worker.join(5)
+                self.assertFalse(worker.is_alive(), "consumer exceeded visible join cap")
+            finally:
+                release_lock.set()
+                worker.join(5)
+                os.chmod(self.path, 0o600)
+
+        self.assertEqual(["LedgerIOError"], outcomes)
+        self.assertEqual(before, self.path.read_bytes())
 
     def test_lock_covers_read_time_replay_checks_append_flush_and_fsync(self):
         approval = self.record()
@@ -429,9 +585,11 @@ class ConsumeTests(AuthorityActionLedgerTestCase):
             trace.append("now")
             return _EPOCH + datetime.timedelta(seconds=2)
 
-        def append(descriptor, handle, events, event):
+        def append(descriptor, handle, events, event, ledger_path):
             trace.append("append")
-            return originals["append"](descriptor, handle, events, event)
+            return originals["append"](
+                descriptor, handle, events, event, ledger_path
+            )
 
         def flush(handle):
             trace.append("flush")
