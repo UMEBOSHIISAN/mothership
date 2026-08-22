@@ -12,6 +12,7 @@ import os
 import pathlib
 import re
 import tempfile
+import threading
 import unittest
 from collections.abc import Mapping, Sequence
 from unittest import mock
@@ -467,6 +468,65 @@ class ConsumeTests(AuthorityActionLedgerTestCase):
             self.consume(approval)
 
         os.chmod(self.path, 0o600)
+        self.assertEqual(before, self.path.read_bytes())
+
+    def test_failed_mode_quarantine_writes_verified_poison_and_fails_closed(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+
+        with (
+            mock.patch.object(self.ledger, "_fsync", side_effect=OSError("private")),
+            mock.patch.object(
+                self.ledger.os, "fchmod", side_effect=OSError("private")
+            ),
+        ):
+            with self.assertRaises(self.ledger.LedgerIOError):
+                self.consume(approval)
+
+        poisoned = self.path.read_bytes()
+        self.assertEqual(before + b"\x00", poisoned)
+        self.assertEqual(0o600, self.path.stat().st_mode & 0o777)
+        with self.assertRaises(self.ledger.MalformedLedgerStateError):
+            self.consume(approval)
+        self.assertEqual(poisoned, self.path.read_bytes())
+
+    def test_descriptor_opened_before_quarantine_rechecks_mode_after_lock(self):
+        approval = self.record()
+        before = self.path.read_bytes()
+        reached_lock = threading.Event()
+        release_lock = threading.Event()
+        original_flock = self.ledger._flock
+        outcomes: list[str] = []
+
+        def delayed_flock(descriptor, operation):
+            if operation == self.ledger.fcntl.LOCK_EX:
+                reached_lock.set()
+                if not release_lock.wait(5):
+                    raise OSError("visible lock wait cap exceeded")
+            return original_flock(descriptor, operation)
+
+        def consume_waiting_descriptor():
+            try:
+                self.consume(approval)
+                outcomes.append("success")
+            except self.ledger.ActionAuthorityLedgerError as exc:
+                outcomes.append(type(exc).__name__)
+
+        worker = threading.Thread(target=consume_waiting_descriptor)
+        with mock.patch.object(self.ledger, "_flock", side_effect=delayed_flock):
+            worker.start()
+            try:
+                self.assertTrue(reached_lock.wait(5), "consumer did not reach lock gate")
+                os.chmod(self.path, 0o000)
+                release_lock.set()
+                worker.join(5)
+                self.assertFalse(worker.is_alive(), "consumer exceeded visible join cap")
+            finally:
+                release_lock.set()
+                worker.join(5)
+                os.chmod(self.path, 0o600)
+
+        self.assertEqual(["LedgerIOError"], outcomes)
         self.assertEqual(before, self.path.read_bytes())
 
     def test_lock_covers_read_time_replay_checks_append_flush_and_fsync(self):
