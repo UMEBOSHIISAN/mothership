@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import json
 import os
+from http.client import IncompleteRead
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +22,52 @@ class _Result:
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
+
+
+class _GitHubResponse:
+    status = 200
+
+    def __init__(self, payload: dict[str, object]):
+        self._payload = json.dumps(payload).encode("utf-8")
+
+    def __enter__(self) -> "_GitHubResponse":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def read(self, _limit: int) -> bytes:
+        return self._payload
+
+    def getcode(self) -> int:
+        return self.status
+
+
+class _TruncatedGitHubResponse(_GitHubResponse):
+    def read(self, _limit: int) -> bytes:
+        raise IncompleteRead(b'{"number": 3}', 128)
+
+
+def _github_opener(payload: dict[str, object], calls: list[object]):
+    def opener(request: object, timeout: float) -> _GitHubResponse:
+        calls.append((request, timeout))
+        return _GitHubResponse(payload)
+
+    return opener
+
+
+def _github_pull_payload() -> dict[str, object]:
+    return {
+        "number": 3,
+        "title": "docs: make Mothership the AI agent flight recorder",
+        "state": "open",
+        "draft": True,
+        "updated_at": "2026-08-21T16:16:20Z",
+        "head": {"sha": "b" * 40},
+        "body": "not evaluated",
+        "labels": [],
+        "comments": 0,
+    }
 
 
 class CliTests(unittest.TestCase):
@@ -411,6 +459,164 @@ class CliTests(unittest.TestCase):
         self.assertEqual(1, completed.returncode)
         self.assertEqual(b"", completed.stdout)
         self.assertNotEqual(b"", completed.stderr)
+
+    def test_github_decision_card_command_maps_one_source_observation(self) -> None:
+        from mothership.cli import command_github_decision_card
+
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
+            frontdoor, handoff, _router = self._write_decision_inputs(
+                directory,
+                request_id="github-pr-3-cli",
+                human_gate="CONFIRM",
+                risk="medium",
+            )
+            calls: list[object] = []
+            card = command_github_decision_card(
+                "https://github.com/UMEBOSHIISAN/mothership/pull/3",
+                frontdoor,
+                handoff,
+                question="Should the human review this GitHub observation?",
+                consequence_if_approved="Only the separately owned review boundary may proceed.",
+                opener=_github_opener(_github_pull_payload(), calls),
+            )
+
+        self.assertEqual(1, len(calls))
+        self.assertEqual("decision-card.v0", card["schema_version"])
+        self.assertIsNone(card["recommendation"])
+        self.assertIn("github-pr-UMEBOSHIISAN-mothership-3", card["evidence_refs"])
+        self.assertIn("github.not_fetched=checks", card["unknowns"])
+        self.assertTrue(any(reason.startswith("github.title=") for reason in card["reasons"]))
+        self.assertFalse(card["authority_effect"])
+        self.assertFalse(card["execution_effect"])
+
+    def test_github_decision_card_parser_requires_explicit_ref_and_contract_inputs(self) -> None:
+        from mothership.cli import build_parser
+
+        arguments = build_parser().parse_args(
+            [
+                "github-decision-card",
+                "--ref",
+                "https://github.com/UMEBOSHIISAN/mothership/pull/3",
+                "--frontdoor",
+                "/tmp/frontdoor.json",
+                "--wgm",
+                "/tmp/wgm.json",
+                "--question",
+                "Should the human review this GitHub observation?",
+                "--consequence-if-approved",
+                "Only the separately owned review boundary may proceed.",
+            ]
+        )
+        self.assertEqual("github-decision-card", arguments.command)
+        self.assertEqual(
+            "https://github.com/UMEBOSHIISAN/mothership/pull/3",
+            arguments.ref,
+        )
+        self.assertIsNone(arguments.recommendation)
+
+    def test_github_decision_card_cli_rejects_invalid_source_without_card(self) -> None:
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
+            frontdoor, handoff, _router = self._write_decision_inputs(
+                directory,
+                request_id="github-invalid-ref",
+                human_gate="CONFIRM",
+                risk="medium",
+            )
+            completed = self._module(
+                "github-decision-card",
+                "--ref",
+                "https://evil.example/owner/repo/pull/3",
+                "--frontdoor",
+                str(frontdoor),
+                "--wgm",
+                str(handoff),
+                "--question",
+                "Should the human review this GitHub observation?",
+                "--consequence-if-approved",
+                "Only the separately owned review boundary may proceed.",
+            )
+
+        self.assertEqual(1, completed.returncode)
+        self.assertEqual(b"", completed.stdout)
+        self.assertEqual(b"github-decision-card: unable to produce card\n", completed.stderr)
+
+    def test_github_decision_card_cli_rejects_oversized_ref_without_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
+            frontdoor, handoff, _router = self._write_decision_inputs(
+                directory,
+                request_id="github-oversized-ref",
+                human_gate="CONFIRM",
+                risk="medium",
+            )
+            completed = self._module(
+                "github-decision-card",
+                "--ref",
+                "https://github.com/owner/repo/pull/" + ("9" * 5000),
+                "--frontdoor",
+                str(frontdoor),
+                "--wgm",
+                str(handoff),
+                "--question",
+                "Should the human review this GitHub observation?",
+                "--consequence-if-approved",
+                "Only the separately owned review boundary may proceed.",
+            )
+
+        self.assertEqual(1, completed.returncode)
+        self.assertEqual(b"", completed.stdout)
+        self.assertEqual(b"github-decision-card: unable to produce card\n", completed.stderr)
+
+    def test_github_decision_card_cli_rejects_truncated_response_without_card(self) -> None:
+        from mothership.cli import main
+        import orchestration.lib.github_observation as github_observation
+
+        class _Opener:
+            def __init__(self) -> None:
+                self.calls: list[object] = []
+
+            def open(self, request: object, timeout: float) -> _TruncatedGitHubResponse:
+                self.calls.append((request, timeout))
+                return _TruncatedGitHubResponse({})
+
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name).resolve()
+            frontdoor, handoff, _router = self._write_decision_inputs(
+                directory,
+                request_id="github-truncated-response",
+                human_gate="CONFIRM",
+                risk="medium",
+            )
+            opener = _Opener()
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with (
+                mock.patch.object(github_observation, "_DEFAULT_OPENER", opener),
+                mock.patch("sys.stdout", stdout),
+                mock.patch("sys.stderr", stderr),
+            ):
+                exit_code = main(
+                    [
+                        "github-decision-card",
+                        "--ref",
+                        "https://github.com/UMEBOSHIISAN/mothership/pull/3",
+                        "--frontdoor",
+                        str(frontdoor),
+                        "--wgm",
+                        str(handoff),
+                        "--question",
+                        "Should the human review this GitHub observation?",
+                        "--consequence-if-approved",
+                        "Only the separately owned review boundary may proceed.",
+                    ]
+                )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertEqual("github-decision-card: unable to produce card\n", stderr.getvalue())
+        self.assertEqual(1, len(opener.calls))
 
     def test_broken_pipe_returns_one_without_traceback(self) -> None:
         from mothership.cli import main
