@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authority-action-approval.v0.schema.json",
+  "title": "Mothership Authority Action Approval v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_type",
+    "event_id",
+    "decision",
+    "approver_class",
+    "action",
+    "action_sha256",
+    "recorded_at",
+    "expires_at",
+    "max_uses"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "authority-action-approval.v0"
+    },
+    "event_type": {
+      "const": "authority_action_approval"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{32}$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "reject"
+      ]
+    },
+    "approver_class": {
+      "type": "string",
+      "enum": [
+        "human"
+      ]
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "operation",
+        "execution_parameters",
+        "display"
+      ],
+      "properties": {
+        "action_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^act-[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "github.merge_pr"
+          ]
+        },
+        "execution_parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "pull_request",
+            "expected_head_sha",
+            "expected_base",
+            "merge_method"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 3,
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            },
+            "pull_request": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "expected_head_sha": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "expected_base": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+            },
+            "merge_method": {
+              "type": "string",
+              "const": "merge"
+            }
+          }
+        },
+        "display": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "target",
+            "scope",
+            "excluded_operations",
+            "consequence_if_approved"
+          ],
+          "properties": {
+            "target": {
+              "type": "string",
+              "minLength": 1
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1
+            },
+            "excluded_operations": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "squash",
+                  "rebase",
+                  "force_push",
+                  "branch_delete"
+                ]
+              }
+            },
+            "consequence_if_approved": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "action_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "recorded_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "max_uses": {
+      "type": "integer",
+      "const": 1
+    }
+  }
+}

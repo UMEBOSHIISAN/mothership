@@ -13,6 +13,12 @@ from .jsonio import load_strict
 _ROOT = Path(__file__).resolve().parents[2]
 _SCHEMAS = {
     "approval-event": _ROOT / "evidence/contracts/approval-event.schema.json",
+    "authority-action-approval": (
+        _ROOT / "evidence/contracts/authority-action-approval.v0.schema.json"
+    ),
+    "authority-action-consume": (
+        _ROOT / "evidence/contracts/authority-action-consume.v0.schema.json"
+    ),
     "decision-card": _ROOT / "evidence/contracts/decision-card.v0.schema.json",
     "decision-approval": _ROOT / "evidence/contracts/decision-approval.v0.schema.json",
     "assessment": _ROOT / "safety/contracts/assessment.schema.json",
