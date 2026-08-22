@@ -139,6 +139,49 @@ class ActionAuthorityTests(unittest.TestCase):
                 replacement_expiry.strftime("%Y-%m-%dT%H:%M:%SZ"),
             )
 
+    def test_object_tampering_cannot_extend_the_issued_expiry(self) -> None:
+        frozen_at = datetime.datetime(2026, 8, 22, 10, 0, tzinfo=datetime.UTC)
+        with patch("orchestration.lib.action_authority._utc_now", return_value=frozen_at):
+            frozen = self.freeze()
+        issued_digest = frozen.action_sha256
+        object.__setattr__(frozen, "expires_at", "2026-08-22T10:15:00Z")
+        with patch(
+            "orchestration.lib.action_authority._utc_now",
+            return_value=frozen_at + datetime.timedelta(minutes=5),
+        ):
+            with self.assertRaises(MalformedActionError):
+                validate_decision_transport(
+                    frozen,
+                    "approve",
+                    "act-merge-pr-001",
+                    issued_digest,
+                )
+
+    def test_object_tampering_cannot_replace_issued_action_and_digest(self) -> None:
+        frozen_at = datetime.datetime(2026, 8, 22, 10, 0, tzinfo=datetime.UTC)
+        with patch("orchestration.lib.action_authority._utc_now", return_value=frozen_at):
+            frozen = self.freeze()
+        replacement_action = {
+            "action_id": "act-merge-pr-002",
+            "operation": "github.merge_pr",
+            "execution_parameters": copy.deepcopy(EXECUTION_PARAMETERS),
+            "display": copy.deepcopy(EXPECTED_DISPLAY),
+        }
+        replacement_digest = canonical_json_sha256(replacement_action)
+        object.__setattr__(frozen, "action", replacement_action)
+        object.__setattr__(frozen, "action_sha256", replacement_digest)
+        with patch(
+            "orchestration.lib.action_authority._utc_now",
+            return_value=frozen_at + datetime.timedelta(minutes=5),
+        ):
+            with self.assertRaises(MalformedActionError):
+                validate_decision_transport(
+                    frozen,
+                    "approve",
+                    "act-merge-pr-002",
+                    replacement_digest,
+                )
+
     def test_validate_transport_returns_only_bound_approve_or_reject_decisions(self) -> None:
         frozen = self.freeze()
         for decision in ("approve", "reject"):
