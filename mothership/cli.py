@@ -19,6 +19,10 @@ from orchestration.lib.decision import (
     build_decision_card,
     format_decision_batch,
 )
+from orchestration.lib.github_observation import (
+    GitHubObservationError,
+    build_github_decision_card,
+)
 
 from .demo import DemoError, run_demo
 from .protocols import ProtocolError, list_protocols, validate_protocol_file
@@ -100,6 +104,54 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicit human-facing reason; repeat as needed",
     )
     decision_card.add_argument(
+        "--consequence-if-approved",
+        required=True,
+        help="explicit presentation-only consequence",
+    )
+
+    github_decision_card = commands.add_parser(
+        "github-decision-card",
+        help="fetch one explicit public GitHub ref and emit a Decision Card",
+    )
+    github_decision_card.add_argument(
+        "--ref",
+        required=True,
+        help="explicit public GitHub pull or issue URL",
+    )
+    github_decision_card.add_argument(
+        "--frontdoor",
+        type=Path,
+        required=True,
+        help="absolute Frontdoor intake JSON path",
+    )
+    github_decision_card.add_argument(
+        "--wgm",
+        type=Path,
+        required=True,
+        help="absolute WGM handoff JSON path",
+    )
+    github_decision_card.add_argument(
+        "--router",
+        type=Path,
+        help="optional absolute Router manifest JSON path",
+    )
+    github_decision_card.add_argument(
+        "--question",
+        required=True,
+        help="explicit human-facing question",
+    )
+    github_decision_card.add_argument(
+        "--recommendation",
+        help="optional explicit human-facing recommendation",
+    )
+    github_decision_card.add_argument(
+        "--reason",
+        dest="reasons",
+        action="append",
+        default=[],
+        help="explicit human-facing reason; repeat as needed",
+    )
+    github_decision_card.add_argument(
         "--consequence-if-approved",
         required=True,
         help="explicit presentation-only consequence",
@@ -379,6 +431,59 @@ def command_decision_card(
     return card
 
 
+def command_github_decision_card(
+    ref: str,
+    frontdoor_path: Path,
+    wgm_path: Path,
+    *,
+    question: str,
+    consequence_if_approved: str,
+    recommendation: object = None,
+    reasons: Sequence[object] = (),
+    router_path: Path | None = None,
+    opener: Callable[..., object] | None = None,
+) -> dict[str, object]:
+    """Fetch one explicit GitHub ref and emit the existing Card contract."""
+
+    frontdoor, frontdoor_valid = _load_decision_protocol(
+        "frontdoor-task", frontdoor_path
+    )
+    handoff, handoff_valid = _load_decision_protocol(
+        "governance-handoff", wgm_path
+    )
+    router = None
+    if router_path is not None:
+        router, router_valid = _load_decision_protocol("router-manifest", router_path)
+        if not router_valid:
+            router = {}
+
+    frontdoor_input = frontdoor if frontdoor_valid else {}
+    handoff_input = handoff if handoff_valid else {}
+    decision_id = (
+        frontdoor_input.get("request_id")
+        if type(frontdoor_input) is dict
+        else None
+    )
+    try:
+        card = build_github_decision_card(
+            ref,
+            frontdoor_input,
+            handoff_input,
+            decision_id=decision_id,
+            question=question,
+            recommendation=recommendation,
+            reasons=reasons,
+            consequence_if_approved=consequence_if_approved,
+            router_manifest=router,
+            opener=opener,
+        )
+    except (AttributeError, DecisionCardProductionError, GitHubObservationError) as exc:
+        raise DecisionCardProductionError("GitHub Decision Card production failed") from exc
+    if card is None:
+        raise DecisionCardProductionError("human decision card was not produced")
+    return card
+
+
 def _emit(document: object) -> bool:
     try:
         sys.stdout.write(canonical_json_bytes(document).decode("utf-8") + "\n")
@@ -418,6 +523,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         except DecisionCardProductionError:
             try:
                 sys.stderr.write("decision-card: unable to produce card\n")
+            except (BrokenPipeError, OSError, UnicodeError):
+                pass
+            return 1
+        if not _emit(document):
+            return 1
+        return 0
+    elif arguments.command == "github-decision-card":
+        try:
+            document = command_github_decision_card(
+                arguments.ref,
+                arguments.frontdoor,
+                arguments.wgm,
+                router_path=arguments.router,
+                question=arguments.question,
+                recommendation=arguments.recommendation,
+                reasons=arguments.reasons,
+                consequence_if_approved=arguments.consequence_if_approved,
+            )
+        except DecisionCardProductionError:
+            try:
+                sys.stderr.write("github-decision-card: unable to produce card\n")
             except (BrokenPipeError, OSError, UnicodeError):
                 pass
             return 1
@@ -480,6 +606,7 @@ __all__ = (
     "command_decision_batch",
     "command_demo",
     "command_decision_card",
+    "command_github_decision_card",
     "command_doctor",
     "command_protocol_list",
     "command_protocol_validate",
