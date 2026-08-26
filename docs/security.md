@@ -12,6 +12,9 @@ secret manager, formal proof, or security certification.
 | diagnostic process output | untrusted observation; sanitize and reduce to closed fields |
 | operator credentials and commands | outside Mothership; never package or infer them |
 | companion output | untrusted until its frozen protocol snapshot validates |
+| exact action input | untrusted until the closed `github.merge_pr` profile validates |
+| authority-action ledger | file-fsynced local state; consume-once requires one trusted, non-rollbackable live history |
+| separately configured bounded executor | external execution plane; untrusted receipt source until verified |
 
 ## Local JSON threats
 
@@ -43,23 +46,67 @@ It does not pass credentials or endpoint overrides. An installed Ollama CLI may 
 
 Diagnostics report availability only. A discovered command is not approval to use it.
 
-## Authority boundary
+## GitHub observation threats
 
-Protocol validation never grants authority. The initial protocol registry declares no authority-capable or
-execution-capable entry. Router and observation fixtures require `authority_effect: false` and
-`execution_effect: false`.
+`github-decision-card` and `github-candidate-window` issue one explicit read-only request to `api.github.com`. They do
+not accept a GitHub credential or add a GitHub `Authorization` header. The standard-library opener inherits configured
+system proxy settings, however, and an authenticated proxy can add `Proxy-Authorization`. Proxy configuration is part
+of the caller's network boundary. Responses are size-bounded, strictly decoded, and reduced to closed fields.
 
-The default CLI is read-only. Explicit library calls for staging or ledger evidence can write only to a caller-supplied
-target. Those APIs cannot make an external action approved merely by recording data.
+## Decision Plane
 
 Decision Cards and Decision Approvals (`evidence/contracts/decision-card.v0.schema.json`,
-`evidence/contracts/decision-approval.v0.schema.json`) fix `authority_effect: false` and `execution_effect: false` at
-the schema level — the constants cannot be set to `true` and still validate. `validate_decision_approval_binding()`
-(`mothership.contracts`) only proves that a human's Approval was recorded for one exact Card content, by exact
-canonical-JSON SHA-256 digest and `decision_id` match. A successful binding is evidence of *review*, not a grant of
-execution authority: nothing in the schemas or the pure binding function connects a Decision Approval to
-`approval-event.schema.json` (the separate invocation/execution-side evidence) or to any worker invocation. Treating a
-valid binding as execution authorization would be a caller error outside what this contract asserts.
+`evidence/contracts/decision-approval.v0.schema.json`) fix `authority_effect: false` and `execution_effect: false`.
+`validate_decision_approval_binding()` proves only that a caller-attested review is bound to one exact Card by
+canonical-JSON SHA-256 and `decision_id`. It does not authenticate the reviewer, freeze an action, write action
+authority, select a worker, or invoke anything.
+
+The 0.2 compatibility protocols are also non-authorizing. Protocol validation never grants approval or authority;
+Router and observation fixtures keep `authority_effect: false` and `execution_effect: false`.
+
+## Action Authority Plane
+
+The current consequential-authority path begins only when a caller separately supplies an exact supported action to
+`freeze_action()`. The core accepts one closed operation profile, `github.merge_pr`, validates its execution parameters,
+derives its display, computes the canonical action digest, and issues a core-owned `FrozenAction` with a short fixed
+TTL. The digest excludes `expires_at`, so the library does not enforce single-issuance freshness. The integration must
+generate a fresh action_id for every freeze, correlate the response to the exact live issuance and expiry shown to the
+human, and reject delayed or reused responses. Human-readable display fields such as `consequence_if_approved` are
+derived from execution parameters and cannot be supplied as executable input.
+
+`validate_decision_transport()` requires `approve` or `reject` bound to the exact `action_id` and action SHA.
+`record_action_decision()` records that caller-attested decision in a dedicated authority-action ledger. The public API
+does not authenticate human identity or accept an identity credential; the integration must establish and audit the
+human ceremony before calling it. FrozenAction issuance relies on interpreter-local state, but a POSIX child forked
+after issuance inherits a copy of the object and registry. The API does not enforce process identity; freeze through
+decision recording must remain in that issuance lineage. `consume_action()` appends and file-fsyncs one consume event
+before returning the exact action.
+
+The ledger is an explicit normalized local file with strict owner-only modes. Its immediate parent must be a real 0700
+directory and its leaf a non-symlink regular 0600 file; higher ancestor resolution remains a caller trust boundary.
+Reads and appends occur under a lock; append, flush, file `fsync`, rollback, and quarantine paths fail closed. The
+complete JSONL state is revalidated before use. Mismatch, expiry, malformed state, action tamper, approval replay, and
+action replay reject authority without appending a success event. Create-on-first-use does not fsync the parent directory,
+so the new directory entry is not claimed crash-durable.
+
+Replay state is ledger-local and has no monotonic external anchor.
+The one-shot consume guarantee requires one trusted, non-rollbackable live ledger history. Approval state copied to
+another path, or
+rolled back or restored at the same path before consumption, creates an independent replay opportunity and must not be
+used as another authority source.
+
+The legacy `mothership.approval` / `orchestration.lib.ledger` path remains invocation-evidence compatibility. Its
+`approval_granted`, `attempt_started`, and `attempt_finished` lifecycle is not the canonical Action Authority Plane.
+
+## Execution Plane
+
+Consumption is permission for one exact action; it is not execution. The default CLI remains read-only and exposes no
+action-authority or executor command. The package does not ship a generic production executor.
+
+Actual external effects require a separately configured bounded executor. That executor must validate its own external
+preconditions, use only the consumed exact action, and produce receipt and verification evidence. Authority consumption
+does not authorize retries: a failed or ambiguous execution requires a newly attested exact action rather than
+automatic retry or fallback.
 
 ## Installation boundary
 
@@ -72,9 +119,21 @@ interpreter, operating system, installer, or host is uncompromised.
 - A compromised interpreter or operating system can bypass application checks.
 - A malicious dependency used only during build can affect an artifact; prefer reviewed, pinned build tooling.
 - A valid document can contain misleading but schema-conforming statements.
+- A schema-valid Decision Card or derived action display can still mislead a human about surrounding context.
+- Human provenance is supplied by the integration; the public API verifies binding but not a person's identity.
+- Re-freezing the same action ID and parameters reproduces the digest; without fresh IDs and live-issuance response
+  correlation, an older matching decision can be recorded against the new TTL.
+- FrozenAction cannot be reconstructed after restart or in a fresh interpreter, but a post-issuance POSIX fork inherits
+  a usable copy of issuance state; this is not process-identity isolation.
+- Replay prevention assumes one trusted, non-rollbackable live ledger; copied or restored history can replay authority.
+- A new ledger's file data is fsynced, but creation does not fsync the parent directory entry.
+- Ancestor components above the immediate ledger parent are caller-trusted path state.
 - A diagnostic executable found on `PATH` may not be the program the operator intended.
-- Time-of-check/time-of-use risk exists after Mothership returns data to another process.
+- A separately configured bounded executor can contain implementation, receipt, or secret-handling defects.
+- External service state can race or invalidate preconditions after Mothership returns the exact action.
 - Synthetic conformance results do not estimate real-world attack prevalence or protection rates.
+- The physical `github.merge_pr` record is operator-observed prose, not independently reproducible proof of the
+  operation profile or generic execution safety.
 
 ## Vulnerability reporting
 

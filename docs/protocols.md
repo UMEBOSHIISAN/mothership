@@ -1,8 +1,11 @@
 # Protocol reference
 
-Mothership is the **installable hub** for the frozen suite snapshot. Each semantic owner remains **independently
-adoptable**. In plain terms, every companion is independently adoptable and can release on its own schedule. A
-Mothership snapshot records compatibility; it does not take ownership of companion semantics.
+**Status: 0.2 compatibility surface; preserved for interoperability and history. Not the current three-product
+architecture.**
+
+Mothership preserves the frozen suite snapshot. Each semantic owner remains independently adoptable and can release on
+its own schedule. A Mothership snapshot records compatibility; it does not take ownership of companion semantics or
+enter the current Action Authority path.
 
 ## Ordered registry
 

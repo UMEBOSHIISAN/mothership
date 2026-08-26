@@ -1,4 +1,4 @@
-"""Command-line entry point for the read-only Mothership hub."""
+"""Command-line entry point for Mothership's read-only inspection surface."""
 
 from __future__ import annotations
 
@@ -45,7 +45,9 @@ _PROTOCOL_KINDS = frozenset(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mothership",
-        description="Verify and inspect a portable AI coding control plane.",
+        description=(
+            "Read-only CLI for Mothership's bounded consequential-authority boundary."
+        ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("verify", help="verify installed package resources")

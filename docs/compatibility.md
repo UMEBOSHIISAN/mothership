@@ -1,7 +1,10 @@
 # Compatibility
 
-Mothership is the **installable hub**; its companion repositories remain **independently adoptable**. This page records
-measured and declared surfaces separately.
+**Status: 0.2 compatibility surface; preserved for interoperability and history. Not the current three-product
+architecture.**
+
+The companion repositories remain independently adoptable. This page preserves exact measured commits, schema hashes,
+and declared compatibility surfaces without treating the old constellation as the current Mothership architecture.
 
 ## Measured, not universal
 

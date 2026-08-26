@@ -20,8 +20,8 @@ not publish, deploy, install, or otherwise distribute Mothership.
   configuration before handoff.
 - [x] Review every scan finding; do not treat a clean pattern scan as a
   substitute for review.
-- [x] Verify no package command installs software, authenticates, changes
-  settings, or performs external actions.
+- [x] Verify no package command installs software, accepts application credentials, changes settings, or performs
+  consequential external mutations; review read-only GitHub observation and inherited system proxy behavior separately.
 
 ## Verification and integrity
 

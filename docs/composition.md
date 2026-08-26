@@ -1,8 +1,14 @@
 # Composition guide
 
-Mothership is the **installable hub**; Agent Frontdoor, Workflow Governance Model, Mothership Router, and Secretary TUI
-are **independently adoptable** companions. Composition means exchanging explicitly supplied, versioned metadata. It
-does not mean automatic installation, process invocation, shared credentials, or authority transfer.
+**Status: 0.2 compatibility surface; preserved for interoperability and history. Not the current three-product
+architecture.**
+
+This document describes the legacy 0.2 Frontdoor → WGM → Router → Secretary composition. The companions remain
+independently adoptable, and Mothership preserves their exact frozen interchange evidence. This chain is not the
+current Mothership authority flow.
+
+Composition means exchanging explicitly supplied, versioned metadata. It does not mean automatic installation,
+process invocation, shared credentials, or authority transfer.
 
 ## Ordered handoff
 

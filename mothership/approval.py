@@ -1,4 +1,4 @@
-"""Stable names for explicit approval-ledger operations."""
+"""Legacy invocation-evidence compatibility names for approval-ledger operations."""
 
 from orchestration.lib.ledger import (
     AbsentApprovalError,
