@@ -8,6 +8,20 @@
   `decision_id`; both schemas fix `authority_effect: false` and `execution_effect: false`. This is a distinct primitive
   from the existing `decision` (frontdoor routing recommendation) and `approval-event` (invocation/execution-side
   evidence) schemas. Library-level only; no CLI subcommand yet.
+- Added the current Action Authority core through `mothership.action_authority`: core-issued `FrozenAction`, canonical
+  action digest, fixed ten-minute TTL, exact action ID/hash decision transport, and the closed `github.merge_pr`
+  operation profile. Human display fields are derived from validated execution parameters. The action digest excludes
+  expiry, so callers must use a fresh action ID and correlate responses to the exact live issuance.
+- Added the dedicated authority-action approval/consume contracts and locked ledger. Caller-attested approve/reject
+  decisions bind to one exact action; event writes are file-fsynced, and replay rejection holds within one trusted,
+  non-rollbackable live ledger history. Human identity, monotonic ledger history, and crash durability of a new ledger
+  directory entry remain integration responsibilities.
+- Recorded an operator-observed physical `github.merge_pr` event through a separately bounded executor path. The prose
+  record is not independently reproducible; the default CLI does not ship a general consequential executor or GitHub
+  mutation command.
+- Reclassified Frontdoor/WGM/Router/Secretary as the preserved 0.2 protocol compatibility surface and the earlier
+  routing, safety, registry, and invocation ledger as legacy compatibility. No protocol bytes or compatibility APIs
+  changed.
 
 ## 0.2.1 - 2026-08-11
 

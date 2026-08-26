@@ -115,6 +115,14 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(b"", completed.stderr)
                 self.assertEqual(canonical_json_bytes(expected) + b"\n", completed.stdout)
 
+    def test_help_describes_current_read_only_authority_role(self) -> None:
+        completed = self._module("--help")
+
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertIn(b"bounded consequential-authority boundary", completed.stdout)
+        self.assertIn(b"read-only cli", completed.stdout.lower())
+        self.assertNotIn(b"portable AI coding control plane", completed.stdout)
+
     def test_protocol_list_and_validate_are_closed(self) -> None:
         from mothership.cli import command_protocol_list, command_protocol_validate
 

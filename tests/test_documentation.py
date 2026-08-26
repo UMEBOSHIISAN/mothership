@@ -18,7 +18,7 @@ README = ROOT / "README.md"
 GENERATED = ROOT / "docs/generated"
 EXPECTED_H2 = (
     "Quick start",
-    "See the whole control plane in 60 seconds",
+    "Validate the 0.2 compatibility chain in 60 seconds",
     "The problem",
     "The Mothership answer",
     "Architecture",
@@ -127,9 +127,14 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertEqual(expected, transcript)
         self.assertEqual("protocol-composition-only", json.loads(transcript)["claim"])
 
+    def test_legacy_demo_and_boundary_map_do_not_overstate_current_coverage(self) -> None:
+        self.assertNotIn("whole control plane", self.text.casefold())
+        self.assertNotIn("one fictional document at every boundary", self.text.casefold())
+        self.assertNotIn("assets/boundary-map.svg", self.text)
+
     def test_hero_links_and_companion_topology_are_exact(self) -> None:
         self.assertIn(
-            "The portable, safety-first control plane for AI coding environments.",
+            "Bounded consequential authority for AI-assisted actions.",
             self.text,
         )
         for target in (
@@ -161,6 +166,28 @@ class ReadmeContractTests(unittest.TestCase):
             "observation-snapshot",
         )]
         self.assertEqual(sorted(positions), positions)
+
+    def test_current_authority_boundary_precedes_legacy_compatibility(self) -> None:
+        for term in (
+            "Mothership owns the bounded consequential-authority boundary",
+            "UMEKO",
+            "UME-HARNESS",
+            "mothership.action_authority",
+            "FrozenAction",
+            "default CLI remains read-only",
+            "separately configured bounded executor",
+        ):
+            self.assertIn(term, self.text)
+        self.assertLess(
+            self.text.index("UMEKO"),
+            self.text.index("Legacy 0.2 protocol compatibility"),
+        )
+        for stale_claim in (
+            "turn a recommendation into permission",
+            "| Grants authority | no |",
+            "Execution authority is a separate, unconnected concern",
+        ):
+            self.assertNotIn(stale_claim, self.text)
 
     def test_claims_and_rendering_structure_are_closed(self) -> None:
         lowered = self.text.casefold()
@@ -277,6 +304,7 @@ class SupportingDocumentationTests(unittest.TestCase):
         "composition": ROOT / "docs/composition.md",
         "protocols": ROOT / "docs/protocols.md",
         "security": ROOT / "docs/security.md",
+        "physical_e2e": ROOT / "docs/physical-e2e.md",
         "compatibility": ROOT / "docs/compatibility.md",
         "roadmap": ROOT / "docs/ecosystem-roadmap.md",
         "contributing": ROOT / "CONTRIBUTING.md",
@@ -291,11 +319,21 @@ class SupportingDocumentationTests(unittest.TestCase):
         }
 
     def test_canonical_terms_and_non_authorizing_chain_agree(self) -> None:
-        for name in ("architecture", "composition", "protocols", "compatibility"):
+        architecture = self.documents["architecture"]
+        for term in (
+            "UMEKO",
+            "UME-HARNESS",
+            "MOTHERSHIP",
+            "FrozenAction",
+            "one-shot consume",
+            "separately configured bounded executor",
+        ):
+            self.assertIn(term.casefold(), architecture.casefold())
+
+        for name in ("composition", "protocols", "compatibility"):
             text = self.documents[name]
             with self.subTest(document=name):
-                self.assertIn("installable hub", text)
-                self.assertIn("independently adoptable", text)
+                self.assertIn("0.2 compatibility surface", text.casefold())
                 self.assertIn("authority_effect", text)
                 self.assertIn("execution_effect", text)
                 positions = [text.index(kind) for kind in (
@@ -305,7 +343,7 @@ class SupportingDocumentationTests(unittest.TestCase):
                     "observation-snapshot",
                 )]
                 self.assertEqual(sorted(positions), positions)
-        for name in ("architecture", "composition", "protocols"):
+        for name in ("composition", "protocols"):
             self.assertIn("protocol-composition-only", self.documents[name])
 
         all_text = "\n".join(self.documents.values()).casefold()
@@ -322,13 +360,14 @@ class SupportingDocumentationTests(unittest.TestCase):
         for term in (
             "mothership.scope",
             "mothership.approval",
+            "mothership.action_authority",
             "mothership.adapters",
             "mothership.contracts",
             "mothership.protocols",
             "immutable packaged resources",
             "read-only CLI",
             "explicit caller-supplied target",
-            "legacy compatibility",
+            "Legacy 0.2 Protocol Compatibility",
         ):
             self.assertIn(term, text)
 
@@ -372,8 +411,40 @@ class SupportingDocumentationTests(unittest.TestCase):
             "stale protocol snapshot",
             "loopback",
             "Residual risks",
+            "Decision Plane",
+            "Action Authority Plane",
+            "Execution Plane",
+            "one-shot",
+            "replay",
+            "separately configured bounded executor",
+            "does not authenticate human identity",
+            "trusted, non-rollbackable live ledger",
         ):
             self.assertIn(threat, text)
+
+    def test_action_authority_claim_limits_are_explicit(self) -> None:
+        architecture = self.documents["architecture"]
+        for term in (
+            "issuing interpreter lineage",
+            "cannot be reconstructed",
+            "child forked after issuance",
+            "(consume event, exact validated action)",
+        ):
+            self.assertIn(term, architecture)
+
+        security = self.documents["security"]
+        for term in (
+            "does not fsync the parent directory",
+            "new directory entry is not claimed crash-durable",
+            "rolled back or restored",
+            "fresh action_id for every freeze",
+            "exact live issuance",
+        ):
+            self.assertIn(term, security)
+
+        physical = self.documents["physical_e2e"]
+        self.assertIn("operator-observed", physical)
+        self.assertIn("not independently reproducible", physical)
 
     def test_compatibility_contribution_reporting_and_roadmap_are_bounded(self) -> None:
         compatibility = self.documents["compatibility"]
@@ -396,22 +467,30 @@ class SupportingDocumentationTests(unittest.TestCase):
         self.assertIn("Do not open a public issue", reporting)
 
         roadmap = self.documents["roadmap"]
-        for heading in ("## Shipped in 0.2.0", "## Next candidates", "## Not planned"):
+        for heading in ("## Implemented", "## Candidates", "## Not current or planned"):
             self.assertIn(heading, roadmap)
         for excluded in (
             "automatic companion installation",
             "model or agent execution",
-            "retry or fallback engine",
+            "automatic retry or fallback",
             "credential management",
             "background service",
+            "ambient or global authority",
         ):
             self.assertIn(excluded, roadmap)
+        for implemented in (
+            "FrozenAction",
+            "caller-attested human decision",
+            "short TTL",
+            "trusted, non-rollbackable live ledger",
+        ):
+            self.assertIn(implemented, roadmap)
 
 
 class JapaneseGuideTests(unittest.TestCase):
     JAPANESE_H2 = (
         "クイックスタート",
-        "60秒で全体を確認",
+        "0.2互換チェーンを60秒で検証",
         "課題",
         "Mothershipの答え",
         "アーキテクチャ",
@@ -442,6 +521,11 @@ class JapaneseGuideTests(unittest.TestCase):
         )
         self.assertEqual(self.JAPANESE_H2, headings)
 
+    def test_japanese_demo_is_scoped_to_the_compatibility_chain(self) -> None:
+        self.assertNotIn("60秒で全体を確認", self.japanese)
+        self.assertNotIn("4つの境界に置かれた架空の文書", self.japanese)
+        self.assertIn("0.2互換チェーン", self.japanese)
+
     def test_quickstart_and_demo_bytes_match_english_contract(self) -> None:
         self.assertEqual(
             QUICKSTART,
@@ -459,6 +543,8 @@ class JapaneseGuideTests(unittest.TestCase):
         for fact in (
             "Python 3.12+",
             "0.2.0",
+            "mothership.action_authority",
+            "github.merge_pr",
             "frontdoor-task",
             "governance-handoff",
             "router-manifest",
@@ -490,7 +576,9 @@ class JapaneseGuideTests(unittest.TestCase):
     def test_japanese_guide_preserves_claim_limits(self) -> None:
         for phrase in (
             "モデルを呼び出しません",
-            "権限を与えません",
+            "Mothershipは、範囲を限定したconsequential authorityの境界を所有します",
+            "default CLIはread-onlyのままです",
+            "別途設定されたbounded executor",
             "自動インストールしません",
             "合成コーパス",
             "本番精度ではありません",

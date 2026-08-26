@@ -1,125 +1,172 @@
 # Architecture
 
-Mothership is an **installable hub** for portable control-plane primitives, protocol compatibility, integrity checks,
-and a synthetic composition demo. Its companion repositories are **independently adoptable** products. This topology
-creates a shared contract surface without creating ambient runtime authority.
+Mothership is the decision and consequential-authority plane in a fixed three-product architecture. It owns the
+bounded consequential-authority boundary; it does not run models, choose local workers, or ship a general production
+executor.
 
-## System shape
+## Current three-product architecture
 
 ```mermaid
 flowchart LR
-    H[Human request]
-    F[Agent Frontdoor]
-    W[Workflow Governance Model]
-    R[Mothership Router]
-    S[Secretary TUI]
-    M[(Mothership registry<br/>and verification hub)]
+    U[UMEKO<br/>presentation and persona<br/>authority: none]
+    H[UME-HARNESS<br/>local work governance<br/>external authority: none]
+    M[MOTHERSHIP<br/>evidence, decisions,<br/>consequential authority]
+    X[Separately configured<br/>bounded executor]
+    V[Receipt and verification]
 
-    H --> F --> W --> R --> S
+    U -. human-facing surface .-> M
+    H -. proposal and evidence .-> M
+    M -->|one trusted-live-ledger consumption| X --> V
+```
+
+| Product | Owns | Authority boundary |
+| --- | --- | --- |
+| UMEKO | presentation, voice, persona, and human-facing interaction | no decision or execution authority |
+| UME-HARNESS | task intake, local execution leases, local tools, and worktree policy | no external consequential authority |
+| MOTHERSHIP | evidence, decisions, exact action freeze, caller-attested binding, and trusted-ledger consume | exact, short-lived, bounded authority only |
+
+This document does not create runtime dependencies between the products. A future Harness-to-Mothership protocol would
+require a separate reviewed migration.
+
+## Current Mothership flow
+
+Decision review and Action Authority are separate inputs. A Decision Card never automatically becomes a
+`FrozenAction`.
+
+```mermaid
+flowchart TD
+    E[Proposal and evidence]
+    C["Decision Card<br/>authority_effect: false<br/>execution_effect: false"]
+    H1{{Human review}}
+    D["Decision Approval<br/>review evidence only"]
+
+    P[Exact supported<br/>execution parameters]
+    F["FrozenAction<br/>action SHA + short TTL"]
+    H2{{Human action decision}}
+    A[File-fsynced authority-action decision]
+    O["One-shot consume<br/>trusted live ledger"]
+    X[Separately configured<br/>bounded executor]
+    R[Receipt and verification]
+
+    E --> C --> H1 --> D
+    P --> F --> H2 --> A --> O --> X --> R
+```
+
+`freeze_action()` accepts an `action_id`, the closed `github.merge_pr` operation, and exact execution parameters. It
+validates those parameters, derives the human display from them, freezes the action, computes `action_sha256`, and
+sets a fixed ten-minute deadline. A caller cannot inject display fields. In particular, `consequence_if_approved` is
+derived presentation; it is not executable input.
+
+`FrozenAction` issuance relies on interpreter-local in-memory state. The object cannot be reconstructed after
+serialization, restart, or transfer into a fresh interpreter. On POSIX, however, a child forked after issuance inherits
+a copy of both the object and the issuance registry; the API therefore does not provide process-identity isolation.
+Freeze, human response handling, and `record_action_decision()` must remain in that issuing interpreter lineage and
+complete before the fixed TTL. Remote approval transport and distributed multi-process authority are not supported.
+
+`validate_decision_transport()` accepts only `approve` or `reject` bound to the exact `action_id` and action digest.
+`record_action_decision()` writes a caller-supplied, action-bound decision to the dedicated authority-action ledger.
+The public API does not authenticate human identity; the calling integration must establish the human ceremony before
+recording the decision. The action digest excludes `expires_at`; re-freezing the same `action_id` and parameters after
+expiry reproduces the digest, so the library does not bind a response to one unique issuance. The integration must use
+a fresh action_id for every freeze and correlate each response to the exact live issuance, including the displayed
+expiry, before recording it. Delayed or reused responses must be rejected outside this API.
+
+`consume_action()` atomically permits one use in one trusted, non-rollbackable live ledger history, then rejects
+approval replay and action replay there. The API has no global or monotonic ledger anchor: copied, forked, rolled-back,
+or restored pre-consume state is another replay domain and must not become an authority source. Mismatch, expiry,
+malformed state, unsafe ledger paths, and tamper all fail closed.
+
+After file-fsyncing the event, `consume_action()` returns `(consume event, exact validated action)` in that order. It does
+not execute the action. Creating a new ledger file does not fsync its parent directory, so crash durability of that new
+directory entry is not claimed. The default package and CLI do not contain a general production bounded executor.
+Actual external effects require a separately configured bounded executor that emits receipt and verification evidence.
+
+## Three approval concepts
+
+| Concept | Meaning | Current role |
+| --- | --- | --- |
+| Decision Approval | a caller attests that a human reviewed one exact Decision Card | review evidence; no execution authority or identity authentication |
+| Legacy Invocation Approval | alias, registry, task, prompt, scope, and invocation evidence plus attempt lifecycle | legacy invocation-evidence compatibility |
+| Action Authority Decision / Authority-Action Approval | a caller attests that a human approved or rejected one exact `FrozenAction` digest | canonical current consequential-authority path; human provenance is an integration trust assumption |
+
+`validate_decision_approval_binding()` validates a Decision Card and Decision Approval by canonical-JSON SHA-256 and
+`decision_id`. Both objects keep `authority_effect: false` and `execution_effect: false`. The result is evidence of
+review, not an action decision.
+
+The legacy `mothership.approval` facade remains backed by `orchestration.lib.ledger` and preserves
+`approval_granted`, `attempt_started`, and `attempt_finished` evidence. It is not the owner of new consequential
+authority.
+
+## Legacy 0.2 Protocol Compatibility
+
+**Status: 0.2 compatibility surface; preserved for interoperability and history. Not the current three-product
+architecture.**
+
+```mermaid
+flowchart LR
+    F[Agent Frontdoor] --> W[Workflow Governance Model]
+    W --> R[Mothership Router]
+    R --> S[Secretary TUI]
+    M[(Mothership<br/>compatibility registry)]
     W -. explicit document .-> M
     M -. validated snapshot .-> S
 ```
 
-The protocol order is fixed:
+The frozen protocol order remains:
 
 1. `frontdoor-task`
 2. `governance-handoff`
 3. `router-manifest`
 4. `observation-snapshot`
 
-The demo claim is `protocol-composition-only`. It does not represent approval, worker execution, or task completion.
-Where effect fields exist, `authority_effect` and `execution_effect` remain false.
+The demo claim remains `protocol-composition-only`. These documents keep `authority_effect` and `execution_effect`
+false and do not enter the current authority flow. Frontdoor/WGM/Router-based Decision Card ingestion remains a
+compatibility input until a separately reviewed migration.
 
-## Two separate chains: protocol composition and human decision boundary
+## Legacy 0.1 compatibility
 
-The flow above is the **Protocol Composition Chain**. It answers whether four independently owned interchange
-documents are schema-compatible and sequence-continuous. It says nothing about what a human should do next, and
-nothing in it grants authority.
+The packaged `frontdoor`, `safety`, legacy executor registry, invocation contracts, and
+`orchestration.lib.ledger` preserve older import and evidence surfaces. They remain distribution compatibility, not
+architectural owners. Removing or migrating them would require a major-version decision.
 
-A second, distinct chain — the **Human Decision Boundary** — governs that separate question:
+## Installed package and read-only CLI
 
-```mermaid
-flowchart TD
-    Ev[Evidence / context]
-    Card["Decision Card<br/>evidence/contracts/decision-card.v0.schema.json<br/>authority_effect: false, execution_effect: false"]
-    Hum{{Human}}
-    App["Decision Approval<br/>evidence/contracts/decision-approval.v0.schema.json<br/>bound to one exact Card by SHA-256 + decision_id"]
-    Ex[Execution authority stays separate]
+The distribution is `mothership-control-plane`; Python 3.12 or newer is required and runtime dependencies are empty.
+The default CLI remains read-only with respect to consequential external state.
 
-    Ev --> Card --> Hum --> App
-    App -.->|no direct arrow| Ex
-```
-
-`validate_decision_approval_binding()` (`orchestration/lib/decision.py`, exported from `mothership.contracts`)
-validates both objects against their schemas, recomputes `canonical_json_sha256()` of the Card, and requires an exact
-match against `decision_card_sha256` on the Approval plus exact `decision_id` agreement. It is pure: no I/O, no
-network access, no side effects. A valid binding means only that the human reviewed *this exact* Card — it is not
-execution authority, a worker selection, or an invocation.
-
-This is deliberately not the same object as two existing, similarly named schemas:
-
-- `decision` (`frontdoor/contracts/decision.schema.json`) is the Agent Frontdoor's advisory routing recommendation —
-  a machine output, not a human judgment record.
-- `approval-event` (`evidence/contracts/approval-event.schema.json`) is invocation/execution-side evidence governing
-  the `attempt_started` / `attempt_finished` chain. No code path connects it to a Decision Approval.
-
-`consequence_if_approved` on the Decision Card is human-readable presentation text. It must not be consumed as a
-shell command, executor input, invocation request, approval evidence, or execution plan.
-
-This primitive is library-level only; no `mothership` CLI subcommand exposes it yet.
-
-## Installed package
-
-The distribution is `mothership-control-plane` and the command is `mothership`. Python 3.12 or newer is required; the
-runtime dependency list is empty.
-
-| Surface | Responsibility |
+| CLI surface | Responsibility |
 | --- | --- |
 | `mothership verify` | check immutable packaged resources and protocol consistency |
-| `mothership doctor` | run fixed local CLI availability probes in a sanitized environment |
-| `mothership protocol` | list frozen protocols or validate one explicit local document |
-| `mothership demo` | validate the bundled four-stage synthetic chain |
+| `mothership doctor` | run fixed local availability probes in a sanitized environment |
+| `mothership protocol` | list or validate frozen 0.2 compatibility protocols |
+| `mothership demo` | validate the bundled 0.2 synthetic chain |
+| decision-card and decision-batch commands | render review-only Decision Cards or ephemeral batches |
+| GitHub observation commands | perform explicit read-only public observation and render candidates or Cards |
 
-`verify`, `protocol`, and `demo` read immutable packaged resources or an explicitly supplied file. `doctor` can launch
-only its fixed diagnostic probes. It never launches a model.
+No CLI command freezes, records, consumes, or executes an authority action. The GitHub observation commands can issue
+read-only requests; they do not mutate GitHub.
 
 ## Public modules
 
-The v0.2 modules are compatibility facades over the existing authoritative implementations:
-
 | Public module | Implementation source | Contract |
 | --- | --- | --- |
-| `mothership.scope` | `orchestration.lib.paths` | bounded local paths and staging |
-| `mothership.approval` | `orchestration.lib.ledger` | approval and attempt evidence |
+| `mothership.action_authority` | `orchestration.lib.action_authority*` | exact action freeze, caller-attested decision, and trusted-live-ledger consume |
+| `mothership.scope` | `orchestration.lib.paths` | legacy bounded local paths and staging |
+| `mothership.approval` | `orchestration.lib.ledger` | legacy invocation approval and attempt evidence |
 | `mothership.adapters` | `orchestration.lib.adapters` | immutable plans and diagnostics |
-| `mothership.contracts` | canonical, JSON, contract, and registry modules, plus `orchestration.lib.decision` | strict data contracts, and Decision Card / Decision Approval binding |
-| `mothership.protocols` | Mothership protocol registry and validator | suite interchange validation |
+| `mothership.contracts` | canonical, JSON, contract, registry, and decision modules | strict data and Decision Card / Decision Approval binding |
+| `mothership.protocols` | protocol registry and validator | 0.2 compatibility validation |
 
-The legacy compatibility layer keeps old imports and command wrappers available in 0.2. The facades do not copy
-behavior into a second implementation. Any later removal is a major-version decision.
+The facades keep one authoritative implementation for each behavior. Existing library calls create output or ledger
+evidence only for an explicit caller-supplied target; those writes are not side effects of the read-only CLI.
 
-## Read and write boundaries
+## Immutable packaged resources
 
-The default `mothership` command surface is a **read-only CLI** with respect to repository and user state. Existing
-library calls create output or ledger evidence only for an **explicit caller-supplied target**. The preserved
-`llm-seat approve` command appends an event only after an explicit invocation and ceremony.
+Mothership ships immutable packaged resources for the 0.2 compatibility lane: a closed registry, schema snapshots and
+SHA-256 digests, golden-path fixtures, inert executor examples, and an inventory. `mothership verify` checks inventory
+membership, sizes, hashes, registry shape, schema digests, inert executors, and golden-path transitions.
 
-Those write-capable primitives are not side effects of `verify`, `doctor`, `protocol`, or `demo`.
-
-## Immutable resources
-
-Mothership ships these immutable packaged resources:
-
-- a closed protocol registry;
-- four schema snapshots with SHA-256 digests;
-- five golden-path fixtures;
-- inert executor examples;
-- an inventory of every packaged Mothership JSON resource.
-
-`mothership verify` checks inventory membership, sizes, hashes, registry shape, schema digests, inert executors, and
-golden-path transitions. Package installation can change the selected Python environment; verification does not.
-
-## Protocol validation flow
+## Compatibility protocol validation flow
 
 ```text
 explicit normalized absolute path
@@ -132,17 +179,17 @@ explicit normalized absolute path
 ```
 
 Unknown protocol kinds fail before file access. A schema-valid document remains metadata; validation never promotes it
-to approval. See the [protocol reference](protocols.md).
+to a Decision Approval or an Action Authority Decision. See the [protocol reference](protocols.md).
 
-## Trust boundaries
+## Trust and failure boundaries
 
-- Packaged schemas and fixtures are trusted only after their inventory and registry hashes pass.
+- Exact action inputs and every ledger row are untrusted until their closed validation succeeds.
+- FrozenAction decision recording must remain in its issuing interpreter lineage, including any inherited fork state.
+- Consume-once semantics require one trusted, non-rollbackable live ledger history.
+- Packaged schemas and fixtures are trusted only after inventory and registry hashes pass.
 - Explicit local JSON is untrusted and must cross the strict file and schema boundary.
-- Diagnostic child processes are untrusted observations with fixed commands and sanitized environments.
-- Credentials, endpoints, installed models, real commands, and execution decisions remain operator-owned state.
-- Companion repositories own their domain semantics; Mothership owns only the frozen composition snapshot.
-
-## Failure model
-
-Public commands return one closed JSON result and a documented exit code. They do not retry, repair input, choose a
-fallback, discover another checkout, or reinterpret a failed check as success. The operator decides what to do next.
+- Diagnostic and observation output is untrusted evidence, never permission.
+- Credentials, separately configured executors, external preconditions, receipts, and verification remain outside the
+  default CLI.
+- Public commands and authority APIs fail closed; they do not retry, repair input, choose a fallback, or reinterpret a
+  failed check as success.

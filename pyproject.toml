@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mothership-control-plane"
 dynamic = ["version"]
-description = "Portable, safety-first control-plane primitives for AI coding environments"
+description = "Bounded consequential-authority and evidence primitives for AI-assisted actions"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
