@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="../../assets/brand/ume-mothership-lockup.svg" alt="UME Mothership" width="640">
+  <img src="../../assets/brand/ume-mothership-lockup.svg" alt="Mothership Authority" width="640">
 </p>
 
 # Mothership 日本語ガイド
 
-<p align="center"><strong>AI支援による重要操作のための、範囲を限定したconsequential authority。</strong></p>
+<p align="center"><strong>AIのための、範囲を限定したAction Authority。</strong></p>
 
-<p align="center"><strong>操作を固定し、attested decisionをbindし、1つのtrusted live ledgerでconsumeする。</strong></p>
+<p align="center"><strong>ひとつの人間判断。ひとつの具体的操作。1回だけ。</strong></p>
 
 Mothershipは、範囲を限定したconsequential authorityの境界を所有します。1つのexact actionをfreezeし、そのSHA-256へ
 callerがhuman decisionとしてattestした判断をbindし、eventをfile-fsyncして、1つのtrustedかつnon-rollbackableな
@@ -98,7 +98,7 @@ Mothershipは、この区別を実行可能なcontractとして提供します�
 
 ```mermaid
 flowchart LR
-    U[UMEKO<br/>presentation / persona<br/>authority: none]
+    U[UME Persona (private)<br/>presentation / persona<br/>authority: none]
     H[UME-HARNESS<br/>local work governance<br/>external authority: none]
     M[MOTHERSHIP<br/>decision / consequential authority]
     X[別途設定された<br/>bounded executor]
@@ -110,7 +110,7 @@ flowchart LR
 
 | Product | 担当 | 所有しないもの |
 | --- | --- | --- |
-| UMEKO | presentation、voice、persona、human-facing interaction | decision / execution authority |
+| UME Persona (private) | presentation、voice、persona、human-facing interaction | decision / execution authority |
 | UME-HARNESS | task intake、LocalExecutionLease、local tool / worktree policy | external consequential authority |
 | MOTHERSHIP | evidence、decision、exact action freeze、caller-attested binding、trusted-ledger consume | model / worker execution |
 

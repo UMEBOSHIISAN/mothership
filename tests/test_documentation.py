@@ -134,7 +134,7 @@ class ReadmeContractTests(unittest.TestCase):
 
     def test_hero_links_and_companion_topology_are_exact(self) -> None:
         self.assertIn(
-            "Bounded consequential authority for AI-assisted actions.",
+            "Bounded Action Authority for AI",
             self.text,
         )
         for target in (
@@ -170,7 +170,7 @@ class ReadmeContractTests(unittest.TestCase):
     def test_current_authority_boundary_precedes_legacy_compatibility(self) -> None:
         for term in (
             "Mothership owns the bounded consequential-authority boundary",
-            "UMEKO",
+            "UME Persona (private)",
             "UME-HARNESS",
             "mothership.action_authority",
             "FrozenAction",
@@ -179,7 +179,7 @@ class ReadmeContractTests(unittest.TestCase):
         ):
             self.assertIn(term, self.text)
         self.assertLess(
-            self.text.index("UMEKO"),
+            self.text.index("UME Persona (private)"),
             self.text.index("Legacy 0.2 protocol compatibility"),
         )
         for stale_claim in (
@@ -321,7 +321,7 @@ class SupportingDocumentationTests(unittest.TestCase):
     def test_canonical_terms_and_non_authorizing_chain_agree(self) -> None:
         architecture = self.documents["architecture"]
         for term in (
-            "UMEKO",
+            "UME Persona (private)",
             "UME-HARNESS",
             "MOTHERSHIP",
             "FrozenAction",
