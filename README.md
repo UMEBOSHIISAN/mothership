@@ -183,7 +183,7 @@ The current product topology has exactly three top-level products:
 
 ```mermaid
 flowchart LR
-    U[UME Persona (private)<br/>presentation and persona<br/>authority: none]
+    U[UME Presence (private)<br/>human-facing presence<br/>authority: none]
     H[UME-HARNESS<br/>local work governance<br/>external authority: none]
     M[MOTHERSHIP<br/>decision and consequential authority]
     X[Separately configured<br/>bounded executor]
@@ -195,7 +195,7 @@ flowchart LR
 
 | Product | Owns | Does not own |
 | --- | --- | --- |
-| UME Persona (private) | presentation, voice, persona, and human-facing interaction | decision or execution authority |
+| UME Presence (private) | presentation, voice, persona, and human interaction | decision or execution authority |
 | UME-HARNESS | task intake, local work leases, tools, and worktree policy | external consequential authority |
 | MOTHERSHIP | evidence, decisions, and exact trusted-ledger action authority | model or worker execution |
 

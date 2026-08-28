@@ -171,7 +171,7 @@ class ReadmeContractTests(unittest.TestCase):
     def test_current_authority_boundary_precedes_legacy_compatibility(self) -> None:
         for term in (
             "Mothership owns the bounded consequential-authority boundary",
-            "UME Persona (private)",
+            "UME Presence (private)",
             "UME-HARNESS",
             "mothership.action_authority",
             "FrozenAction",
@@ -180,7 +180,7 @@ class ReadmeContractTests(unittest.TestCase):
         ):
             self.assertIn(term, self.text)
         self.assertLess(
-            self.text.index("UME Persona (private)"),
+            self.text.index("UME Presence (private)"),
             self.text.index("Legacy 0.2 protocol compatibility"),
         )
         for stale_claim in (
@@ -322,7 +322,7 @@ class SupportingDocumentationTests(unittest.TestCase):
     def test_canonical_terms_and_non_authorizing_chain_agree(self) -> None:
         architecture = self.documents["architecture"]
         for term in (
-            "UME Persona (private)",
+            "UME Presence (private)",
             "UME-HARNESS",
             "MOTHERSHIP",
             "FrozenAction",
