@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
-  <title id="title">UME Mothership lockup</title>
-  <desc id="desc">The UME flat master mark paired with the MOTHERSHIP product wordmark.</desc>
+  <title id="title">Mothership Authority lockup</title>
+  <desc id="desc">The UME flat master mark paired with the MOTHERSHIP Authority product wordmark.</desc>
   <rect width="1280" height="640" fill="#F8F7F4"/>
   <circle cx="300" cy="320" r="190" fill="#812735"/>
   <text x="0" y="386" fill="#FFFFFF" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="172" font-weight="700" letter-spacing="-7" text-anchor="middle" transform="translate(300 0) scale(0.72 1)">UME</text>
   <line x1="570" y1="210" x2="570" y2="430" stroke="#D9D5D1" stroke-width="2"/>
   <text x="650" y="330" fill="#111113" font-family="Helvetica Neue Condensed, Arial Narrow, Helvetica Neue, Arial, sans-serif" font-size="105" font-weight="700" letter-spacing="5">MOTHERSHIP</text>
-  <text x="650" y="382" fill="#812735" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="4">UMEBOSHIISAN / PRODUCT LINE</text>
+  <text x="650" y="382" fill="#812735" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="4">BOUNDED ACTION AUTHORITY</text>
 </svg>

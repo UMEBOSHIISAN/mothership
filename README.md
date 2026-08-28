@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="assets/brand/ume-mothership-lockup.svg" alt="UME Mothership" width="640">
+  <img src="assets/brand/ume-mothership-lockup.svg" alt="Mothership Authority" width="640">
 </p>
 
 # Mothership
 
 <p align="center"><strong>Keep consequential actions exact, explicitly decided, and ledger-scoped.</strong></p>
 
-<p align="center"><strong>Bounded consequential authority for AI-assisted actions.</strong></p>
+<p align="center"><strong>Bounded Action Authority for AI</strong></p>
 
 <p align="center">
   <img alt="Python 3.12 or newer" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
@@ -16,7 +16,7 @@
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0F172A">
 </p>
 
-<p align="center"><strong>Freeze the action. Bind the decision. Consume in one trusted live ledger.</strong></p>
+<p align="center"><strong>One human decision. One exact action. One use.</strong></p>
 
 Mothership owns the bounded consequential-authority boundary for AI-assisted work. It can freeze one exact supported
 action, bind a caller-attested human decision to that action's SHA-256 digest, append and file-fsync the decision, and
@@ -171,7 +171,7 @@ The current product topology has exactly three top-level products:
 
 ```mermaid
 flowchart LR
-    U[UMEKO<br/>presentation and persona<br/>authority: none]
+    U[UME Persona (private)<br/>presentation and persona<br/>authority: none]
     H[UME-HARNESS<br/>local work governance<br/>external authority: none]
     M[MOTHERSHIP<br/>decision and consequential authority]
     X[Separately configured<br/>bounded executor]
@@ -183,7 +183,7 @@ flowchart LR
 
 | Product | Owns | Does not own |
 | --- | --- | --- |
-| UMEKO | presentation, voice, persona, and human-facing interaction | decision or execution authority |
+| UME Persona (private) | presentation, voice, persona, and human-facing interaction | decision or execution authority |
 | UME-HARNESS | task intake, local work leases, tools, and worktree policy | external consequential authority |
 | MOTHERSHIP | evidence, decisions, and exact trusted-ledger action authority | model or worker execution |
 
