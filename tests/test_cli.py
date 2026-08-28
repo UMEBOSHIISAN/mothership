@@ -726,7 +726,7 @@ class CliTests(unittest.TestCase):
     def test_broken_pipe_returns_one_without_traceback(self) -> None:
         from mothership.cli import main
 
-        sink = mock.Mock()
+        sink = mock.MagicMock(spec=io.StringIO)
         sink.write.side_effect = BrokenPipeError
         with mock.patch("sys.stdout", sink):
             self.assertEqual(1, main(["demo"]))
