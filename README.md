@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/mothership-logo.png" alt="Mothership whale logo" width="180">
+  <img src="assets/brand/ume-mothership-lockup.svg" alt="UME Mothership" width="640">
 </p>
 
 # Mothership
