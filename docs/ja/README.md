@@ -98,7 +98,7 @@ Mothershipは、この区別を実行可能なcontractとして提供します�
 
 ```mermaid
 flowchart LR
-    U[UME Persona (private)<br/>presentation / persona<br/>authority: none]
+    U[UME Presence (private)<br/>human-facing presence<br/>authority: none]
     H[UME-HARNESS<br/>local work governance<br/>external authority: none]
     M[MOTHERSHIP<br/>decision / consequential authority]
     X[別途設定された<br/>bounded executor]
@@ -110,7 +110,7 @@ flowchart LR
 
 | Product | 担当 | 所有しないもの |
 | --- | --- | --- |
-| UME Persona (private) | presentation、voice、persona、human-facing interaction | decision / execution authority |
+| UME Presence (private) | presentation、voice、persona、human-facing interaction | decision / execution authority |
 | UME-HARNESS | task intake、LocalExecutionLease、local tool / worktree policy | external consequential authority |
 | MOTHERSHIP | evidence、decision、exact action freeze、caller-attested binding、trusted-ledger consume | model / worker execution |
 
