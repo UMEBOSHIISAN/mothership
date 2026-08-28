@@ -165,6 +165,18 @@ Mothership makes those distinctions executable and reviewable:
 
 The governing rule is simple: **review propositions; authorize only one exact, short-lived action.**
 
+## The UME Stack
+
+The UME Stack separates local work, consequential authority, and human-facing presence into independent product
+boundaries:
+
+- [UME-HARNESS](https://github.com/UMEBOSHIISAN/ume-harness) — Local Work Governance.
+- [Mothership](https://github.com/UMEBOSHIISAN/mothership) — Bounded Action Authority.
+- **UME Presence** — Human-facing Local Presence. This product lane remains private and is not currently distributed.
+
+Each product is independently usable. The shared architecture defines responsibility boundaries; it does not imply an
+automatic runtime dependency between the products.
+
 ## Architecture
 
 The current product topology has exactly three top-level products:
