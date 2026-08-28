@@ -21,6 +21,7 @@ EXPECTED_H2 = (
     "Validate the 0.2 compatibility chain in 60 seconds",
     "The problem",
     "The Mothership answer",
+    "The UME Stack",
     "Architecture",
     "Choose your adoption path",
     "Safety guarantees",
