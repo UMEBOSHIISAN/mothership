@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-08-28
+
+- Extended the CI matrix to Python 3.14 and kept the broken-pipe CLI regression
+  test compatible with argparse's newer output-stream probing.
 - Added the Decision Card / Decision Approval contracts (`evidence/contracts/decision-card.v0.schema.json`,
   `evidence/contracts/decision-approval.v0.schema.json`) and `validate_decision_approval_binding()`, exported from
   `mothership.contracts`. A Decision Approval binds to exactly one Decision Card by canonical-JSON SHA-256 digest and

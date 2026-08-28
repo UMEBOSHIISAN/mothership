@@ -20,7 +20,7 @@ class PackageEntrypointTests(unittest.TestCase):
         import mothership
 
         expected = (PACKAGE_ROOT / "VERSION").read_text("utf-8").strip()
-        self.assertEqual("0.2.1", expected)
+        self.assertEqual("0.3.0", expected)
         self.assertEqual(expected, mothership.__version__)
 
         with mock.patch.object(metadata, "version", return_value="9.8.7"):
