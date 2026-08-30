@@ -105,7 +105,7 @@ def approval_event_contract() -> dict[str, object]:
 
 class ContractTestCase(unittest.TestCase):
     def test_version_and_fixed_function_signatures_are_exact(self) -> None:
-        self.assertEqual(b"0.3.0\n", (ROOT / "VERSION").read_bytes())
+        self.assertEqual(b"0.3.1\n", (ROOT / "VERSION").read_bytes())
         expected_parameters = (
             (loads_strict, ("raw",)),
             (load_strict, ("path",)),

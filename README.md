@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="assets/brand/ume-mothership-lockup.svg" alt="Mothership Authority" width="640">
+  <img src="assets/mothership-banner.png" alt="The original Mothership whale mark crossing a dark star field" width="100%">
 </p>
+
+<p align="center"><em>The Mothership whale mark is based on an original drawing by the creator’s son.</em></p>
 
 # Mothership
 
@@ -92,10 +94,6 @@ mothership demo
 
 Installation may obtain build tooling. The installed runtime has zero third-party dependencies, and `verify` plus
 `demo` run offline. A successful result validates the artifact; it grants no authority to execute work.
-
-<p align="center">
-  <img src="assets/mothership-banner.png" alt="Whale-shaped Mothership crossing a dark star field" width="100%">
-</p>
 
 ## Validate the 0.2 compatibility chain in 60 seconds
 
@@ -405,7 +403,7 @@ controls preserved.
 
 These are internal synthetic-corpus results, not production accuracy. Reproduce them and read the denominators and
 limitations in [Paper evidence and claim boundaries](docs/research/paper-evidence.md). The Mothership machine-readable
-result is [`evaluation/results/mothership-0.3.0.json`](evaluation/results/mothership-0.3.0.json).
+result is [`evaluation/results/mothership-0.3.1.json`](evaluation/results/mothership-0.3.1.json).
 
 ## Documentation
 

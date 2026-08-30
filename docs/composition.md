@@ -1,7 +1,39 @@
 # Composition guide
 
-**Status: 0.2 compatibility surface; preserved for interoperability and history. Not the current three-product
-architecture.**
+**Current status: public product boundaries and protocols; private operating policy and composition.**
+
+Mothership is the Consequential Authority Plane in a three-product UME Stack:
+
+| Plane | Responsibility boundary | Authority boundary |
+| --- | --- | --- |
+| UME Presence (private; source preparation) | human-facing presentation contracts | no decision or execution authority |
+| UME-HARNESS | local work governance and exact local execution leases | no external consequential authority |
+| Mothership | evidence, human decisions, and exact one-use action authority | no model, worker, or generic executor |
+
+There is no automatic runtime dependency between these products. The table is a responsibility map, not an
+implemented end-to-end pipeline.
+
+## Public protocol, private policy
+
+Public protocol describes what happened, what evidence exists, what exact object or action is referenced, and which
+schema version and stable digest apply. Mothership currently publishes the contracts it already enforces:
+
+- Decision Card and Decision Approval for non-authorizing human review evidence;
+- Authority-Action Approval and Authority-Action Consume for one exact supported consequential action;
+- `FrozenAction`, exact parameter binding, and trusted-live-ledger one-use consumption;
+- the legacy 0.2 compatibility schemas documented below.
+
+These public contracts are descriptive and verifiable. They do not select a model or worker, choose a retry policy,
+set confidence or escalation thresholds, route memory, compress context, name customer connectors, or carry secrets.
+Those operational choices remain private policy. Production cross-plane orchestration, connector recipes, domain
+policy, memory and learning metabolism, worker routing, and incident corpora also remain private.
+
+No new cross-plane contract is implied here. A future contract should be added only when the existing public schemas
+cannot express the required boundary, and it must not transfer authority between planes.
+
+## Legacy 0.2 compatibility composition
+
+This legacy section remains the **0.2 compatibility surface** preserved for interoperability and history.
 
 This document describes the legacy 0.2 Frontdoor → WGM → Router → Secretary composition. The companions remain
 independently adoptable, and Mothership preserves their exact frozen interchange evidence. This chain is not the

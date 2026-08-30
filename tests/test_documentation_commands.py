@@ -93,7 +93,7 @@ class DocumentationCommandTests(unittest.TestCase):
         expected = {
             ("-m", "mothership", "verify"): ROOT / "docs/generated/verify-output.json",
             ("-m", "mothership", "demo"): ROOT / "docs/generated/demo-output.json",
-            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.3.0.json",
+            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.3.1.json",
         }
         with tempfile.TemporaryDirectory() as directory:
             environment = _minimal_environment(Path(directory))
