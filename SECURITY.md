@@ -2,8 +2,9 @@
 
 ## Supported version
 
-Security fixes are evaluated for the latest public Mothership release candidate. Until 0.2.0 is actually published, the
-repository state and its verification record are the only support reference; no release availability is implied.
+Security fixes are evaluated for the latest published Mothership release and the current protected `main` branch.
+Older releases may be assessed when a report demonstrates that the same issue affects them, but they are not maintained
+as separate supported lines.
 
 ## Report privately
 

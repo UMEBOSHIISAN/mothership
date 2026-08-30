@@ -1,12 +1,17 @@
 <p align="center">
-  <img src="assets/mothership-banner.png" alt="The original Mothership whale mark crossing a dark star field" width="100%">
+  <img
+    src="assets/mothership-banner.png"
+    alt="Original linocut-style Mothership whale mark swimming through flowing ocean currents"
+    width="100%"
+  >
 </p>
 
-<p align="center"><em>The Mothership whale mark is based on an original drawing by the creator’s son.</em></p>
+<p align="center"><em>
+  The Mothership whale mark is based on an original drawing by the creator’s son.
+  See <a href="https://github.com/UMEBOSHIISAN/mothership/blob/main/BRAND_ASSETS.md">brand provenance and usage rights</a>.
+</em></p>
 
 # Mothership
-
-<p align="center"><strong>Keep consequential actions exact, explicitly decided, and ledger-scoped.</strong></p>
 
 <p align="center"><strong>Bounded Action Authority for AI</strong></p>
 
@@ -414,6 +419,7 @@ result is [`evaluation/results/mothership-0.3.1.json`](evaluation/results/mother
 | Compose independent projects | [Composition guide](docs/composition.md) |
 | Inspect schemas and versions | [Protocol reference](docs/protocols.md) |
 | Review threats and residual risk | [Security model](docs/security.md) |
+| Understand whale and brand-asset rights | [Brand assets](https://github.com/UMEBOSHIISAN/mothership/blob/main/BRAND_ASSETS.md) |
 | Check measured support | [Compatibility](docs/compatibility.md) |
 | Follow ecosystem direction | [Roadmap](docs/ecosystem-roadmap.md) |
 | Read the complete Japanese guide | [日本語ガイド](docs/ja/README.md) |
@@ -466,4 +472,6 @@ See the [ecosystem roadmap](docs/ecosystem-roadmap.md) for shipped, candidate, a
 
 ## License
 
-Mothership is released under the [MIT License](LICENSE).
+Mothership is released under the [MIT License](LICENSE). The historical licensing record, provenance, and future
+asset-specific licensing rule for the Original Whale Mark and UME/Mothership lockup are documented in
+[BRAND_ASSETS.md](https://github.com/UMEBOSHIISAN/mothership/blob/main/BRAND_ASSETS.md).
