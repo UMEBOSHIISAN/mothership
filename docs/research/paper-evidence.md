@@ -19,7 +19,7 @@ python3 tools/run_evaluation.py
 python3 -m unittest tests.test_evaluation -v
 ```
 
-The first command emits the exact tracked result in [`evaluation/results/mothership-0.3.0.json`](../../evaluation/results/mothership-0.3.0.json). The corpus is [`evaluation/corpus/protocol-validation.v1.json`](../../evaluation/corpus/protocol-validation.v1.json).
+The first command emits the exact tracked result in [`evaluation/results/mothership-0.3.1.json`](../../evaluation/results/mothership-0.3.1.json). The corpus is [`evaluation/corpus/protocol-validation.v1.json`](../../evaluation/corpus/protocol-validation.v1.json).
 
 | Measurement | Result | Denominator and meaning |
 | --- | ---: | --- |

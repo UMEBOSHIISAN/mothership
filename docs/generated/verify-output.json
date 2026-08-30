@@ -1,1 +1,1 @@
-{"authority_effect":false,"checks":{"executor_example":"passed","golden_path":"passed","inventory":"passed","protocol_registry":"passed","schema_digests":"passed"},"execution_effect":false,"schema_version":"mothership.verify.v1","status":"passed","version":"0.3.0"}
+{"authority_effect":false,"checks":{"executor_example":"passed","golden_path":"passed","inventory":"passed","protocol_registry":"passed","schema_digests":"passed"},"execution_effect":false,"schema_version":"mothership.verify.v1","status":"passed","version":"0.3.1"}
