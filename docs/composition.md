@@ -6,7 +6,7 @@ Mothership is the Consequential Authority Plane in a three-product UME Stack:
 
 | Plane | Responsibility boundary | Authority boundary |
 | --- | --- | --- |
-| UME Presence (private; source preparation) | human-facing presentation contracts | no decision or execution authority |
+| UME Presence | human-facing presentation contracts | no decision or execution authority |
 | UME-HARNESS | local work governance and exact local execution leases | no external consequential authority |
 | Mothership | evidence, human decisions, and exact one-use action authority | no model, worker, or generic executor |
 
