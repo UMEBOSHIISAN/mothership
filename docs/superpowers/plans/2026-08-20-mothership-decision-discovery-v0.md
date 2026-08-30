@@ -132,9 +132,9 @@ Build one Card from Frontdoor + WGM alone, create the existing human Approval fi
 - [x] **Step 4: Review the diff and scope.**
 
 ```bash
-git -C /Users/umeboshi/Workspace/oss_staging/mothership diff --check
-git -C /Users/umeboshi/Workspace/oss_staging/mothership status --short
-git -C /Users/umeboshi/Workspace/oss_staging/mothership diff -- orchestration/lib/decision.py mothership/contracts.py tests/test_decision_discovery.py
+git diff --check
+git status --short
+git diff -- orchestration/lib/decision.py mothership/contracts.py tests/test_decision_discovery.py
 ```
 
 Confirm that only the producer, facade export, focused tests, the required public-facade compatibility assertion, and this plan artifact changed. Do not commit or push.
