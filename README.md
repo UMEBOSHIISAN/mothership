@@ -100,6 +100,72 @@ mothership demo
 Installation may obtain build tooling. The installed runtime has zero third-party dependencies, and `verify` plus
 `demo` run offline. A successful result validates the artifact; it grants no authority to execute work.
 
+### Use the current Authority Core
+
+This example freezes one fresh action, accepts a caller-attested human decision, records and consumes that authority,
+and stops by printing the exact returned action. It writes only under the local `.mothership-authority/` directory.
+
+<!-- authority-core-example:start -->
+```python
+from pathlib import Path
+from uuid import uuid4
+
+from mothership.action_authority import (
+    consume_action,
+    freeze_action,
+    record_action_decision,
+    validate_decision_transport,
+)
+
+authority_dir = Path.cwd().resolve() / ".mothership-authority"
+authority_dir.mkdir(mode=0o700, exist_ok=True)
+ledger_path = authority_dir / "authority-action-events.jsonl"
+action_id = f"act-readme-{uuid4().hex}"
+frozen = freeze_action(
+    action_id,
+    "github.merge_pr",
+    {
+        "repository": "example/project",
+        "pull_request": 42,
+        "expected_head_sha": "a" * 40,
+        "expected_base": "main",
+        "merge_method": "merge",
+    },
+)
+
+print(dict(frozen.action))
+print(f"expires_at={frozen.expires_at}")
+decision = validate_decision_transport(
+    frozen,
+    input("Human decision (approve/reject): ").strip(),
+    action_id,
+    frozen.action_sha256,
+)
+approval = record_action_decision(
+    ledger_path,
+    frozen,
+    decision["decision"],
+    decision["action_id"],
+    decision["action_sha256"],
+)
+if decision["decision"] == "reject":
+    print("Action rejected; no authority was consumed.")
+    raise SystemExit(0)
+
+_consume_event, action = consume_action(
+    ledger_path,
+    approval["event_id"],
+    decision["action_id"],
+    decision["action_sha256"],
+)
+print(action)
+```
+<!-- authority-core-example:end -->
+
+No GitHub operation is executed here. The returned action is data for a separately configured bounded executor, which
+this example deliberately does not include. Use a fresh `action_id` for every freeze and never carry a decision into a
+later issuance.
+
 ## Validate the 0.2 compatibility chain in 60 seconds
 
 `mothership demo` validates the four fictional documents in the frozen 0.2 compatibility chain and emits this
@@ -175,10 +241,10 @@ boundaries:
 
 - [UME-HARNESS](https://github.com/UMEBOSHIISAN/ume-harness) — Local Work Governance.
 - [Mothership](https://github.com/UMEBOSHIISAN/mothership) — Bounded Action Authority.
-- **UME Presence** — Human-facing Local Presence. This product lane remains private and is not currently distributed.
+- [UME Presence](https://github.com/UMEBOSHIISAN/ume-presence) — Human-facing Local Presence.
 
-Each product is independently usable. The shared architecture defines responsibility boundaries; it does not imply an
-automatic runtime dependency between the products.
+Each product is independently usable. The shared architecture defines responsibility boundaries.
+It does not imply automatic runtime integration.
 
 ## Architecture
 
@@ -186,7 +252,7 @@ The current product topology has exactly three top-level products:
 
 ```mermaid
 flowchart LR
-    U[UME Presence (private)<br/>human-facing presence<br/>authority: none]
+    U[UME Presence<br/>human-facing presence<br/>authority: none]
     H[UME-HARNESS<br/>local work governance<br/>external authority: none]
     M[MOTHERSHIP<br/>decision and consequential authority]
     X[Separately configured<br/>bounded executor]
@@ -198,7 +264,7 @@ flowchart LR
 
 | Product | Owns | Does not own |
 | --- | --- | --- |
-| UME Presence (private) | presentation, voice, persona, and human interaction | decision or execution authority |
+| UME Presence | presentation, voice, persona, and human interaction | decision or execution authority |
 | UME-HARNESS | task intake, local work leases, tools, and worktree policy | external consequential authority |
 | MOTHERSHIP | evidence, decisions, and exact trusted-ledger action authority | model or worker execution |
 

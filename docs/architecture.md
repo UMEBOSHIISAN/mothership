@@ -8,7 +8,7 @@ executor.
 
 ```mermaid
 flowchart LR
-    U[UME Presence (private)<br/>human-facing presence<br/>authority: none]
+    U[UME Presence<br/>human-facing presence<br/>authority: none]
     H[UME-HARNESS<br/>local work governance<br/>external authority: none]
     M[MOTHERSHIP<br/>evidence, decisions,<br/>consequential authority]
     X[Separately configured<br/>bounded executor]
@@ -21,7 +21,7 @@ flowchart LR
 
 | Product | Owns | Authority boundary |
 | --- | --- | --- |
-| UME Presence (private) | presentation, voice, persona, and human interaction | no decision or execution authority |
+| UME Presence | presentation, voice, persona, and human interaction | no decision or execution authority |
 | UME-HARNESS | task intake, local execution leases, local tools, and worktree policy | no external consequential authority |
 | MOTHERSHIP | evidence, decisions, exact action freeze, caller-attested binding, and trusted-ledger consume | exact, short-lived, bounded authority only |
 

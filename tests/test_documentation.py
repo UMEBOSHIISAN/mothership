@@ -68,6 +68,22 @@ def _marked_fence(text: str, name: str, language: str) -> str:
     return matches[0]
 
 
+def _tracked_markdown_paths() -> tuple[Path, ...]:
+    completed = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.md"],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+        timeout=10,
+    )
+    return tuple(
+        ROOT / raw.decode("utf-8")
+        for raw in completed.stdout.split(b"\0")
+        if raw
+    )
+
+
 class GeneratedDocumentationTests(unittest.TestCase):
     def _run(self, *arguments: str) -> subprocess.CompletedProcess[bytes]:
         with tempfile.TemporaryDirectory() as directory:
@@ -122,6 +138,62 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertEqual(1, self.text.count("<!-- quickstart:start -->"))
         self.assertEqual(1, self.text.count("<!-- quickstart:end -->"))
 
+    def test_current_authority_example_is_executable_and_non_executing(self) -> None:
+        block = _marked_fence(self.text, "authority-core-example", "python")
+        calls = (
+            "freeze_action(",
+            "validate_decision_transport(",
+            "record_action_decision(",
+            "consume_action(",
+        )
+        positions = [block.index(call) for call in calls]
+        self.assertEqual(sorted(positions), positions)
+        for forbidden in ("subprocess", "requests", "executor", "git push", "gh "):
+            self.assertNotIn(forbidden, block.casefold())
+
+        for human_decision, expected_events in ((b"approve\n", 2), (b"reject\n", 1)):
+            with self.subTest(decision=human_decision.strip()), tempfile.TemporaryDirectory() as directory:
+                os.chmod(directory, 0o755)
+                environment = _minimal_environment(Path(directory))
+                environment["PYTHONPATH"] = str(ROOT)
+                completed = subprocess.run(
+                    [sys.executable, "-c", block],
+                    cwd=directory,
+                    env=environment,
+                    input=human_decision,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                    timeout=10,
+                )
+                self.assertEqual(0, completed.returncode, completed.stderr)
+                self.assertIn(b"github.merge_pr", completed.stdout)
+                self.assertIn(b"expires_at=", completed.stdout)
+                authority_dir = Path(directory, ".mothership-authority")
+                self.assertEqual(0o700, authority_dir.stat().st_mode & 0o777)
+                events = Path(authority_dir, "authority-action-events.jsonl").read_bytes().splitlines()
+                self.assertEqual(expected_events, len(events))
+                if human_decision == b"reject\n":
+                    self.assertIn(b"no authority was consumed", completed.stdout)
+
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as target:
+            os.chmod(target, 0o700)
+            Path(directory, ".mothership-authority").symlink_to(target, target_is_directory=True)
+            environment = _minimal_environment(Path(directory))
+            environment["PYTHONPATH"] = str(ROOT)
+            completed = subprocess.run(
+                [sys.executable, "-c", block],
+                cwd=directory,
+                env=environment,
+                input=b"reject\n",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=10,
+            )
+            self.assertNotEqual(0, completed.returncode)
+            self.assertFalse(Path(target, "authority-action-events.jsonl").exists())
+
     def test_embedded_demo_is_the_generated_transcript(self) -> None:
         transcript = _marked_fence(self.text, "demo-output", "json")
         expected = (GENERATED / "demo-output.json").read_text("utf-8").rstrip("\n")
@@ -171,7 +243,7 @@ class ReadmeContractTests(unittest.TestCase):
     def test_current_authority_boundary_precedes_legacy_compatibility(self) -> None:
         for term in (
             "Mothership owns the bounded consequential-authority boundary",
-            "UME Presence (private)",
+            "[UME Presence](https://github.com/UMEBOSHIISAN/ume-presence)",
             "UME-HARNESS",
             "mothership.action_authority",
             "FrozenAction",
@@ -180,8 +252,14 @@ class ReadmeContractTests(unittest.TestCase):
         ):
             self.assertIn(term, self.text)
         self.assertLess(
-            self.text.index("UME Presence (private)"),
+            self.text.index("[UME Presence](https://github.com/UMEBOSHIISAN/ume-presence)"),
             self.text.index("Legacy 0.2 protocol compatibility"),
+        )
+        normalized = " ".join(self.text.split())
+        self.assertIn(
+            "Each product is independently usable. The shared architecture defines responsibility boundaries. "
+            "It does not imply automatic runtime integration.",
+            normalized,
         )
         for stale_claim in (
             "turn a recommendation into permission",
@@ -322,7 +400,7 @@ class SupportingDocumentationTests(unittest.TestCase):
     def test_canonical_terms_and_non_authorizing_chain_agree(self) -> None:
         architecture = self.documents["architecture"]
         for term in (
-            "UME Presence (private)",
+            "UME Presence",
             "UME-HARNESS",
             "MOTHERSHIP",
             "FrozenAction",
@@ -355,6 +433,18 @@ class SupportingDocumentationTests(unittest.TestCase):
             "invokes a model automatically",
         ):
             self.assertNotIn(contradiction, all_text)
+
+    def test_markdown_does_not_publish_creator_absolute_paths(self) -> None:
+        for path in _tracked_markdown_paths():
+            text = path.read_text("utf-8")
+            with self.subTest(path=path.relative_to(ROOT)):
+                self.assertNotIn("/Users/umeboshi", text)
+
+    def test_presence_public_status_is_consistent(self) -> None:
+        for path in _tracked_markdown_paths():
+            text = path.read_text("utf-8")
+            with self.subTest(path=path.relative_to(ROOT)):
+                self.assertNotIn("UME Presence (private", text)
 
     def test_architecture_documents_modules_resources_and_write_boundaries(self) -> None:
         text = self.documents["architecture"]
