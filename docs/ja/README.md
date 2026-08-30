@@ -1,10 +1,17 @@
 <p align="center">
-  <img src="../../assets/brand/ume-mothership-lockup.svg" alt="Mothership Authority" width="640">
+  <img
+    src="../../assets/mothership-banner.png"
+    alt="息子の原画をもとにした、海流を進む版画調のMothershipクジラ"
+    width="100%"
+  >
 </p>
 
-# Mothership 日本語ガイド
+<p align="center"><em>
+  Mothershipのクジラは、作者の息子による原画をもとにしています。
+  由来と利用条件は<a href="../../BRAND_ASSETS.md">ブランド資産ガイド</a>を参照してください。
+</em></p>
 
-<p align="center"><strong>AIのための、範囲を限定したAction Authority。</strong></p>
+# Mothership 日本語ガイド
 
 <p align="center"><strong>ひとつの人間判断。ひとつの具体的操作。1回だけ。</strong></p>
 
@@ -45,10 +52,6 @@ mothership demo
 
 インストール時はbuild toolを取得する場合があります。インストール後のruntime dependencyは0です。`verify`と
 `demo`はofflineで動きます。成功はartifactの整合性を示しますが、実行権限を与えません。
-
-<p align="center">
-  <img src="../../assets/mothership-banner.png" alt="暗い星空を進むクジラ型のMothership" width="100%">
-</p>
 
 ## 0.2互換チェーンを60秒で検証
 
@@ -316,4 +319,6 @@ background action loopは現在の境界外です。
 
 ## ライセンス
 
-Mothershipは[MIT License](../../LICENSE)で公開します。
+Mothershipは[MIT License](../../LICENSE)で公開します。Original Whale MarkとUME/Mothership brand lockupの
+過去のライセンス記録、由来、今後のasset-specific license ruleは、
+[ブランド資産ガイド](../../BRAND_ASSETS.md)に記載しています。
