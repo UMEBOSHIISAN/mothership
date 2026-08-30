@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.1 - 2026-08-30
+
+- Made the original whale mark the single README hero and recorded its human origin.
+- Documented the current three-plane responsibility map and the public-protocol/private-policy boundary without
+  adding runtime integration or execution authority.
+- Refreshed the clone-verifiable tracked-file checksum manifest.
+
 ## 0.3.0 - 2026-08-28
 
 - Extended the CI matrix to Python 3.14 and kept the broken-pipe CLI regression

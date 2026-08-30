@@ -403,7 +403,7 @@ controls preserved.
 
 These are internal synthetic-corpus results, not production accuracy. Reproduce them and read the denominators and
 limitations in [Paper evidence and claim boundaries](docs/research/paper-evidence.md). The Mothership machine-readable
-result is [`evaluation/results/mothership-0.3.0.json`](evaluation/results/mothership-0.3.0.json).
+result is [`evaluation/results/mothership-0.3.1.json`](evaluation/results/mothership-0.3.1.json).
 
 ## Documentation
 
