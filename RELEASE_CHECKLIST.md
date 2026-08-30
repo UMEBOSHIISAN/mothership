@@ -7,8 +7,8 @@ not publish, deploy, install, or otherwise distribute Mothership.
 
 - [x] Confirm `VERSION`, `CHANGELOG.md`, `LICENSE`, and `README.md` describe
   the intended release.
-- [x] Confirm `README.md` renders the packaged logo from
-  `assets/mothership-logo.png`.
+- [x] Confirm `README.md` renders the Original Whale Mark from
+  `assets/mothership-banner.png`.
 - [x] Confirm example configuration contains no endpoints, access material, or
   machine-specific command paths.
 - [x] Confirm the package contains only public source, tests, contracts,
