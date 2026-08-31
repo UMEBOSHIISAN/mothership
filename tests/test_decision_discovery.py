@@ -384,6 +384,25 @@ class DecisionDiscoveryTests(unittest.TestCase):
         self.assertIn(r"bad\nFAIL_CLOSED (999)\u001b[2J", rendered)
         self.assertEqual(1, rendered.count("FAIL_CLOSED (999)"))
 
+    def test_nested_presentation_text_escapes_terminal_and_directional_controls(self) -> None:
+        frontdoor, handoff = build_inputs(unknowns=["unsafe\x85line\u202eend"])
+        batch = build_decision_batch(
+            [
+                {
+                    "frontdoor_task": frontdoor,
+                    "governance_handoff": handoff,
+                    "question": "Should the supplied change receive human review?",
+                    "consequence_if_approved": "The separately owned review boundary may proceed.",
+                }
+            ]
+        )
+
+        rendered = format_decision_batch(batch)
+
+        self.assertNotIn("\x85", rendered)
+        self.assertNotIn("\u202e", rendered)
+        self.assertIn(r'unknowns: ["unsafe\u0085line\u202eend"]', rendered)
+
     def test_ephemeral_batch_formatter_is_human_readable_and_not_prioritized(self) -> None:
         frontdoor, handoff = build_inputs()
         batch = build_decision_batch(

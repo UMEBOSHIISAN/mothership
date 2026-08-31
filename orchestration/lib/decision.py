@@ -275,10 +275,10 @@ def format_decision_batch(batch: object) -> str:
     ):
         raise DecisionCardProductionError("batch result shape is invalid")
 
-    def render_text(value: str) -> str:
+    def render_text(value: str, *, escape_backslash: bool = True) -> str:
         rendered: list[str] = []
         for character in value:
-            if character == "\\":
+            if character == "\\" and escape_backslash:
                 rendered.append("\\\\")
             elif character == "\n":
                 rendered.append("\\n")
@@ -299,7 +299,10 @@ def format_decision_batch(batch: object) -> str:
         if type(value) is bool:
             return "true" if value else "false"
         if type(value) in (list, dict):
-            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+            return render_text(
+                json.dumps(value, ensure_ascii=False, sort_keys=True),
+                escape_backslash=False,
+            )
         if type(value) is str:
             return render_text(value)
         return str(value)
