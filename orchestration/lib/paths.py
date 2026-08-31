@@ -300,7 +300,7 @@ class _SensitiveScanner:
     def _assignment_name_is_sensitive(raw: bytes) -> bool:
         name = raw.lower().replace(b"-", b"_")
         return (
-            name in {b"token", b"secret", b"access_token", b"secret_access_key"}
+            name in {b"token", b"secret", b"api_key", b"access_token", b"secret_access_key"}
             or name.endswith(b"_token")
             or name.endswith(b"_secret")
             or name.endswith(b"_api_key")
@@ -335,7 +335,14 @@ class _SensitiveScanner:
                 self._identifier_tail.clear()
                 if byte in (ord(":"), ord("=")) and sensitive:
                     return True
-                if byte in (ord(" "), ord("\t"), ord("\r"), ord("\n")):
+                if byte in (
+                    ord(" "),
+                    ord("\t"),
+                    ord("\r"),
+                    ord("\n"),
+                    ord("'"),
+                    ord('"'),
+                ):
                     self._awaiting_delimiter = True
                     self._sensitive_identifier = sensitive
         return False
