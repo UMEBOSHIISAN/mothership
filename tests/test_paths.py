@@ -353,6 +353,31 @@ class PathTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             prepare_scope(self.data(context_paths=["split-marker.txt"]), self.task, self.run, False)
 
+    def test_quoted_sensitive_assignment_names_are_rejected(self) -> None:
+        fragments = (
+            b'{"api_key": "placeholder"}',
+            b"{'secret-access-key' : 'placeholder'}",
+            b'"provider_api_key"\t=\t"placeholder"',
+        )
+        for index, marker in enumerate(fragments):
+            name = f"quoted-sensitive-{index}.txt"
+            (self.task / name).write_bytes(marker)
+            with self.subTest(index=index):
+                with self.assertRaises(ValueError):
+                    prepare_scope(self.data(context_paths=[name]), self.task, self.run, False)
+        quoted_prefix = b'"api_key'
+        split = b"." * (paths_module._CHUNK - len(quoted_prefix)) + quoted_prefix
+        (self.task / "quoted-sensitive-split.txt").write_bytes(
+            split + b'": "placeholder"'
+        )
+        with self.assertRaises(ValueError):
+            prepare_scope(
+                self.data(context_paths=["quoted-sensitive-split.txt"]),
+                self.task,
+                self.run,
+                False,
+            )
+
     def test_arbitrary_identifier_secret_assignment_crosses_many_chunks(self) -> None:
         # Reintroducing a fixed tail for assignment identifiers must make this fail.
         identifier = b"_" + (b"a" * (paths_module._CHUNK + 600)) + b"_secret"

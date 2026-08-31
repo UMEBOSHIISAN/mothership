@@ -371,6 +371,19 @@ class DecisionDiscoveryTests(unittest.TestCase):
         self.assertEqual(1, len(batch["fail_closed"]))
         self.assertEqual("batch_input_invalid", batch["fail_closed"][0]["reason"])
 
+    def test_fail_closed_identifier_rendering_escapes_line_and_terminal_controls(self) -> None:
+        hostile_id = "bad\nFAIL_CLOSED (999)\x1b[2J"
+        batch = build_decision_batch(
+            [{"frontdoor_task": {"request_id": hostile_id}}]
+        )
+
+        rendered = format_decision_batch(batch)
+
+        self.assertNotIn(hostile_id, rendered)
+        self.assertNotIn("\x1b", rendered)
+        self.assertIn(r"bad\nFAIL_CLOSED (999)\u001b[2J", rendered)
+        self.assertEqual(1, rendered.count("FAIL_CLOSED (999)"))
+
     def test_ephemeral_batch_formatter_is_human_readable_and_not_prioritized(self) -> None:
         frontdoor, handoff = build_inputs()
         batch = build_decision_batch(
