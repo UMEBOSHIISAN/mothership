@@ -64,6 +64,50 @@ authority, select a worker, or invoke anything.
 The 0.2 compatibility protocols are also non-authorizing. Protocol validation never grants approval or authority;
 Router and observation fixtures keep `authority_effect: false` and `execution_effect: false`.
 
+## Boundary record contracts
+
+The current source contains three strict, closed contracts for a future
+external-action workflow. Their implementation is limited to pure schema
+validation and exact receipt/verification binding:
+
+- `consequence-proposal.v0` is non-authorizing and non-executing. It is limited
+  to the current `github.merge_pr` action shape, including its exact target,
+  `expected_head_sha`, and `expected_base`. Its `state_sha256` is a
+  proposal-only state snapshot/reference. The current `FrozenAction` binds
+  exactly `repository`, `pull_request`, `expected_head_sha`, `expected_base`,
+  and `merge_method`; there is no v0 path that binds a consequence proposal to
+  a `FrozenAction` or Action Authority. Its policy disposition is preserved as
+  `ELIGIBLE`, `DENY`, or `UNKNOWN`; validation does not implement a domain
+  policy engine or convert either `DENY` or `UNKNOWN` into eligibility.
+- `external-action-receipt.v0` is an executor-local report with `SUCCESS`,
+  `FAILED`, or `UNKNOWN`. `SUCCESS` is not external truth and cannot satisfy
+  independent verification.
+- `external-action-verification.v0` is a separate read-only observation bound
+  to the same `action_id` and `action_sha256`. `CONFIRMED`, `MISMATCH`, and
+  `UNKNOWN` are preserved; missing or unreadable read-back remains `UNKNOWN`.
+
+`validate_receipt_verification_binding()` requires the exact action identity
+and the canonical digest of the referenced receipt. It does not
+promote a receipt into verification, authorize a retry, or create authority.
+Schema validation proves only closed record shape and the declared
+action/receipt binding. It does not authenticate an executor or verifier,
+operationally isolate an executor, or enforce a verifier's read-only behavior.
+The package ships no executor, verifier producer, network mutation, or live
+external-action end-to-end path. A future executor must re-check mutable
+external preconditions immediately before mutation; the current package does
+not perform that check.
+
+Policy eligibility, identity, role, and human-ceremony data are evidence
+references only. Mothership does not authenticate human identity, implement
+RBAC, or own a domain policy engine. External authority delegation is forbidden
+by default, and no delegation or obligation/follow-up engine is implemented.
+
+The Source Health, Evidence Spine, Run Lineage, and Agent Decision components
+remain separate semantic owners. Their validation or advisory output is not
+promoted to truth or authority by this package. UME Presence is documented as
+`authority = NONE`; a machine-enforced prohibition on it producing verified
+execution state remains `UNKNOWN` here.
+
 ## Action Authority Plane
 
 The current consequential-authority path begins only when a caller separately supplies an exact supported action to

@@ -10,23 +10,56 @@ executor.
 flowchart LR
     U[UME Presence<br/>human-facing presence<br/>authority: none]
     H[UME-HARNESS<br/>local work governance<br/>external authority: none]
-    M[MOTHERSHIP<br/>evidence, decisions,<br/>consequential authority]
+    M[MOTHERSHIP<br/>decision/review records,<br/>consequential authority]
     X[Separately configured<br/>bounded executor]
-    V[Receipt and verification]
+    R[ExternalActionReceipt]
+    V[Separate read-only<br/>Verifier]
+    Q[ExternalActionVerification]
 
     U -. human-facing surface .-> M
-    H -. proposal and evidence .-> M
-    M -->|one trusted-live-ledger consumption| X --> V
+    H -. separately reviewed input .-> M
+    M -->|one trusted-live-ledger consumption| X --> R
+    X -. resulting external state .-> V --> Q
 ```
 
 | Product | Owns | Authority boundary |
 | --- | --- | --- |
 | UME Presence | presentation, voice, persona, and human interaction | no decision or execution authority |
 | UME-HARNESS | task intake, local execution leases, local tools, and worktree policy | no external consequential authority |
-| MOTHERSHIP | evidence, decisions, exact action freeze, caller-attested binding, and trusted-ledger consume | exact, short-lived, bounded authority only |
+| MOTHERSHIP | bounded decision/review records, exact action freeze, caller-attested binding, authority-action records, and trusted-ledger consume | exact, short-lived, bounded authority only |
 
 This document does not create runtime dependencies between the products. A future Harness-to-Mothership protocol would
 require a separate reviewed migration.
+
+Evidence Spine remains the generic append-only evidence owner. Mothership owns
+only its bounded decision/review records and authority-action records; it does
+not become a general evidence store.
+
+## Five-stage boundary model
+
+The small public model is:
+
+```text
+OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY
+```
+
+This is a semantic boundary model, not a claim that this package performs a
+live end-to-end workflow. In the current source:
+
+| Stage | Current meaning | Owner / status |
+| --- | --- | --- |
+| OBSERVE | source-backed or external evidence input | caller and separately owned evidence surfaces |
+| PROPOSE | one closed, non-authorizing consequence proposal | Mothership schema and pure validator |
+| APPROVE | caller-attested human decision for one exact action | Mothership binding; human ceremony is external |
+| EXECUTE | exact consumed action applied to an external system | separate future bounded executor; not shipped |
+| VERIFY | independent read-only observation after execution | separate future verifier; not shipped |
+
+Supporting Source Health, Evidence Spine, Run Lineage, and Agent Decision
+components remain separate references. Their validation, lineage, or advisory
+output does not create authority, and this repository claims no automatic
+runtime integration with them. UME Presence remains presentation-only with
+`authority = NONE`; whether it has a machine-enforced prohibition on producing
+verified execution state is `UNKNOWN` in this conformance scope.
 
 ## Current Mothership flow
 
@@ -46,16 +79,22 @@ flowchart TD
     A[File-fsynced authority-action decision]
     O["One-shot consume<br/>trusted live ledger"]
     X[Separately configured<br/>bounded executor]
-    R[Receipt and verification]
+    R[ExternalActionReceipt]
+    V[Separate read-only<br/>Verifier]
+    Q[ExternalActionVerification]
 
     E --> C --> H1 --> D
     P --> F --> H2 --> A --> O --> X --> R
+    X -. resulting external state .-> V --> Q
 ```
 
 `freeze_action()` accepts an `action_id`, the closed `github.merge_pr` operation, and exact execution parameters. It
 validates those parameters, derives the human display from them, freezes the action, computes `action_sha256`, and
 sets a fixed ten-minute deadline. A caller cannot inject display fields. In particular, `consequence_if_approved` is
 derived presentation; it is not executable input.
+
+The current `FrozenAction` parameter set is exactly `repository`,
+`pull_request`, `expected_head_sha`, `expected_base`, and `merge_method`.
 
 `FrozenAction` issuance relies on interpreter-local in-memory state. The object cannot be reconstructed after
 serialization, restart, or transfer into a fresh interpreter. On POSIX, however, a child forked after issuance inherits
@@ -79,7 +118,38 @@ malformed state, unsafe ledger paths, and tamper all fail closed.
 After file-fsyncing the event, `consume_action()` returns `(consume event, exact validated action)` in that order. It does
 not execute the action. Creating a new ledger file does not fsync its parent directory, so crash durability of that new
 directory entry is not claimed. The default package and CLI do not contain a general production bounded executor.
-Actual external effects require a separately configured bounded executor that emits receipt and verification evidence.
+Actual external effects require a separately configured bounded executor. The
+Executor emits an `ExternalActionReceipt`; a separate read-only Verifier emits
+an `ExternalActionVerification`. The package ships neither producer; the v0
+contracts below only validate and bind reports from those separate planes.
+
+## V0 non-executing boundary records
+
+Mothership owns the intake schemas for three strict, closed records:
+
+- `consequence-proposal.v0` is a proposal for the current
+  `github.merge_pr` profile. It carries the exact target, expected
+  `expected_head_sha` / `expected_base` preconditions, and a proposal-only
+  `state_sha256` snapshot/reference, plus evidence references and a preserved
+  `ELIGIBLE` / `DENY` / `UNKNOWN` policy disposition. There is no v0 path that
+  binds this proposal to a `FrozenAction` or Action Authority. Its authority,
+  execution, and delegation effects are fixed to `false`.
+- `external-action-receipt.v0` is an executor-local report with
+  `SUCCESS`, `FAILED`, or `UNKNOWN` status. `SUCCESS` is not verification and
+  is not external truth.
+- `external-action-verification.v0` is an independent read-only observation
+  bound to the exact action. `CONFIRMED`, `MISMATCH`, and `UNKNOWN` remain
+  distinct, and the validator does not promote one status into another.
+
+The public `mothership.contracts` facade exposes pure validation and
+receipt/verification binding helpers only. Schema validation proves only closed
+record shape and the declared action/receipt binding; it does not authenticate
+an executor or verifier, operationally isolate an executor, or enforce a
+verifier's read-only behavior. It does not infer an external operation from
+local work, issue authority from policy or identity evidence, execute a network
+mutation, or create delegation or obligation state. A future executor must
+re-check mutable external preconditions immediately before mutation; that
+check is outside the current package.
 
 ## Three approval concepts
 
@@ -154,7 +224,7 @@ read-only requests; they do not mutate GitHub.
 | `mothership.scope` | `orchestration.lib.paths` | legacy bounded local paths and staging |
 | `mothership.approval` | `orchestration.lib.ledger` | legacy invocation approval and attempt evidence |
 | `mothership.adapters` | `orchestration.lib.adapters` | immutable plans and diagnostics |
-| `mothership.contracts` | canonical, JSON, contract, registry, and decision modules | strict data and Decision Card / Decision Approval binding |
+| `mothership.contracts` | canonical, JSON, contract, registry, decision, and external-action modules | strict data and binding helpers |
 | `mothership.protocols` | protocol registry and validator | 0.2 compatibility validation |
 
 The facades keep one authoritative implementation for each behavior. Existing library calls create output or ledger
