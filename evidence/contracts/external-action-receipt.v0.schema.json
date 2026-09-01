@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "external-action-receipt.v0.schema.json",
+  "title": "Mothership External Action Receipt v0",
+  "description": "A bounded executor report for one exact action. SUCCESS is executor-local observation, not independent verification or external truth. A receipt grants no authority, delegation, or retry permission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "action_id",
+    "action_sha256",
+    "executor_ref",
+    "started_at",
+    "finished_at",
+    "status",
+    "executor_observation_ref"
+  ],
+  "properties": {
+    "schema_version": { "const": "external-action-receipt.v0" },
+    "action_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^act-[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "action_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "executor_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_id", "sha256"],
+      "properties": {
+        "ref_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "started_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "finished_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "status": { "enum": ["SUCCESS", "FAILED", "UNKNOWN"] },
+    "executor_observation_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_id", "sha256"],
+      "properties": {
+        "ref_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

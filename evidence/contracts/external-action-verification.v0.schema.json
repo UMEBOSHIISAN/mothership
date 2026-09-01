@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "external-action-verification.v0.schema.json",
+  "title": "Mothership External Action Verification v0",
+  "description": "An independent read-only observation bound to one exact external action. UNKNOWN and MISMATCH remain distinct from CONFIRMED. This object cannot mutate, grant authority, delegate, or authorize retry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "action_id",
+    "action_sha256",
+    "verification_method",
+    "observed_state",
+    "evidence_refs",
+    "observed_at",
+    "status"
+  ],
+  "properties": {
+    "schema_version": { "const": "external-action-verification.v0" },
+    "action_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^act-[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "action_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "verification_method": { "const": "read_only_external_observation" },
+    "observed_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "state_sha256"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "state_sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "sha256"],
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "observed_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "status": { "enum": ["CONFIRMED", "MISMATCH", "UNKNOWN"] },
+    "receipt_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_id", "sha256"],
+      "properties": {
+        "ref_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}
