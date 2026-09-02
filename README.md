@@ -15,6 +15,25 @@
 
 <p align="center"><strong>Bounded Action Authority for AI</strong></p>
 
+<p align="center"><strong>One human decision. One exact action. One use.</strong></p>
+
+Mothership sits between an AI proposal and a real external consequence. It binds one human decision to one exact,
+short-lived, single-use action while keeping execution and verification separate.
+
+> **Bounded public E2E proof — `github.merge_pr`**
+>
+> PR #17 merged one approved head into its canary base as one merge commit, followed by successful post-merge CI.
+> This is proof of that exact operation, not a general executor or integration claim.
+> Public facts and private-trace claim boundaries are linked immediately below the lifecycle flow.
+
+```text
+OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY
+```
+
+[Public E2E evidence](docs/evidence/github-merge-pr-e2e-20260901.md) · [日本語](docs/ja/README.md) ·
+[Architecture](docs/architecture.md) · [Install](docs/installation.md) · [Protocols](docs/protocols.md) ·
+[Security](docs/security.md) · [Research evidence](docs/research/paper-evidence.md)
+
 <p align="center">
   <img alt="Python 3.12 or newer" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
   <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20dependencies-0-16A34A">
@@ -23,7 +42,24 @@
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0F172A">
 </p>
 
-<p align="center"><strong>One human decision. One exact action. One use.</strong></p>
+## Quick start
+
+From a Mothership source checkout, the complete first-run path is five commands:
+
+<!-- quickstart:start -->
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
+mothership verify
+mothership demo
+```
+<!-- quickstart:end -->
+
+Installation may obtain build tooling. The installed runtime has zero third-party dependencies, and `verify` plus
+`demo` run offline. A successful result validates the artifact; it grants no authority to execute work.
+
+**Current boundary and limitations**
 
 Mothership owns the bounded consequential-authority boundary for AI-assisted work. It can freeze one exact supported
 action, bind a caller-attested human decision to that action's SHA-256 digest, append and file-fsync the decision, and
@@ -43,9 +79,6 @@ can otherwise accept an older matching decision as fresh input.
 Mothership does not run models, choose local workers, retry actions, grant ambient authority, or autonomously approve
 consequential work. Actual external side effects require a separately configured bounded executor.
 
-[日本語](docs/ja/README.md) · [Architecture](docs/architecture.md) · [Install](docs/installation.md) ·
-[Protocols](docs/protocols.md) · [Security](docs/security.md) · [Research evidence](docs/research/paper-evidence.md)
-
 **What you can do now:** validate compatibility documents, surface Decision Cards, freeze the exact closed
 `github.merge_pr` action profile, bind a caller-attested human action decision, and consume its short-lived authority
 once within a trusted, non-rollbackable live ledger history.
@@ -54,13 +87,7 @@ once within a trusted, non-rollbackable live ledger history.
 
 **Boundary model**
 
-The simple model is:
-
-```text
-OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY
-```
-
-In the current package, `OBSERVE` and `PROPOSE` are bounded data and evidence
+In the flow shown above, `OBSERVE` and `PROPOSE` are bounded data and evidence
 inputs, while `APPROVE` is a caller-attested human decision bound to one exact
 action. `EXECUTE` and `VERIFY` are separate planes: the default CLI performs
 neither, and a live external workflow is not included in this release.
@@ -103,23 +130,6 @@ SUMMARY: inputs=3 cards=1 no_card=1 fail_closed=1
 
 The excerpt is from a real CLI run. The command only presents outcomes; it
 does not approve, execute, persist, or create a durable queue.
-
-## Quick start
-
-From a Mothership source checkout, the complete first-run path is five commands:
-
-<!-- quickstart:start -->
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install .
-mothership verify
-mothership demo
-```
-<!-- quickstart:end -->
-
-Installation may obtain build tooling. The installed runtime has zero third-party dependencies, and `verify` plus
-`demo` run offline. A successful result validates the artifact; it grants no authority to execute work.
 
 ### Use the current Authority Core
 
