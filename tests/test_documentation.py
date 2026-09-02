@@ -15,7 +15,14 @@ import venv
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
+E2E_EVIDENCE = ROOT / "docs/evidence/github-merge-pr-e2e-20260901.md"
+E2E_EVIDENCE_LINK = "docs/evidence/github-merge-pr-e2e-20260901.md"
 GENERATED = ROOT / "docs/generated"
+POSITIONING_SENTENCE = (
+    "Mothership sits between an AI proposal and a real external consequence. "
+    "It binds one human decision to one exact, short-lived, single-use action "
+    "while keeping execution and verification separate."
+)
 EXPECTED_H2 = (
     "Quick start",
     "Validate the 0.2 compatibility chain in 60 seconds",
@@ -374,6 +381,109 @@ class ReadmeContractTests(unittest.TestCase):
                 )
                 self.assertEqual(0, completed.returncode, completed.stderr)
                 self.assertEqual((GENERATED / generated).read_bytes(), completed.stdout)
+
+
+class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.readme = README.read_text("utf-8")
+
+    def _evidence(self) -> str:
+        self.assertTrue(E2E_EVIDENCE.is_file(), f"missing {E2E_EVIDENCE_LINK}")
+        return E2E_EVIDENCE.read_text("utf-8")
+
+    def test_readme_first_screen_order_and_evidence_link_are_exact(self) -> None:
+        normalized = " ".join(self.readme.split())
+        ordered = (
+            'src="assets/mothership-banner.png"',
+            "# Mothership",
+            "Bounded Action Authority for AI",
+            "One human decision. One exact action. One use.",
+            POSITIONING_SENTENCE,
+            "Bounded public E2E proof — `github.merge_pr`",
+            "OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY",
+            f"]({E2E_EVIDENCE_LINK})",
+            "## Quick start",
+            "Mothership owns the bounded consequential-authority boundary",
+        )
+        for value in ordered:
+            self.assertIn(value, normalized)
+        positions = [normalized.index(value) for value in ordered]
+        self.assertEqual(sorted(positions), positions)
+        self.assertEqual(1, self.readme.count(f"]({E2E_EVIDENCE_LINK})"))
+
+    def test_evidence_separates_public_facts_from_private_trace_claims(self) -> None:
+        evidence = self._evidence()
+        public_heading = "## Public evidence"
+        private_heading = "## Privately retained lifecycle trace"
+        self.assertIn(public_heading, evidence)
+        self.assertIn(private_heading, evidence)
+        public = evidence.split(public_heading, 1)[1].split(private_heading, 1)[0]
+        private = evidence.split(private_heading, 1)[1]
+
+        for fact in (
+            "PR #17",
+            "e2e/mothership-merge-canary-base-20260901a",
+            "3761aa359af5465c22e57482e71f85c574b35a07",
+            "027584f479da087fa660f875cd1afa8230bc0f9b",
+            "543dda851113fd62467469823465c8f93fe541da",
+            "2 files, +3/-0",
+            "880e514382b1a9594a9d4a6f06f5939283e57c60",
+            "head branch preserved",
+            "ee8d960ee64d83593bccea5e87893668e3ed6e19008029502d47c6bdc42f1a9c",
+            "post-merge CI: success",
+        ):
+            with self.subTest(fact=fact):
+                self.assertIn(fact, public)
+
+        private_only = (
+            "human decision and exact action digest",
+            "10-minute TTL",
+            "one-shot consume",
+            "executor preflight stopped after consume",
+            "replay was rejected",
+            "fresh human decision and fresh authority",
+            "one mutation request",
+            "local reviewer",
+        )
+        for claim in private_only:
+            with self.subTest(claim=claim):
+                self.assertNotIn(claim, public)
+                self.assertIn(claim, private)
+        self.assertIn(
+            "CLOSED-BUNDLE PROOF OF RUN1 REMOTE MUTATION ZERO = UNKNOWN",
+            private,
+        )
+
+    def test_readme_and_evidence_keep_paths_and_claims_bounded(self) -> None:
+        evidence = self._evidence()
+        for name, text in (("README.md", self.readme), (E2E_EVIDENCE_LINK, evidence)):
+            with self.subTest(document=name):
+                for forbidden in (
+                    "/Users/",
+                    "/" + "private/",
+                    "file://",
+                    "/Volumes/",
+                    "local_worker/",
+                    "evidence/e2e-",
+                ):
+                    self.assertNotIn(forbidden, text)
+
+        for nonclaim in (
+            "E2E_GREEN_SCOPE = github.merge_pr only",
+            "HARNESS_VERTICAL_INTEGRATION = NOT_CLAIMED",
+            "SECURITY_CLEAN = NOT_CLAIMED",
+            "GENERAL_EXECUTOR_SAFETY = NOT_CLAIMED",
+            "MULTI_OPERATION_GENERALITY = NOT_CLAIMED",
+            "PUBLIC_PACKAGE_SHIPS_EXECUTOR = FALSE",
+            "HUMAN_IDENTITY_AUTHENTICATION = NOT_CLAIMED",
+            "PRIVATE_TRACE_PUBLICLY_REPRODUCIBLE = FALSE",
+        ):
+            self.assertIn(nonclaim, evidence)
+        lowered = evidence.casefold()
+        self.assertNotIn("security_clean = true", lowered)
+        self.assertNotIn("production-ready", lowered)
+        self.assertNotIn("full-stack harness integration is complete", lowered)
 
 
 class SupportingDocumentationTests(unittest.TestCase):

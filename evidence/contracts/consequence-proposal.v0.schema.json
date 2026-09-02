@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "consequence-proposal.v0.schema.json",
+  "title": "Mothership Consequence Proposal v0",
+  "description": "A non-authoritative proposal for the one currently supported external consequence. Policy, identity, and role entries are bounded evidence references only. This object cannot grant authority, execute, or delegate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "operation",
+    "target",
+    "expected_preconditions",
+    "expected_consequence",
+    "evidence_refs",
+    "unknowns",
+    "policy_disposition",
+    "authority_effect",
+    "execution_effect",
+    "delegation_effect"
+  ],
+  "properties": {
+    "schema_version": { "const": "consequence-proposal.v0" },
+    "proposal_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^prop-[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "operation": { "const": "github.merge_pr" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "pull_request"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "pull_request": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "expected_preconditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected_head_sha", "expected_base", "state_sha256"],
+      "properties": {
+        "expected_head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "expected_base": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "state_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "expected_consequence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["merge_method"],
+      "properties": {
+        "merge_method": { "const": "merge" }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "sha256"],
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "sha256"],
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "policy_disposition": { "enum": ["ELIGIBLE", "DENY", "UNKNOWN"] },
+    "policy_evidence_refs": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "sha256"],
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "identity_evidence_refs": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "sha256"],
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "role_evidence_refs": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref_id", "sha256"],
+        "properties": {
+          "ref_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "authority_effect": { "const": false },
+    "execution_effect": { "const": false },
+    "delegation_effect": { "const": false }
+  }
+}

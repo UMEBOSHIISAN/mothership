@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-09-02
+
+- Added strict, closed consequence-proposal, external-action receipt, and separate read-only verification contracts
+  for the existing `github.merge_pr` operation profile, including exact receipt/verification binding and public
+  validation facades. The package still ships no executor, verifier producer, or generic external-action command.
+- Hardened displayed decision text and file-boundary checks, and aligned external-action identifiers with the existing
+  Action Authority identifier grammar without weakening unknown-field closure.
+- Published a bounded public record for one GitHub merge canary while separating public facts from privately
+  retained lifecycle commitments and preserving the documented limits on reproducibility and generalized safety.
+- Refreshed the public product-boundary documentation and clone-verifiable tracked-file checksum manifest.
+
 ## 0.3.1 - 2026-08-30
 
 - Made the original whale mark the single README hero and recorded its human origin.
