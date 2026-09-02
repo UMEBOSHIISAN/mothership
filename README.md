@@ -15,6 +15,25 @@
 
 <p align="center"><strong>Bounded Action Authority for AI</strong></p>
 
+<p align="center"><strong>One human decision. One exact action. One use.</strong></p>
+
+Mothership sits between an AI proposal and a real external consequence. It binds one human decision to one exact,
+short-lived, single-use action while keeping execution and verification separate.
+
+> **Bounded public E2E proof — `github.merge_pr`**
+>
+> PR #17 merged one approved head into its canary base as one merge commit, followed by successful post-merge CI.
+> This is proof of that exact operation, not a general executor or integration claim.
+> Public facts and private-trace claim boundaries are linked immediately below the lifecycle flow.
+
+```text
+OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY
+```
+
+[Public E2E evidence](docs/evidence/github-merge-pr-e2e-20260901.md) · [日本語](docs/ja/README.md) ·
+[Architecture](docs/architecture.md) · [Install](docs/installation.md) · [Protocols](docs/protocols.md) ·
+[Security](docs/security.md) · [Research evidence](docs/research/paper-evidence.md)
+
 <p align="center">
   <img alt="Python 3.12 or newer" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
   <img alt="Zero runtime dependencies" src="https://img.shields.io/badge/runtime%20dependencies-0-16A34A">
@@ -23,7 +42,24 @@
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0F172A">
 </p>
 
-<p align="center"><strong>One human decision. One exact action. One use.</strong></p>
+## Quick start
+
+From a Mothership source checkout, the complete first-run path is five commands:
+
+<!-- quickstart:start -->
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
+mothership verify
+mothership demo
+```
+<!-- quickstart:end -->
+
+Installation may obtain build tooling. The installed runtime has zero third-party dependencies, and `verify` plus
+`demo` run offline. A successful result validates the artifact; it grants no authority to execute work.
+
+**Current boundary and limitations**
 
 Mothership owns the bounded consequential-authority boundary for AI-assisted work. It can freeze one exact supported
 action, bind a caller-attested human decision to that action's SHA-256 digest, append and file-fsync the decision, and
@@ -43,14 +79,26 @@ can otherwise accept an older matching decision as fresh input.
 Mothership does not run models, choose local workers, retry actions, grant ambient authority, or autonomously approve
 consequential work. Actual external side effects require a separately configured bounded executor.
 
-[日本語](docs/ja/README.md) · [Architecture](docs/architecture.md) · [Install](docs/installation.md) ·
-[Protocols](docs/protocols.md) · [Security](docs/security.md) · [Research evidence](docs/research/paper-evidence.md)
-
 **What you can do now:** validate compatibility documents, surface Decision Cards, freeze the exact closed
 `github.merge_pr` action profile, bind a caller-attested human action decision, and consume its short-lived authority
 once within a trusted, non-rollbackable live ledger history.
 
 **Decision Approval is review evidence. Action Authority Decision is consequential authority.**
+
+**Boundary model**
+
+In the flow shown above, `OBSERVE` and `PROPOSE` are bounded data and evidence
+inputs, while `APPROVE` is a caller-attested human decision bound to one exact
+action. `EXECUTE` and `VERIFY` are separate planes: the default CLI performs
+neither, and a live external workflow is not included in this release.
+
+The current action profile is exactly `github.merge_pr`. Its exact parameters
+include `expected_head_sha` and `expected_base`; changing either changes the
+action identity and prevents a matching decision from being reused. These
+fields bind the reviewed action, not a live external read-back.
+
+The package has no live execute/verify path. Detailed non-executing record
+boundaries and future extension points are documented below.
 
 ```text
 Evidence → Decision Card → Human → Decision Approval (review evidence only)
@@ -82,23 +130,6 @@ SUMMARY: inputs=3 cards=1 no_card=1 fail_closed=1
 
 The excerpt is from a real CLI run. The command only presents outcomes; it
 does not approve, execute, persist, or create a durable queue.
-
-## Quick start
-
-From a Mothership source checkout, the complete first-run path is five commands:
-
-<!-- quickstart:start -->
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install .
-mothership verify
-mothership demo
-```
-<!-- quickstart:end -->
-
-Installation may obtain build tooling. The installed runtime has zero third-party dependencies, and `verify` plus
-`demo` run offline. A successful result validates the artifact; it grants no authority to execute work.
 
 ### Use the current Authority Core
 
@@ -258,7 +289,7 @@ flowchart LR
     X[Separately configured<br/>bounded executor]
 
     U -. human-facing surface .-> M
-    H -. proposal and evidence .-> M
+    H -. separately reviewed input .-> M
     M -->|one trusted-live-ledger consumption| X
 ```
 
@@ -266,7 +297,7 @@ flowchart LR
 | --- | --- | --- |
 | UME Presence | presentation, voice, persona, and human interaction | decision or execution authority |
 | UME-HARNESS | task intake, local work leases, tools, and worktree policy | external consequential authority |
-| MOTHERSHIP | evidence, decisions, and exact trusted-ledger action authority | model or worker execution |
+| MOTHERSHIP | bounded decision/review records, action freeze, and authority-action records | model/worker execution |
 
 Read the full [architecture](docs/architecture.md) and [composition guide](docs/composition.md).
 
@@ -338,9 +369,50 @@ An **Action Authority Decision / Authority-Action Approval** is the current cons
 `github.merge_pr`. Display fields, including `consequence_if_approved`, are derived from validated exact execution
 parameters and are never accepted as execution input.
 
+The current `FrozenAction` parameter set is exactly `repository`,
+`pull_request`, `expected_head_sha`, `expected_base`, and `merge_method`.
+
 The similarly named **Legacy Invocation Approval** in `mothership.approval` binds alias, registry, task, prompt, scope,
 and invocation evidence to the `approval_granted` / `attempt_started` / `attempt_finished` lifecycle. It remains a
 legacy invocation-evidence compatibility API, not the canonical authority path for new consequential actions.
+
+### Non-executing boundary records
+
+The package defines three strict, closed contracts for a future external
+workflow. They are validated and bound as data; they do not execute anything
+or grant authority:
+
+- `consequence-proposal.v0` describes one exact `github.merge_pr` proposal,
+  its target, expected preconditions, evidence references, and a preserved
+  policy disposition. Its `state_sha256` is a proposal-only state
+  snapshot/reference; v0 has no path that binds a consequence proposal to a
+  `FrozenAction` or Action Authority. Its `authority_effect`,
+  `execution_effect`, and `delegation_effect` are always `false`.
+- `external-action-receipt.v0` is a report from a separately configured
+  bounded executor. `SUCCESS` is an executor-local observation, not external
+  verification or truth.
+- `external-action-verification.v0` is an independent read-only observation.
+  `CONFIRMED`, `MISMATCH`, and `UNKNOWN` remain distinct; a receipt cannot be
+  promoted into verification.
+
+`mothership.contracts` exposes pure validators and a receipt/verification
+binding helper for these contracts. Schema validation proves only closed
+record shape and the declared action/receipt binding; it does not authenticate
+an executor or verifier, operationally isolate an executor, or enforce a
+verifier's read-only behavior. The package does not ship a proposal producer,
+executor, verifier producer, or live network mutation. An eventual executor
+must re-check mutable external preconditions immediately before mutation and
+must consume only the exact action returned by the Authority Core.
+
+Policy, identity, and role references in a proposal are bounded evidence
+references only. Mothership does not implement a policy engine, human identity
+authenticator, RBAC system, or obligation/follow-up engine. A hard policy
+`DENY` or unresolved policy `UNKNOWN` cannot become eligibility by human
+decision or validation. Identity/role providers, human-ceremony adapters,
+domain policy and action profiles, domain executors/verifiers, external audit
+anchors, and obligation handlers are documented extension points, not current
+implementations. External authority delegation is forbidden by default; no
+delegation token or inheritance path is provided.
 
 ## Choose your adoption path
 
@@ -423,10 +495,10 @@ The public facades expose the current authority core while preserving stable com
 | `mothership.scope` | legacy bounded path validation, measurement, staging, and locking |
 | `mothership.approval` | legacy invocation-evidence compatibility and attempt lifecycle |
 | `mothership.adapters` | immutable adapter plans and fixed diagnostics |
-| `mothership.contracts` | strict JSON, hashing, contract, and registry helpers, plus Decision Card/Approval binding |
+| `mothership.contracts` | strict JSON, contract, registry, and Decision/Action record validation |
 | `mothership.protocols` | inspect and validate ecosystem interchange documents |
 
-Mothership 0.3 keeps the legacy 0.2 import paths available. A future removal would require a major-version decision.
+Mothership 0.4 keeps the legacy 0.2 import paths available. A future removal would require a major-version decision.
 
 ## Ecosystem protocols
 
@@ -474,7 +546,7 @@ controls preserved.
 
 These are internal synthetic-corpus results, not production accuracy. Reproduce them and read the denominators and
 limitations in [Paper evidence and claim boundaries](docs/research/paper-evidence.md). The Mothership machine-readable
-result is [`evaluation/results/mothership-0.3.1.json`](evaluation/results/mothership-0.3.1.json).
+result is [`evaluation/results/mothership-0.4.0.json`](evaluation/results/mothership-0.4.0.json).
 
 ## Documentation
 

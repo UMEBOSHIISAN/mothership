@@ -9,6 +9,11 @@ from orchestration.lib import canonical, contracts as old_contracts, jsonio, led
 from orchestration.lib import decision as old_decision
 from orchestration.lib import registry as old_registry
 
+try:
+    from orchestration.lib import external_action as old_external_action
+except ImportError:
+    old_external_action = None
+
 
 class PublicFacadeTests(unittest.TestCase):
     def test_scope_facade_reexports_authoritative_objects(self) -> None:
@@ -78,6 +83,7 @@ class PublicFacadeTests(unittest.TestCase):
     def test_contract_facade_reexports_authoritative_objects(self) -> None:
         from mothership import contracts
 
+        self.assertIsNotNone(old_external_action)
         expected_sources = {
             "ContractError": old_contracts,
             "DecisionBindingError": old_decision,
@@ -95,6 +101,10 @@ class PublicFacadeTests(unittest.TestCase):
             "sha256_file": canonical,
             "validate_contract": old_contracts,
             "validate_decision_approval_binding": old_decision,
+            "validate_consequence_proposal": old_external_action,
+            "validate_external_action_receipt": old_external_action,
+            "validate_external_action_verification": old_external_action,
+            "validate_receipt_verification_binding": old_external_action,
         }
         self.assertEqual(tuple(sorted(expected_sources)), contracts.__all__)
         for name, source in expected_sources.items():

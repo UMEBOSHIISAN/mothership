@@ -275,11 +275,36 @@ def format_decision_batch(batch: object) -> str:
     ):
         raise DecisionCardProductionError("batch result shape is invalid")
 
+    def render_text(value: str, *, escape_backslash: bool = True) -> str:
+        rendered: list[str] = []
+        for character in value:
+            if character == "\\" and escape_backslash:
+                rendered.append("\\\\")
+            elif character == "\n":
+                rendered.append("\\n")
+            elif character == "\r":
+                rendered.append("\\r")
+            elif character == "\t":
+                rendered.append("\\t")
+            elif not character.isprintable():
+                codepoint = ord(character)
+                escape = "\\u" if codepoint <= 0xFFFF else "\\U"
+                width = 4 if codepoint <= 0xFFFF else 8
+                rendered.append(f"{escape}{codepoint:0{width}x}")
+            else:
+                rendered.append(character)
+        return "".join(rendered)
+
     def render_value(value: object) -> str:
         if type(value) is bool:
             return "true" if value else "false"
         if type(value) in (list, dict):
-            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+            return render_text(
+                json.dumps(value, ensure_ascii=False, sort_keys=True),
+                escape_backslash=False,
+            )
+        if type(value) is str:
+            return render_text(value)
         return str(value)
 
     lines = ["EPHEMERAL DECISION BATCH"]
@@ -288,7 +313,7 @@ def format_decision_batch(batch: object) -> str:
     if not cards:
         lines.append("- none")
     for card in cards:
-        lines.append(f"- input_id: {card['input_id']}")
+        lines.append(f"- input_id: {render_value(card['input_id'])}")
         for field in (
             "decision_id",
             "task_id",
@@ -312,9 +337,9 @@ def format_decision_batch(batch: object) -> str:
         if not items:
             lines.append("- none")
         for item in items:
-            lines.append(f"- input_id: {item['input_id']}")
-            lines.append(f"  classification: {item['classification']}")
-            lines.append(f"  reason: {item['reason']}")
+            lines.append(f"- input_id: {render_value(item['input_id'])}")
+            lines.append(f"  classification: {render_value(item['classification'])}")
+            lines.append(f"  reason: {render_value(item['reason'])}")
 
     summary = batch["summary"]
     lines.append(

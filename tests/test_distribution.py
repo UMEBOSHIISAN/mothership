@@ -146,7 +146,7 @@ print("AUTHORITY_FACADE_OK")
             metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
             metadata = archive.read(metadata_name).decode("utf-8")
         self.assertIn("Name: mothership-control-plane\n", metadata)
-        self.assertIn("Version: 0.3.1\n", metadata)
+        self.assertIn("Version: 0.4.0\n", metadata)
         self.assertIn("Requires-Python: >=3.12\n", metadata)
         self.assertIn("License-Expression: MIT\n", metadata)
         runtime_requirements = [
