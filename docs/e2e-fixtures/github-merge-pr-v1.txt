@@ -1,0 +1,5 @@
+MOTHERSHIP_GITHUB_MERGE_PR_E2E_FIXTURE_V1
+fixture_id=github-merge-pr-v1
+purpose=isolated canary merge and independent read-back evidence marker
+product_runtime_effect=none
+authority_effect=none
