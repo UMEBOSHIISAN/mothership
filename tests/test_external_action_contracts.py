@@ -6,10 +6,17 @@ import unittest
 from orchestration.lib.contracts import validate_contract
 from orchestration.lib.canonical import canonical_json_sha256
 from orchestration.lib.errors import ContractError
+from mothership.action_authority import freeze_action
+from mothership.contracts import (
+    validate_external_action_receipt,
+    validate_external_action_verification,
+    validate_receipt_verification_binding,
+)
 
 
 ACTION_SHA256 = "a" * 64
 STATE_SHA256 = "b" * 64
+LONG_ACTION_ID = "act-" + "a" * 300
 
 
 def evidence_ref(ref_id: str = "evidence:github-pr-42") -> dict[str, object]:
@@ -329,6 +336,47 @@ class ExternalActionBindingTests(unittest.TestCase):
             with self.subTest(mismatch=mismatch):
                 with self.assertRaises(ContractError):
                     validate_binding(receipt, mismatch, **expected)
+
+    def test_binding_accepts_an_authority_core_valid_long_action_id(self) -> None:
+        self.assertEqual(304, len(LONG_ACTION_ID))
+        frozen = freeze_action(
+            LONG_ACTION_ID,
+            "github.merge_pr",
+            {
+                "repository": "UMEBOSHIISAN/mothership",
+                "pull_request": 42,
+                "expected_head_sha": "d" * 40,
+                "expected_base": "main",
+                "merge_method": "merge",
+            },
+        )
+        self.assertEqual(LONG_ACTION_ID, frozen.action["action_id"])
+        receipt = {
+            **external_action_receipt(),
+            "action_id": LONG_ACTION_ID,
+            "action_sha256": frozen.action_sha256,
+        }
+        verification = {
+            **external_action_verification(receipt=receipt),
+            "action_id": LONG_ACTION_ID,
+            "action_sha256": frozen.action_sha256,
+        }
+        self.assertEqual(312, len(verification["receipt_ref"]["ref_id"]))
+        try:
+            self.assertEqual(receipt, validate_external_action_receipt(receipt))
+            self.assertEqual(
+                verification,
+                validate_external_action_verification(verification),
+            )
+            result = validate_receipt_verification_binding(
+                receipt,
+                verification,
+                expected_action_id=LONG_ACTION_ID,
+                expected_action_sha256=frozen.action_sha256,
+            )
+        except ContractError as error:
+            self.fail(f"Authority Core-valid action_id was rejected: {error}")
+        self.assertEqual((receipt, verification), result)
 
     def test_binding_rejects_a_matching_pair_for_a_different_action(self) -> None:
         _, _, _, validate_binding = self.external_action_api()
