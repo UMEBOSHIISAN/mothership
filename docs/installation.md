@@ -30,12 +30,12 @@ After obtaining a reviewed wheel and its SHA-256 through a trusted channel:
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --no-deps mothership_control_plane-0.3.1-py3-none-any.whl
+python -m pip install --no-deps mothership_control_plane-0.4.0-py3-none-any.whl
 mothership verify
 ```
 
 `--no-deps` is valid because the wheel declares zero runtime requirements. Verify the expected digest before install.
-Mothership 0.3.1 has not been claimed as available on a package index.
+Mothership 0.4.0 has not been claimed as available on a package index.
 
 ## Editable development install
 

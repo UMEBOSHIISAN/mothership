@@ -498,7 +498,7 @@ The public facades expose the current authority core while preserving stable com
 | `mothership.contracts` | strict JSON, contract, registry, and Decision/Action record validation |
 | `mothership.protocols` | inspect and validate ecosystem interchange documents |
 
-Mothership 0.3 keeps the legacy 0.2 import paths available. A future removal would require a major-version decision.
+Mothership 0.4 keeps the legacy 0.2 import paths available. A future removal would require a major-version decision.
 
 ## Ecosystem protocols
 
@@ -546,7 +546,7 @@ controls preserved.
 
 These are internal synthetic-corpus results, not production accuracy. Reproduce them and read the denominators and
 limitations in [Paper evidence and claim boundaries](docs/research/paper-evidence.md). The Mothership machine-readable
-result is [`evaluation/results/mothership-0.3.1.json`](evaluation/results/mothership-0.3.1.json).
+result is [`evaluation/results/mothership-0.4.0.json`](evaluation/results/mothership-0.4.0.json).
 
 ## Documentation
 
