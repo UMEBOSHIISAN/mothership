@@ -20,17 +20,18 @@
 Mothership sits between an AI proposal and a real external consequence. It binds one human decision to one exact,
 short-lived, single-use action while keeping execution and verification separate.
 
-> **Bounded public E2E proof — `github.merge_pr`**
+> **Public result from one live integration trial — `github.merge_pr`**
 >
-> PR #17 merged one approved head into its canary base as one merge commit, followed by successful post-merge CI.
-> This is proof of that exact operation, not a general executor or integration claim.
-> Public facts and private-trace claim boundaries are linked immediately below the lifecycle flow.
+> A separately configured trial using the Mothership Authority Core merged PR #18 into an isolated canary base.
+> Public GitHub state confirms the exact head, merge commit, parents, and bounded diff. Sanitized lifecycle records and
+> private-trace commitments are linked below. This is not a shipped executor or general safety claim.
 
 ```text
 OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY
 ```
 
-[Public E2E evidence](docs/evidence/github-merge-pr-e2e-20260901.md) · [日本語](docs/ja/README.md) ·
+[Live E2E evidence](docs/evidence/github-merge-pr-e2e-20260903/README.md) ·
+[Earlier PR #17 evidence](docs/evidence/github-merge-pr-e2e-20260901.md) · [日本語](docs/ja/README.md) ·
 [Architecture](docs/architecture.md) · [Install](docs/installation.md) · [Protocols](docs/protocols.md) ·
 [Security](docs/security.md) · [Research evidence](docs/research/paper-evidence.md)
 
