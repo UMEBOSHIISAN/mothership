@@ -67,7 +67,7 @@ merge methodは固定されます。base commit SHAは結び付けられませ�
 ## 境界モデル
 
 ```mermaid
-flowchart LR
+flowchart TB
     E["Evidence / proposal"] -. "判断材料のみ<br/>v0.4.1では未結合" .-> H{{"人間の判断"}}
     P["対応済みの<br/>実行パラメータ"] --> F["FrozenAction"]
     F --> H
