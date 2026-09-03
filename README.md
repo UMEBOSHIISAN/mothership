@@ -61,7 +61,7 @@ merge methodは固定されます。base commit SHAは結び付けられませ�
 <p align="center">
   <img src="assets/readme/ja/pr18-public-result.svg"
        alt="PR #18を隔離用ブランチへ統合。PR元コミット識別子、統合後コミット識別子、1ファイル5行、公開本線は対象外。"
-       width="100%">
+       width="720">
 </p>
 
 ## 境界モデル
