@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 - 2026-09-04
+
+- Reworked the public README as a Japanese-first reference-implementation landing page.
+- Added a factual English counterpart and reduced `docs/ja/README.md` to a compatibility pointer.
+- Corrected public claim boundaries and removed stale showcase links and asset references.
+- Documented the bounded PR #18 result without expanding it into a general safety or production claim.
+- No runtime behavior change.
+
 ## Unreleased
 
 ## 0.4.0 - 2026-09-02

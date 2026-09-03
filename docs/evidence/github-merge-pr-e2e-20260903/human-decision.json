@@ -1,0 +1,10 @@
+{
+  "action_id": "act-live-e2e-pr18-74df5a29f8634566bf008fdf98e19a81",
+  "action_sha256": "bbbc20e78dc5ab98d41d4df2ca585ea45246f2ee3cdfe71ca65ef139cdbab3ca",
+  "approver_class": "human",
+  "decision": "approve",
+  "expires_at": "2026-09-03T10:33:01Z",
+  "max_uses": 1,
+  "recorded_at": "2026-09-03T10:27:32Z",
+  "schema_version": "mothership-public-human-decision-evidence.v1"
+}

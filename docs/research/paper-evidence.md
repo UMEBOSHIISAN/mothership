@@ -19,7 +19,7 @@ python3 tools/run_evaluation.py
 python3 -m unittest tests.test_evaluation -v
 ```
 
-The first command emits the exact tracked result in [`evaluation/results/mothership-0.4.0.json`](../../evaluation/results/mothership-0.4.0.json). The corpus is [`evaluation/corpus/protocol-validation.v1.json`](../../evaluation/corpus/protocol-validation.v1.json).
+The first command emits the exact tracked result in [`evaluation/results/mothership-0.4.1.json`](../../evaluation/results/mothership-0.4.1.json). The 0.4.0 result remains historical. The corpus is [`evaluation/corpus/protocol-validation.v1.json`](../../evaluation/corpus/protocol-validation.v1.json).
 
 | Measurement | Result | Denominator and meaning |
 | --- | ---: | --- |
@@ -35,7 +35,8 @@ These numbers are synthetic conformance results. “24/24” must not be shorten
 
 ## Reproducible Agent Frontdoor measurements
 
-The Agent Frontdoor corpus and metric tests at public commit [`20e0274938c0a5947445601cf2fda1eabb9beea0`](https://github.com/UMEBOSHIISAN/agent-frontdoor/commit/20e0274938c0a5947445601cf2fda1eabb9beea0) were measured with Python 3.14.6 using:
+The historical Agent Frontdoor corpus and metric tests at recorded commit
+`20e0274938c0a5947445601cf2fda1eabb9beea0` were measured with Python 3.14.6 using:
 
 ```sh
 python -m pytest tests/test_fixture_metrics.py tests/test_no_execution_paths.py -q
