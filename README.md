@@ -54,13 +54,13 @@ merge methodは固定されます。base commit SHAは結び付けられませ�
 
 [PR #18の公開結果](docs/evidence/github-merge-pr-e2e-20260903/README.md)では、
 隔離されたcanary baseに対するひとつの `github.merge_pr` を記録しています。
-公開GitHubのread-backは、承認されたhead SHA、merge commit、親、対象diffを示します。
+公開GitHubのread-backは、対象head SHA、merge commit、親、対象diffを示します。
 これはPR #18についての一例です。非公開の全履歴が公開物だけで再現できること、
 汎用的な安全性、本番運用への適合は主張しません。
 
 <p align="center">
   <img src="assets/readme/ja/pr18-public-result.svg"
-       alt="PR #18を隔離canary baseへmerge。head SHA、merge commit、1ファイル5行、public main非対象。"
+       alt="PR #18を隔離用ブランチへ統合。PR元コミット識別子、統合後コミット識別子、1ファイル5行、公開本線は対象外。"
        width="100%">
 </p>
 

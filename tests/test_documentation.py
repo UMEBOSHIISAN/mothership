@@ -187,7 +187,7 @@ class ReadmeContractTests(unittest.TestCase):
             "0874166551f11d580168e8b4d0f354e742d39fe6",
             "1cfbbf646b8ac227c8c411f08a961c4396cc69ca",
             "1ファイル・+5 / -0",
-            "public mainは操作対象外",
+            "公開本線は操作対象外",
         ):
             self.assertIn(value, image)
         for forbidden in ("/Users/", "/" + "private/", "token", "secret"):

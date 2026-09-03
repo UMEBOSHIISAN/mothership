@@ -155,7 +155,7 @@ def draw_stage_panel(draw: ImageDraw.ImageDraw, stage: int) -> None:
 
     captions = [
         ("AIが操作案を用意", "提案と、実行したい操作の材料を用意します。"),
-        ("実行する内容を固定", "リポジトリ・PR番号・headの識別子・baseブランチ名・merge方法。"),
+        ("実行する内容を固定", "リポジトリ・PR番号・元コミット識別子・対象ブランチ名・統合方法。"),
         ("決めるのは人間", "承認または拒否を、表示されたこの操作へ照合します。"),
         ("台帳へ記録", "判断を信頼されたローカル台帳へ記録します。"),
         ("同じ台帳履歴内で一度だけ", "二度目の取り出しは停止します。"),
@@ -187,7 +187,7 @@ def draw_frame(stage: int, progress: float = 1.0) -> Image.Image:
     draw = ImageDraw.Draw(image)
     draw_header(draw)
     draw_flow(draw, stage)
-    # Keep a real 10 fps timeline in the GIF rather than collapsing each
+    # Keep a real 8 fps timeline in the GIF rather than collapsing each
     # storyboard scene into a single long frame during palette optimization.
     timeline_start, timeline_end, timeline_y = 140, 1060, 316
     draw.line((timeline_start, timeline_y, timeline_end, timeline_y), fill=LINE, width=3)
