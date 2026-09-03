@@ -1,0 +1,27 @@
+{
+  "action": {
+    "action_id": "act-live-e2e-pr18-74df5a29f8634566bf008fdf98e19a81",
+    "display": {
+      "consequence_if_approved": "PR #18 changes will be integrated into e2e/mothership-merge-canary-base-20260902b.",
+      "excluded_operations": [
+        "squash",
+        "rebase",
+        "force_push",
+        "branch_delete"
+      ],
+      "scope": "repository=UMEBOSHIISAN/mothership; expected_head_sha=0874166551f11d580168e8b4d0f354e742d39fe6; expected_base=e2e/mothership-merge-canary-base-20260902b; merge_method=merge",
+      "target": "PR #18 -> e2e/mothership-merge-canary-base-20260902b"
+    },
+    "execution_parameters": {
+      "expected_base": "e2e/mothership-merge-canary-base-20260902b",
+      "expected_head_sha": "0874166551f11d580168e8b4d0f354e742d39fe6",
+      "merge_method": "merge",
+      "pull_request": 18,
+      "repository": "UMEBOSHIISAN/mothership"
+    },
+    "operation": "github.merge_pr"
+  },
+  "action_sha256": "bbbc20e78dc5ab98d41d4df2ca585ea45246f2ee3cdfe71ca65ef139cdbab3ca",
+  "expires_at": "2026-09-03T10:33:01Z",
+  "schema_version": "mothership-public-frozen-action-evidence.v1"
+}

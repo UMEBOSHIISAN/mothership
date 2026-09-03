@@ -1,0 +1,36 @@
+{
+  "observation": {
+    "base": "e2e/mothership-merge-canary-base-20260902b",
+    "base_contains_expected_head": true,
+    "head_sha": "0874166551f11d580168e8b4d0f354e742d39fe6",
+    "merge_commit_has_expected_head_parent": true,
+    "merge_commit_sha": "1cfbbf646b8ac227c8c411f08a961c4396cc69ca",
+    "merged": true,
+    "pull_request": 18,
+    "repository": "UMEBOSHIISAN/mothership",
+    "source_ref_preserved": true
+  },
+  "schema_version": "github-merge-pr-tokenless-verifier-response.v0",
+  "verification": {
+    "action_id": "act-live-e2e-pr18-74df5a29f8634566bf008fdf98e19a81",
+    "action_sha256": "bbbc20e78dc5ab98d41d4df2ca585ea45246f2ee3cdfe71ca65ef139cdbab3ca",
+    "evidence_refs": [
+      {
+        "ref_id": "trial.github-merge-pr.readback-observation:bbbc20e78dc5ab98d41d4df2ca585ea45246f2ee3cdfe71ca65ef139cdbab3ca",
+        "sha256": "12f57e34c6bd48ef2e9e5d1d464445cab717cf89ca8a685c27389e20f8e466b1"
+      }
+    ],
+    "observed_at": "2026-09-03T10:27:36Z",
+    "observed_state": {
+      "state_sha256": "12f57e34c6bd48ef2e9e5d1d464445cab717cf89ca8a685c27389e20f8e466b1",
+      "summary": "The exact github.merge_pr consequence matched the trial read-back."
+    },
+    "receipt_ref": {
+      "ref_id": "receipt:act-live-e2e-pr18-74df5a29f8634566bf008fdf98e19a81",
+      "sha256": "a3fdf509387d188d0ddd662c6f3e2dde4fbaa74921a35f3ec3fb0b4ef2c1ab88"
+    },
+    "schema_version": "external-action-verification.v0",
+    "status": "CONFIRMED",
+    "verification_method": "read_only_external_observation"
+  }
+}

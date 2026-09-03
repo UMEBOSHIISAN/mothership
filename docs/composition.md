@@ -1,6 +1,6 @@
 # Composition guide
 
-**Current status: public product boundaries and protocols; private operating policy and composition.**
+**Current status: public product boundaries and protocols; historical 0.2 provenance.**
 
 Mothership is the Consequential Authority Plane in a three-product UME Stack:
 
@@ -35,9 +35,10 @@ cannot express the required boundary, and it must not transfer authority between
 
 This legacy section remains the **0.2 compatibility surface** preserved for interoperability and history.
 
-This document describes the legacy 0.2 Frontdoor → WGM → Router → Secretary composition. The companions remain
-independently adoptable, and Mothership preserves their exact frozen interchange evidence. This chain is not the
-current Mothership authority flow.
+This document describes the legacy 0.2 Frontdoor → WGM → Router → Secretary composition.
+Mothership preserves the exact frozen interchange evidence for historical
+compatibility. This chain is not the current Mothership authority flow or
+adoption path.
 
 Composition means exchanging explicitly supplied, versioned metadata. It does not mean automatic installation,
 process invocation, shared credentials, or authority transfer.
@@ -69,13 +70,17 @@ object. Validate that file with Mothership before passing it onward. No project 
 `mothership demo` reads only the bundled fictional fixtures. It checks schema versions, protocol adjacency, identifier
 and capability continuity, and non-escalating effect fields. It does not call companion commands or perform real work.
 
-## Responsibility map
+## Historical responsibility map
 
-- [Agent Frontdoor](https://github.com/UMEBOSHIISAN/agent-frontdoor) owns `intake.v0` task-card semantics.
-- [Workflow Governance Model](https://github.com/UMEBOSHIISAN/workflow-governance-model) owns public handoff semantics.
-- [Mothership Router](https://github.com/UMEBOSHIISAN/mothership-router) owns dry-run recommendation semantics.
-- [Secretary TUI](https://github.com/UMEBOSHIISAN/secretary-tui) owns read-only presentation semantics.
+- Agent Frontdoor historically owned `intake.v0` task-card semantics.
+- Workflow Governance Model historically owned public handoff semantics.
+- Mothership Router historically owned dry-run recommendation semantics.
+- Secretary TUI historically owned read-only presentation semantics.
 - Mothership owns the frozen suite registry, snapshots, digests, fixtures, and compatibility checks.
+
+These names document snapshot provenance only. The historical repositories
+are not linked as current adoption dependencies; the bundled schemas and
+fixtures in this repository are the current compatibility reference.
 
 ## Human-led real workflow
 
@@ -94,4 +99,5 @@ A schema change is coordinated, not inferred:
 5. every affected repository runs its conformance suite;
 6. publication remains a separate explicit action.
 
-See [Protocol reference](protocols.md) for the exact v0.2 snapshot.
+See [Protocol reference](protocols.md) and the [0.2 compatibility history](legacy/compatibility-0.2.md)
+for the exact snapshot and its historical provenance.
