@@ -27,7 +27,7 @@
   "published_artifacts": [
     {
       "path": "README.md",
-      "sha256": "bbe03d239b4913f69cdfa095fd580511178ff26ab50e1dea73791f8e8bc4f773"
+      "sha256": "de43ba7494bdabb0b225b28788a611dfe2c7bea9c22ba60e109ab0f1b310f4b0"
     },
     {
       "path": "consume-event.json",

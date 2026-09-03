@@ -6,7 +6,7 @@
 
 > AIに「できる」を渡しても、「やってよい」は人間に残す。
 >
-> ひとつの判断。ひとつの具体的な操作。一度だけ。
+> ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。
 
 Mothershipは、AIの提案と外部操作の境界を扱う、範囲を限定した
 Action Authorityのリファレンス実装です。人間が確認したひとつの
@@ -18,7 +18,7 @@ Action Authorityのリファレンス実装です。人間が確認したひと�
 
 <p align="center">
   <img src="assets/readme/ja/mothership-flow.gif"
-       alt="AIの操作案をMothershipが固定し、人間の判断を一度だけ通し、実行と確認を別経路に分ける説明図。"
+       alt="AIの操作案とは別にMothershipが対応済みの操作パラメータを固定し、人間の判断と照合して、同じ台帳履歴内で一度だけ取り出し、実行と確認を別経路に分ける説明図。"
        width="100%">
 </p>
 
@@ -54,7 +54,7 @@ merge methodは固定されます。base commit SHAは結び付けられませ�
 
 [PR #18の公開結果](docs/evidence/github-merge-pr-e2e-20260903/README.md)では、
 隔離されたcanary baseに対するひとつの `github.merge_pr` を記録しています。
-公開GitHubのread-backは、対象head SHA、merge commit、親、対象diffを示します。
+公開GitHubのread-backは、対象head SHA、merge commit、親、対象差分量を示します。
 これはPR #18についての一例です。非公開の全履歴が公開物だけで再現できること、
 汎用的な安全性、本番運用への適合は主張しません。
 
@@ -68,16 +68,19 @@ merge methodは固定されます。base commit SHAは結び付けられませ�
 
 ```mermaid
 flowchart LR
-    E[Evidence / proposal] --> H{{Human decision}}
-    H --> F[FrozenAction<br/>exact github.merge_pr]
-    F --> L[One consume<br/>trusted local ledger]
-    L --> X[Separately configured<br/>bounded executor]
+    E["Evidence / proposal"] -. "判断材料のみ<br/>v0.4.1では未結合" .-> H{{"人間の判断"}}
+    P["対応済みの<br/>実行パラメータ"] --> F["FrozenAction"]
+    F --> H
+    H --> A["判断eventを記録"]
+    A --> C["同じ台帳履歴内で<br/>一度だけconsume"]
+    C --> X["別途構成した<br/>executor"]
 ```
 
-Evidenceとproposalは判断材料です。人間の判断として渡された応答は、
-対象操作のdigestと照合されます。`FrozenAction`を一度使用した後の実行系は
-別途設定されます。Mothership自身がモデルを呼び出したり、GitHubを
-変更したりはしません。
+Evidenceとproposalは判断材料ですが、v0.4.1では `FrozenAction`へ機械的に
+結び付けられません。対応済みの実行パラメータを先にfreezeし、人間の判断として
+渡された応答をaction IDとdigestへ照合してeventを記録します。同じaction IDの
+consumeは、ひとつの信頼されたローカル台帳履歴内で一度だけです。実行系は別途
+設定されます。Mothership自身がモデルを呼び出したり、GitHubを変更したりはしません。
 
 ## クイックスタート
 
@@ -123,7 +126,8 @@ exact parametersを別途渡します。
 | 項目 | 公開実装が言えること | 言えないこと |
 | --- | --- | --- |
 | identity | caller-attested decisionを保持する | human identityの認証 |
-| replay | ローカル台帳履歴内で一回使用 | 台帳コピー／復元をまたぐ全体の再利用防止 |
+| decision event | 同じactionへ複数のdecision eventを記録できる | actionごとに判断が一つだけ、または後続判断が過去の判断を取り消すこと |
+| consume | 同じaction IDは同じ台帳履歴内で一度だけconsumeできる | 台帳コピー／復元をまたぐ全体の再利用防止 |
 | action scope | `github.merge_pr`の5つのexact parameterを固定 | base commit SHAのbind、任意operation |
 | expiry | 短いTTLを表示・検査する | `expires_at`をdigestへbindすること |
 | execution | 別executorへ渡すdataを返す | live executor、credential、retry、daemon |

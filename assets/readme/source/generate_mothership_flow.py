@@ -1,7 +1,8 @@
 """Generate the Japanese Mothership README explainer GIF and poster.
 
-This is a deterministic explanatory asset.  It intentionally contains no
-runtime output, credentials, browser capture, or external evidence.
+This source generates the committed explanatory assets in the release build
+environment.  The committed output bytes are checksum-pinned.  It intentionally
+contains no runtime output, credentials, browser capture, or external evidence.
 """
 
 from __future__ import annotations
@@ -23,6 +24,8 @@ STAGE_SECONDS = 1.25
 STAGES = 8
 FRAME_COUNT = int(FPS * STAGE_SECONDS * STAGES)
 
+# Release-asset build inputs. These host font paths are intentionally explicit;
+# cross-host portability or byte-identical regeneration is not claimed.
 FONT_PATH = "/System/Library/Fonts/ヒラギノ角ゴシック W5.ttc"
 FONT_BOLD_PATH = "/System/Library/Fonts/ヒラギノ角ゴシック W7.ttc"
 
@@ -198,7 +201,7 @@ def draw_frame(stage: int, progress: float = 1.0) -> Image.Image:
     cursor = timeline_start + int((timeline_end - timeline_start) * max(0.0, min(1.0, progress)))
     draw.ellipse((cursor - 8, timeline_y - 8, cursor + 8, timeline_y + 8), fill=GREEN, outline=WHITE, width=2)
     draw_stage_panel(draw, stage)
-    centered(draw, (WIDTH // 2, 610), "ひとつの判断。ひとつの具体的な操作。一度だけ。", font(24, bold=True), GREEN)
+    centered(draw, (WIDTH // 2, 610), "ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。", font(24, bold=True), GREEN)
     centered(draw, (WIDTH // 2, 642), "これは仕組みの図解です。実行系・確認系の提供や本番安全性を証明するものではありません。", font(16), MUTED)
     return image
 

@@ -148,7 +148,7 @@ class ReadmeContractTests(unittest.TestCase):
     def test_reference_positioning_and_scope_are_explicit(self) -> None:
         for phrase in (
             "AIに「できる」を渡しても、「やってよい」は人間に残す。",
-            "ひとつの判断。ひとつの具体的な操作。一度だけ。",
+            "ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。",
             "リファレンス実装",
             "github.merge_pr",
             "base commit SHAは結び付けられません",
@@ -159,6 +159,36 @@ class ReadmeContractTests(unittest.TestCase):
             "汎用的な\nエージェントセキュリティ基盤ではありません",
         ):
             self.assertIn(phrase, self.text)
+        self.assertNotIn("ひとつの判断。ひとつの具体的な操作。一度だけ。", self.text)
+
+    def test_authority_flow_and_decision_cardinality_match_v0_4_1(self) -> None:
+        english = README_EN.read_text("utf-8")
+
+        for phrase in (
+            'E["Evidence / proposal"] -. "判断材料のみ<br/>v0.4.1では未結合" .-> H{{"人間の判断"}}',
+            'P["対応済みの<br/>実行パラメータ"] --> F["FrozenAction"]',
+            'F --> H',
+            'H --> A["判断eventを記録"]',
+            'A --> C["同じ台帳履歴内で<br/>一度だけconsume"]',
+            'C --> X["別途構成した<br/>executor"]',
+            "同じactionへ複数のdecision eventを記録できる",
+            "同じaction IDは同じ台帳履歴内で一度だけconsumeできる",
+        ):
+            self.assertIn(phrase, self.text)
+
+        for phrase in (
+            "One decision bound to one exact supported action. One use.",
+            'E["Evidence / proposal"] -. "decision context only<br/>unbound in v0.4.1" .-> H{{"Human decision"}}',
+            'P["Exact supported<br/>execution parameters"] --> F["FrozenAction"]',
+            'F --> H',
+            'H --> A["Record decision event"]',
+            'A --> C["One consume in the same<br/>trusted ledger history"]',
+            'C --> X["Separately configured<br/>executor"]',
+            "Multiple decision events may be recorded for the same action",
+            "one consume per action ID in one trusted ledger history",
+        ):
+            self.assertIn(phrase, english)
+        self.assertNotIn("One human decision. One exact supported action. One use.", english)
 
     def test_public_result_and_links_are_bounded(self) -> None:
         self.assertIn(f"]({E2E_EVIDENCE_LINK})", self.text)
@@ -226,6 +256,10 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow.gif"))
         self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow-poster.png"))
         self.assertIn("仕組みの図解です", self.text)
+        generator = (ROOT / "assets/readme/source/generate_mothership_flow.py").read_text("utf-8")
+        self.assertIn("cross-host", generator)
+        self.assertNotIn("deterministic explanatory asset", generator)
+        self.assertIn("ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。", generator)
 
     def test_code_tour_and_cli_scope_are_exact(self) -> None:
         for path in (
@@ -380,7 +414,7 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
             "# Mothership",
             'src="assets/mothership-banner.png"',
             "AIに「できる」を渡しても、「やってよい」は人間に残す。",
-            "ひとつの判断。ひとつの具体的な操作。一度だけ。",
+            "ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。",
             "Mothershipは、AIの提案と外部操作の境界を扱う、範囲を限定した",
             "## 現在の公開範囲",
             f"]({E2E_EVIDENCE_LINK})",
@@ -417,6 +451,8 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
         ):
             with self.subTest(fact=fact):
                 self.assertIn(fact, public)
+        self.assertIn("derived value, not a field", public)
+        self.assertNotIn("These facts are captured", public)
 
         sanitized_lifecycle = (
             "caller-attested human approval",
