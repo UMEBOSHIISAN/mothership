@@ -1,8 +1,9 @@
 # Mothership 日本語説明GIFの絵コンテ
 
 この資料と `generate_mothership_flow.py` は、READMEに置く説明用GIFと
-静止画ポスターの決定的な生成元です。実行結果の証拠や外部操作の記録では
-ありません。
+静止画ポスターの生成元です。commit済みの出力bytesは `SHA256SUMS` で固定します。
+異なるhost間でのbyte-identicalな再生成は主張しません。実行結果の証拠や
+外部操作の記録でもありません。
 
 ## 伝える順番
 

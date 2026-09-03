@@ -4,7 +4,7 @@
 
 > Give AI the capability to prepare work. Keep authority with the human.
 >
-> One human decision. One exact supported action. One use.
+> One decision bound to one exact supported action. One use.
 
 Mothership is a field-built reference implementation and executable design thesis for a bounded Action Authority.
 It defines a narrow boundary for relating one human decision to one exact supported action with a short validity window
@@ -36,21 +36,25 @@ restored ledgers are another replay domain. A process fork after issuance is not
 
 The [PR #18 bounded public result](docs/evidence/github-merge-pr-e2e-20260903/README.md) records one `github.merge_pr`
 trial against an isolated canary base. Public GitHub read-back records the target head SHA, merge commit, parents,
-and bounded diff. This is one result for PR #18 only. It does not claim publicly reproducible private lifecycle traces,
+and bounded diff counts. This is one result for PR #18 only. It does not claim publicly reproducible private lifecycle traces,
 generic safety, or production readiness.
 
 ## Boundary model
 
 ```mermaid
 flowchart LR
-    E[Evidence / proposal] --> H{{Human decision}}
-    H --> F[FrozenAction<br/>exact github.merge_pr]
-    F --> L[One consume<br/>trusted local ledger]
-    L --> X[Separately configured<br/>bounded executor]
+    E["Evidence / proposal"] -. "decision context only<br/>unbound in v0.4.1" .-> H{{"Human decision"}}
+    P["Exact supported<br/>execution parameters"] --> F["FrozenAction"]
+    F --> H
+    H --> A["Record decision event"]
+    A --> C["One consume in the same<br/>trusted ledger history"]
+    C --> X["Separately configured<br/>executor"]
 ```
 
-Evidence and proposals are decision inputs. The human decision is caller-attested and bound to the exact action digest.
-The executor after `FrozenAction` consumption is separately configured. Mothership does not call a model or mutate GitHub.
+Evidence and proposals are decision inputs, but v0.4.1 does not mechanically bind them to a `FrozenAction`. Exact supported
+execution parameters are frozen first; a caller-attested human decision is then checked against the action ID and digest
+before its event is recorded. The same action ID can be consumed once in one trusted local ledger history. The executor is
+separately configured. Mothership does not call a model or mutate GitHub.
 
 ## Quick start
 
@@ -93,7 +97,8 @@ Card does not automatically become a `FrozenAction`; the caller supplies exact p
 | Area | The public implementation supports | It does not claim |
 | --- | --- | --- |
 | identity | caller-attested decisions | human identity authentication |
-| replay | one-use consumption in one trusted local ledger history | global replay prevention across copied/restored ledgers |
+| decision events | Multiple decision events may be recorded for the same action | one terminal decision per action, or supersession/revocation semantics |
+| consume | one consume per action ID in one trusted ledger history | global replay prevention across copied/restored ledgers |
 | action scope | five exact parameters for `github.merge_pr` | base-commit binding or arbitrary operations |
 | expiry | a short TTL that is shown and checked | binding `expires_at` into the digest |
 | execution | returning data for a separate executor | a live executor, credentials, retries, or a daemon |

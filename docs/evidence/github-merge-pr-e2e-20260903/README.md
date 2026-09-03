@@ -15,13 +15,17 @@ The public repository records this exact consequence:
 - Merge commit: `1cfbbf646b8ac227c8c411f08a961c4396cc69ca`.
 - Merge parents, in order: `880e514382b1a9594a9d4a6f06f5939283e57c60` and
   `0874166551f11d580168e8b4d0f354e742d39fe6`.
-- Diff: 1 file, +5/-0, adding `docs/e2e-fixtures/github-merge-pr-v1.txt`.
-- Marker SHA-256: `3edb7363aa14a868313ece2e2eda57ef6643147cd27f54a7199e22c39dc642be`.
+- Diff: 1 file, +5/-0, adding
+  [`docs/e2e-fixtures/github-merge-pr-v1.txt`](https://github.com/UMEBOSHIISAN/mothership/blob/1cfbbf646b8ac227c8c411f08a961c4396cc69ca/docs/e2e-fixtures/github-merge-pr-v1.txt).
+- Marker SHA-256, computed from those public file bytes:
+  `3edb7363aa14a868313ece2e2eda57ef6643147cd27f54a7199e22c39dc642be`.
 - Public `main` remained unchanged at `a5fc0d5997199dea2db5800b561e9a972765d27d`.
 - Source fork head remained at the approved head after the merge.
 
-These facts are captured in [`public-github-readback.json`](public-github-readback.json). They establish the resulting
-Git objects, isolated target, exact head ancestry, bounded diff, preserved source head, and unchanged public `main`.
+[`public-github-readback.json`](public-github-readback.json) captures the merge state, target branch, head and merge
+commit identifiers, merge parents, aggregate diff counts, preserved source head, and unchanged public `main`. The
+linked exact-commit file supplies the changed path and marker bytes; its SHA-256 above is a derived value, not a field
+in the read-back JSON.
 
 ## Sanitized lifecycle records
 
