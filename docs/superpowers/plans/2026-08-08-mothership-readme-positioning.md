@@ -62,7 +62,10 @@ Add a Mermaid flowchart whose nodes are `Agent Frontdoor`, `Mothership`, `Secret
 
 - [ ] **Step 2: Add the ecosystem table**
 
-Link to `https://github.com/UMEBOSHIISAN/agent-frontdoor`, `https://github.com/UMEBOSHIISAN/secretary-tui`, `https://github.com/UMEBOSHIISAN/git-vibes`, and `https://github.com/UMEBOSHIISAN/toygarden`. Describe each repository only in its verified public role and state that each can be adopted independently.
+Record the historical names of Agent Frontdoor, Secretary TUI, git-vibes, and
+toygarden as provenance only. Do not link them as current adoption paths or
+state that they are independently adoptable without a fresh public-visibility
+check.
 
 - [ ] **Step 3: Add the FAQ**
 
