@@ -35,7 +35,7 @@ restored ledgers are another replay domain. A process fork after issuance is not
 ## Public result
 
 The [PR #18 bounded public result](docs/evidence/github-merge-pr-e2e-20260903/README.md) records one `github.merge_pr`
-trial against an isolated canary base. Public GitHub read-back records the approved head SHA, merge commit, parents,
+trial against an isolated canary base. Public GitHub read-back records the target head SHA, merge commit, parents,
 and bounded diff. This is one result for PR #18 only. It does not claim publicly reproducible private lifecycle traces,
 generic safety, or production readiness.
 
