@@ -193,8 +193,10 @@ class ReadmeContractTests(unittest.TestCase):
         for forbidden in ("/Users/", "/" + "private/", "token", "secret"):
             self.assertNotIn(forbidden.casefold(), image.casefold())
         self.assertIn('role="img"', image)
+        self.assertIn('viewBox="0 0 720 760"', image)
         self.assertIn("alt", self.text)
         self.assertIn("assets/readme/ja/pr18-public-result.svg", self.text)
+        self.assertIn('width="720"', self.text)
 
     def test_japanese_explainer_assets_are_bounded_and_factual(self) -> None:
         self.assertTrue(EXPLAINER_GIF.is_file())
