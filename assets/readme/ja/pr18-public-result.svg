@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">PR #18 公開確認結果</title>
+  <desc id="desc">隔離したcanary baseへPR #18をmergeした公開結果。対象base、head SHA、merge commit、差分量、public main非対象を示す。</desc>
+  <rect width="1280" height="720" fill="#f8fafc"/>
+  <rect x="48" y="48" width="1184" height="624" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>
+  <text x="96" y="124" fill="#0f172a" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="38" font-weight="700">PR #18 — 公開確認できる結果</text>
+  <rect x="96" y="164" width="230" height="76" rx="38" fill="#166534"/>
+  <text x="211" y="216" text-anchor="middle" fill="#ffffff" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="34" font-weight="700">MERGED</text>
+  <line x1="96" y1="286" x2="1184" y2="286" stroke="#e2e8f0" stroke-width="3"/>
+  <text x="96" y="344" fill="#475569" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="25" font-weight="700">対象base</text>
+  <text x="96" y="382" fill="#0f172a" font-family="SFMono-Regular,Consolas,monospace" font-size="25">e2e/mothership-merge-canary-base-20260902b</text>
+  <text x="96" y="444" fill="#475569" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="25" font-weight="700">承認されたhead SHA</text>
+  <text x="96" y="482" fill="#0f172a" font-family="SFMono-Regular,Consolas,monospace" font-size="25">0874166551f11d580168e8b4d0f354e742d39fe6</text>
+  <text x="710" y="344" fill="#475569" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="25" font-weight="700">merge commit</text>
+  <text x="710" y="382" fill="#0f172a" font-family="SFMono-Regular,Consolas,monospace" font-size="25">1cfbbf646b8ac227c8c411f08a961c4396cc69ca</text>
+  <text x="710" y="444" fill="#475569" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="25" font-weight="700">差分</text>
+  <text x="710" y="482" fill="#0f172a" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="30" font-weight="700">1ファイル・+5 / -0</text>
+  <rect x="96" y="548" width="1088" height="72" rx="12" fill="#f1f5f9"/>
+  <text x="640" y="594" text-anchor="middle" fill="#334155" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif" font-size="25">Mothership本体のpublic mainは操作対象外</text>
+</svg>

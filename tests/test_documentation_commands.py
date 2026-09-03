@@ -44,9 +44,10 @@ def _minimal_environment(home: Path) -> dict[str, str]:
 
 
 class DocumentationCommandTests(unittest.TestCase):
-    def test_both_readme_quickstarts_are_the_same_tested_sequence(self) -> None:
+    def test_japanese_root_readme_has_the_tested_quickstart_sequence(self) -> None:
         self.assertEqual((QUICKSTART,), _shell_blocks(README))
-        self.assertEqual((QUICKSTART,), _shell_blocks(JAPANESE_GUIDE))
+        self.assertEqual((), _shell_blocks(JAPANESE_GUIDE))
+        self.assertIn("../../README.md", JAPANESE_GUIDE.read_text("utf-8"))
 
     def test_installation_commands_match_the_supported_lifecycle(self) -> None:
         version = (ROOT / "VERSION").read_text("utf-8").strip()
@@ -93,7 +94,7 @@ class DocumentationCommandTests(unittest.TestCase):
         expected = {
             ("-m", "mothership", "verify"): ROOT / "docs/generated/verify-output.json",
             ("-m", "mothership", "demo"): ROOT / "docs/generated/demo-output.json",
-            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.4.0.json",
+            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.4.1.json",
         }
         with tempfile.TemporaryDirectory() as directory:
             environment = _minimal_environment(Path(directory))

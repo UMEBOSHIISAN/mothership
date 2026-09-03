@@ -17,7 +17,7 @@ from tools import run_evaluation
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "evaluation/corpus/protocol-validation.v1.json"
-RESULT = ROOT / "evaluation/results/mothership-0.4.0.json"
+RESULT = ROOT / "evaluation/results/mothership-0.4.1.json"
 RUNNER = ROOT / "tools/run_evaluation.py"
 
 
@@ -57,7 +57,7 @@ class EvaluationTests(unittest.TestCase):
         result = json.loads(RESULT.read_text("utf-8"))
         self.assertEqual("mothership.evaluation.v1", result["schema_version"])
         self.assertEqual("mothership-control-plane", result["subject"])
-        self.assertEqual("0.4.0", result["subject_version"])
+        self.assertEqual("0.4.1", result["subject_version"])
         self.assertEqual("synthetic-conformance-only", result["claim_scope"])
         self.assertEqual(
             hashlib.sha256(CORPUS.read_bytes()).hexdigest(),

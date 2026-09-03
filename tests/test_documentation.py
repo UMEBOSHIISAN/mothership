@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import sysconfig
@@ -19,35 +20,14 @@ from orchestration.lib.external_action import validate_receipt_verification_bind
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
+README_EN = ROOT / "README.en.md"
+PUBLIC_RESULT_IMAGE = ROOT / "assets/readme/ja/pr18-public-result.svg"
+EXPLAINER_GIF = ROOT / "assets/readme/ja/mothership-flow.gif"
+EXPLAINER_POSTER = ROOT / "assets/readme/ja/mothership-flow-poster.png"
 E2E_EVIDENCE = ROOT / "docs/evidence/github-merge-pr-e2e-20260903/README.md"
 E2E_EVIDENCE_LINK = "docs/evidence/github-merge-pr-e2e-20260903/README.md"
 E2E_EVIDENCE_DIR = E2E_EVIDENCE.parent
 GENERATED = ROOT / "docs/generated"
-POSITIONING_SENTENCE = (
-    "Mothership sits between an AI proposal and a real external consequence. "
-    "It binds one human decision to one exact, short-lived, single-use action "
-    "while keeping execution and verification separate."
-)
-EXPECTED_H2 = (
-    "Quick start",
-    "Validate the 0.2 compatibility chain in 60 seconds",
-    "The problem",
-    "The Mothership answer",
-    "The UME Stack",
-    "Architecture",
-    "Choose your adoption path",
-    "Safety guarantees",
-    "What Mothership is not",
-    "How it compares",
-    "Public API",
-    "Ecosystem protocols",
-    "Compatibility",
-    "Documentation",
-    "Contributing",
-    "Security",
-    "Roadmap",
-    "License",
-)
 QUICKSTART = (
     "python3 -m venv .venv",
     ". .venv/bin/activate",
@@ -137,7 +117,22 @@ class ReadmeContractTests(unittest.TestCase):
             for line in self.text.splitlines()
             if line.startswith("## ")
         )
-        self.assertEqual(EXPECTED_H2, headings)
+        self.assertEqual(
+            (
+                "現在の公開範囲",
+                "公開されている結果",
+                "境界モデル",
+                "クイックスタート",
+                "何を提供するか",
+                "コードツアー",
+                "現在の制約",
+                "事故から生まれた境界",
+                "0.2 compatibility",
+                "関連ドキュメント",
+                "License",
+            ),
+            headings,
+        )
 
     def test_quickstart_is_one_exact_executable_block(self) -> None:
         block = _marked_fence(self.text, "quickstart", "sh")
@@ -150,144 +145,124 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertEqual(1, self.text.count("<!-- quickstart:start -->"))
         self.assertEqual(1, self.text.count("<!-- quickstart:end -->"))
 
-    def test_current_authority_example_is_executable_and_non_executing(self) -> None:
-        block = _marked_fence(self.text, "authority-core-example", "python")
-        calls = (
-            "freeze_action(",
-            "validate_decision_transport(",
-            "record_action_decision(",
-            "consume_action(",
-        )
-        positions = [block.index(call) for call in calls]
-        self.assertEqual(sorted(positions), positions)
-        for forbidden in ("subprocess", "requests", "executor", "git push", "gh "):
-            self.assertNotIn(forbidden, block.casefold())
+    def test_reference_positioning_and_scope_are_explicit(self) -> None:
+        for phrase in (
+            "AIに「できる」を渡しても、「やってよい」は人間に残す。",
+            "ひとつの判断。ひとつの具体的な操作。一度だけ。",
+            "リファレンス実装",
+            "github.merge_pr",
+            "base commit SHAは結び付けられません",
+            "`expires_at`はaction digestに含まれません",
+            "人間の本人確認は行いません",
+            "信頼されたローカル台帳履歴",
+            "本番向けの権限サービス",
+            "汎用的な\nエージェントセキュリティ基盤ではありません",
+        ):
+            self.assertIn(phrase, self.text)
 
-        for human_decision, expected_events in ((b"approve\n", 2), (b"reject\n", 1)):
-            with self.subTest(decision=human_decision.strip()), tempfile.TemporaryDirectory() as directory:
-                os.chmod(directory, 0o755)
-                environment = _minimal_environment(Path(directory))
-                environment["PYTHONPATH"] = str(ROOT)
-                completed = subprocess.run(
-                    [sys.executable, "-c", block],
-                    cwd=directory,
-                    env=environment,
-                    input=human_decision,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    check=False,
-                    timeout=10,
-                )
-                self.assertEqual(0, completed.returncode, completed.stderr)
-                self.assertIn(b"github.merge_pr", completed.stdout)
-                self.assertIn(b"expires_at=", completed.stdout)
-                authority_dir = Path(directory, ".mothership-authority")
-                self.assertEqual(0o700, authority_dir.stat().st_mode & 0o777)
-                events = Path(authority_dir, "authority-action-events.jsonl").read_bytes().splitlines()
-                self.assertEqual(expected_events, len(events))
-                if human_decision == b"reject\n":
-                    self.assertIn(b"no authority was consumed", completed.stdout)
-
-        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as target:
-            os.chmod(target, 0o700)
-            Path(directory, ".mothership-authority").symlink_to(target, target_is_directory=True)
-            environment = _minimal_environment(Path(directory))
-            environment["PYTHONPATH"] = str(ROOT)
-            completed = subprocess.run(
-                [sys.executable, "-c", block],
-                cwd=directory,
-                env=environment,
-                input=b"reject\n",
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=False,
-                timeout=10,
-            )
-            self.assertNotEqual(0, completed.returncode)
-            self.assertFalse(Path(target, "authority-action-events.jsonl").exists())
-
-    def test_embedded_demo_is_the_generated_transcript(self) -> None:
-        transcript = _marked_fence(self.text, "demo-output", "json")
-        expected = (GENERATED / "demo-output.json").read_text("utf-8").rstrip("\n")
-        self.assertEqual(expected, transcript)
-        self.assertEqual("protocol-composition-only", json.loads(transcript)["claim"])
-
-    def test_legacy_demo_and_boundary_map_do_not_overstate_current_coverage(self) -> None:
-        self.assertNotIn("whole control plane", self.text.casefold())
-        self.assertNotIn("one fictional document at every boundary", self.text.casefold())
-        self.assertNotIn("assets/boundary-map.svg", self.text)
-
-    def test_hero_links_and_companion_topology_are_exact(self) -> None:
-        self.assertIn(
-            "Bounded Action Authority for AI",
-            self.text,
-        )
+    def test_public_result_and_links_are_bounded(self) -> None:
+        self.assertIn(f"]({E2E_EVIDENCE_LINK})", self.text)
         for target in (
-            "docs/installation.md",
             "docs/architecture.md",
-            "docs/composition.md",
+            "docs/installation.md",
             "docs/protocols.md",
             "docs/security.md",
-            "docs/compatibility.md",
-            "docs/ecosystem-roadmap.md",
-            "CONTRIBUTING.md",
-            "SECURITY.md",
-            "docs/ja/README.md",
+            "docs/composition.md",
+            "docs/evidence/github-merge-pr-e2e-20260903/README.md",
+            "README.en.md",
             "LICENSE",
         ):
             self.assertIn(f"]({target})", self.text)
-        companions = (
-            "https://github.com/UMEBOSHIISAN/agent-frontdoor",
-            "https://github.com/UMEBOSHIISAN/workflow-governance-model",
-            "https://github.com/UMEBOSHIISAN/mothership-router",
-            "https://github.com/UMEBOSHIISAN/secretary-tui",
-        )
-        for companion in companions:
-            self.assertIn(companion, self.text)
-        positions = [self.text.index(kind) for kind in (
-            "frontdoor-task",
-            "governance-handoff",
-            "router-manifest",
-            "observation-snapshot",
-        )]
-        self.assertEqual(sorted(positions), positions)
+        self.assertEqual(1, self.text.count(f"]({E2E_EVIDENCE_LINK})"))
+        self.assertIn("一例です", self.text)
+        self.assertIn("汎用的な安全性", self.text)
+        self.assertIn("本番運用への適合は主張しません", self.text)
 
-    def test_current_authority_boundary_precedes_legacy_compatibility(self) -> None:
-        for term in (
-            "Mothership owns the bounded consequential-authority boundary",
-            "[UME Presence](https://github.com/UMEBOSHIISAN/ume-presence)",
-            "UME-HARNESS",
-            "mothership.action_authority",
-            "FrozenAction",
-            "default CLI remains read-only",
-            "separately configured bounded executor",
+    def test_public_result_image_is_deterministic_and_sanitized(self) -> None:
+        self.assertTrue(PUBLIC_RESULT_IMAGE.is_file())
+        image = PUBLIC_RESULT_IMAGE.read_text("utf-8")
+        for value in (
+            "PR #18",
+            "e2e/mothership-merge-canary-base-20260902b",
+            "0874166551f11d580168e8b4d0f354e742d39fe6",
+            "1cfbbf646b8ac227c8c411f08a961c4396cc69ca",
+            "1ファイル・+5 / -0",
+            "public mainは操作対象外",
         ):
-            self.assertIn(term, self.text)
-        self.assertLess(
-            self.text.index("[UME Presence](https://github.com/UMEBOSHIISAN/ume-presence)"),
-            self.text.index("Legacy 0.2 protocol compatibility"),
-        )
-        normalized = " ".join(self.text.split())
-        self.assertIn(
-            "Each product is independently usable. The shared architecture defines responsibility boundaries. "
-            "It does not imply automatic runtime integration.",
-            normalized,
-        )
-        for stale_claim in (
-            "turn a recommendation into permission",
-            "| Grants authority | no |",
-            "Execution authority is a separate, unconnected concern",
+            self.assertIn(value, image)
+        for forbidden in ("/Users/", "/" + "private/", "token", "secret"):
+            self.assertNotIn(forbidden.casefold(), image.casefold())
+        self.assertIn('role="img"', image)
+        self.assertIn("alt", self.text)
+        self.assertIn("assets/readme/ja/pr18-public-result.svg", self.text)
+
+    def test_japanese_explainer_assets_are_bounded_and_factual(self) -> None:
+        self.assertTrue(EXPLAINER_GIF.is_file())
+        self.assertTrue(EXPLAINER_POSTER.is_file())
+        self.assertLess(EXPLAINER_GIF.stat().st_size, 10 * 1024 * 1024)
+        self.assertLess(EXPLAINER_POSTER.stat().st_size, 10 * 1024 * 1024)
+
+        gif_header = EXPLAINER_GIF.read_bytes()[:10]
+        self.assertIn(gif_header[:6], (b"GIF87a", b"GIF89a"))
+        self.assertEqual((1200, 675), struct.unpack("<HH", gif_header[6:10]))
+
+        png_header = EXPLAINER_POSTER.read_bytes()[:24]
+        self.assertEqual(b"\x89PNG\r\n\x1a\n", png_header[:8])
+        self.assertEqual((1200, 675), struct.unpack(">II", png_header[16:24]))
+
+        source = (ROOT / "assets/readme/source/mothership-flow-storyboard.md").read_text("utf-8")
+        for phrase in (
+            "github.merge_pr",
+            "base commit SHA",
+            "人間本人の認証",
+            "汎用の実行系",
+            "実行系・確認系",
         ):
-            self.assertNotIn(stale_claim, self.text)
+            self.assertIn(phrase, source)
+        for forbidden in ("/Users/", "/" + "private/", "token", "secret"):
+            self.assertNotIn(forbidden.casefold(), source.casefold())
+        self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow.gif"))
+        self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow-poster.png"))
+        self.assertIn("仕組みの図解です", self.text)
+
+    def test_code_tour_and_cli_scope_are_exact(self) -> None:
+        for path in (
+            "orchestration/lib/action_authority.py",
+            "orchestration/lib/action_authority_ledger.py",
+            "orchestration/lib/external_action.py",
+            "tests/test_action_authority.py",
+            "tests/test_action_authority_ledger.py",
+            "tests/test_external_action_contracts.py",
+        ):
+            self.assertIn(f"]({path})", self.text)
+        self.assertIn("同梱resource inventory、schema、registry、fixture", self.text)
+        self.assertIn("legacy 0.2のsyntheticな", self.text)
+        self.assertIn("Authority Coreの", self.text)
+        self.assertIn("証明でも", self.text)
+        self.assertNotIn("assets/boundary-map.svg", self.text)
+        self.assertNotIn("assets/available-vs-allowed.svg", self.text)
+        self.assertNotIn("assets/incident-lineage.svg", self.text)
+
+    def test_no_sales_or_overclaiming_surface_remains(self) -> None:
+        lowered = self.text.casefold()
+        for forbidden in (
+            "for teams",
+            "design partner",
+            "enterprise integration",
+            "production-ready",
+            "generic agent-security platform",
+            "offline verification badge",
+            "whole control plane",
+        ):
+            self.assertNotIn(forbidden, lowered)
+        self.assertNotIn("/Users/", self.text)
+        self.assertNotIn("/" + "private/", self.text)
+        self.assertNotIn("file://", lowered)
 
     def test_claims_and_rendering_structure_are_closed(self) -> None:
         lowered = self.text.casefold()
-        self.assertIn(
-            "https://github.com/UMEBOSHIISAN/mothership/actions/workflows/test.yml/badge.svg",
-            self.text,
-        )
-        self.assertNotIn("tests-225%20passing", self.text)
-        self.assertIn("reachable from their public main branches", lowered)
+        self.assertNotIn("offline verification", lowered)
+        self.assertIn("github.merge_pr", lowered)
         self.assertNotIn("publication-pending", lowered)
         for forbidden in (
             "production ready",
@@ -312,7 +287,7 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertLessEqual(level, previous + 1 if previous else 1)
             previous = level
             title = heading[level:].strip().casefold()
-            anchor = re.sub(r"[^a-z0-9 _-]", "", title).replace(" ", "-")
+            anchor = re.sub(r"[^a-z0-9 _-]", "", title).replace(" ", "-") or title
             self.assertNotIn(anchor, anchors)
             anchors.add(anchor)
         image_alts = re.findall(r"!\[([^]]*)\]\([^)]+\)", self.text)
@@ -400,16 +375,14 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
     def test_readme_first_screen_order_and_evidence_link_are_exact(self) -> None:
         normalized = " ".join(self.readme.split())
         ordered = (
-            'src="assets/mothership-banner.png"',
             "# Mothership",
-            "Bounded Action Authority for AI",
-            "One human decision. One exact action. One use.",
-            POSITIONING_SENTENCE,
-            "Public result from one live integration trial — `github.merge_pr`",
-            "OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY",
+            'src="assets/mothership-banner.png"',
+            "AIに「できる」を渡しても、「やってよい」は人間に残す。",
+            "ひとつの判断。ひとつの具体的な操作。一度だけ。",
+            "Mothershipは、AIの提案と外部操作の境界を扱う、範囲を限定した",
+            "## 現在の公開範囲",
             f"]({E2E_EVIDENCE_LINK})",
-            "## Quick start",
-            "Mothership owns the bounded consequential-authority boundary",
+            "## クイックスタート",
         )
         for value in ordered:
             self.assertIn(value, normalized)
@@ -754,7 +727,7 @@ class SupportingDocumentationTests(unittest.TestCase):
         self.assertIn("Python 3.12+", compatibility)
         self.assertIn("0.2.0", compatibility)
         self.assertIn("Measured, not universal", compatibility)
-        self.assertIn("reachable from its repository's public `main` branch", compatibility)
+        self.assertIn("historical snapshot", compatibility)
         self.assertNotIn("publication pending", compatibility.casefold())
 
         contributing = self.documents["contributing"]
@@ -791,107 +764,45 @@ class SupportingDocumentationTests(unittest.TestCase):
 
 
 class JapaneseGuideTests(unittest.TestCase):
-    JAPANESE_H2 = (
-        "クイックスタート",
-        "0.2互換チェーンを60秒で検証",
-        "課題",
-        "Mothershipの答え",
-        "アーキテクチャ",
-        "導入パス",
-        "安全保証",
-        "Mothershipではないもの",
-        "比較",
-        "公開API",
-        "エコシステムプロトコル",
-        "互換性",
-        "ドキュメント",
-        "コントリビューション",
-        "セキュリティ",
-        "ロードマップ",
-        "ライセンス",
-    )
-
     @classmethod
     def setUpClass(cls) -> None:
-        cls.english = README.read_text("utf-8")
+        cls.english = README_EN.read_text("utf-8")
         cls.japanese = (ROOT / "docs/ja/README.md").read_text("utf-8")
 
-    def test_japanese_product_story_has_complete_section_parity(self) -> None:
-        headings = tuple(
-            line.removeprefix("## ")
-            for line in self.japanese.splitlines()
-            if line.startswith("## ")
-        )
-        self.assertEqual(self.JAPANESE_H2, headings)
+    def test_japanese_guide_is_a_pointer_not_a_second_canonical_readme(self) -> None:
+        self.assertIn("repository root", self.japanese)
+        self.assertIn("../../README.md", self.japanese)
+        self.assertIn("../../README.en.md", self.japanese)
+        self.assertLessEqual(len(self.japanese.splitlines()), 16)
+        self.assertNotIn("## クイックスタート", self.japanese)
 
-    def test_japanese_demo_is_scoped_to_the_compatibility_chain(self) -> None:
-        self.assertNotIn("60秒で全体を確認", self.japanese)
-        self.assertNotIn("4つの境界に置かれた架空の文書", self.japanese)
-        self.assertIn("0.2互換チェーン", self.japanese)
-
-    def test_quickstart_and_demo_bytes_match_english_contract(self) -> None:
-        self.assertEqual(
-            QUICKSTART,
-            tuple(_marked_fence(self.japanese, "quickstart-ja", "sh").splitlines()),
-        )
-        japanese_demo = _marked_fence(self.japanese, "demo-output-ja", "json")
-        english_demo = _marked_fence(self.english, "demo-output", "json")
-        self.assertEqual(english_demo, japanese_demo)
-        self.assertEqual(
-            (GENERATED / "demo-output.json").read_text("utf-8").rstrip("\n"),
-            japanese_demo,
-        )
-
-    def test_cross_language_machine_facts_are_identical(self) -> None:
+    def test_english_equivalent_has_the_same_machine_scope(self) -> None:
         for fact in (
-            "Python 3.12+",
-            "0.2.0",
-            "mothership.action_authority",
             "github.merge_pr",
-            "frontdoor-task",
-            "governance-handoff",
-            "router-manifest",
-            "observation-snapshot",
-            "authority_effect: false",
-            "execution_effect: false",
-            "claude-code-agent",
-            "codex-cli",
-            "ollama-local",
+            "expected head SHA",
+            "expected base branch name",
+            "expires_at",
+            "Human identity is not authenticated",
+            "trusted local ledger history",
+            "PR #18",
+            "production readiness",
         ):
             with self.subTest(fact=fact):
                 self.assertIn(fact, self.english)
-                self.assertIn(fact, self.japanese)
-        for companion in (
-            "https://github.com/UMEBOSHIISAN/agent-frontdoor",
-            "https://github.com/UMEBOSHIISAN/workflow-governance-model",
-            "https://github.com/UMEBOSHIISAN/mothership-router",
-            "https://github.com/UMEBOSHIISAN/secretary-tui",
-        ):
-            self.assertIn(companion, self.japanese)
-        positions = [self.japanese.index(kind) for kind in (
-            "frontdoor-task",
-            "governance-handoff",
-            "router-manifest",
-            "observation-snapshot",
-        )]
-        self.assertEqual(sorted(positions), positions)
+        self.assertIn("github.merge_pr", README.read_text("utf-8"))
+        self.assertIn("人間の本人確認は行いません", README.read_text("utf-8"))
 
-    def test_japanese_guide_preserves_claim_limits(self) -> None:
-        for phrase in (
-            "モデルを呼び出しません",
-            "Mothershipは、範囲を限定したconsequential authorityの境界を所有します",
-            "default CLIはread-onlyのままです",
-            "別途設定されたbounded executor",
-            "自動インストールしません",
-            "合成コーパス",
-            "本番精度ではありません",
-        ):
-            self.assertIn(phrase, self.japanese)
-        self.assertNotIn("/Users/", self.japanese)
-        self.assertNotIn("/" + "private/", self.japanese)
-        self.assertNotIn("file://", self.japanese.casefold())
-        self.assertIn("public main branchから到達可能", self.japanese)
-        self.assertNotIn("publication pending", self.japanese.casefold())
+    def test_both_full_readmes_have_bounded_language_and_no_private_paths(self) -> None:
+        japanese = README.read_text("utf-8")
+        for text in (japanese, self.english, self.japanese):
+            self.assertNotIn("/Users/", text)
+            self.assertNotIn("/" + "private/", text)
+            self.assertNotIn("file://", text.casefold())
+        for text in (japanese, self.english):
+            lowered = text.casefold()
+            self.assertNotIn("for teams", lowered)
+            self.assertNotIn("design partner", lowered)
+            self.assertNotIn("production-ready", lowered)
 
 
 if __name__ == "__main__":
