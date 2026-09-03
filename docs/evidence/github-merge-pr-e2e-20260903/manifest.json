@@ -1,0 +1,68 @@
+{
+  "action": {
+    "operation": "github.merge_pr",
+    "pull_request": 18,
+    "repository": "UMEBOSHIISAN/mothership"
+  },
+  "claim_ceiling": {
+    "base_sha_digest_binding": false,
+    "general_executor_safety": "NOT_CLAIMED",
+    "harness_to_mothership_vertical": "NOT_CLAIMED",
+    "human_identity_authentication": "NOT_CLAIMED",
+    "live_external_vertical": "github.merge_pr PR #18 only",
+    "production_ready": "NOT_CLAIMED",
+    "public_release_ships_live_orchestrator": false,
+    "security_clean": "NOT_CLAIMED",
+    "third_party_reproducibility": "NOT_YET"
+  },
+  "private_trace_commitments": {
+    "authority_ledger_sha256": "6ddb7cdc658116561f624b2c91cd36a8cfa3d1408088ab10533f48e47ca8fe3f",
+    "evidence_index_sha256": "bff5433cdec9cf4ede5f1b5b005a532b9cd230145bc8e4cad331850b8d6d9a31",
+    "result_sha256": "bf96a3d19288a1be61c30dbd07a2d4d8d5bc68e18347497756259ff8054c886a"
+  },
+  "product_source": {
+    "commit_sha": "71880ce7bef066bf4ce2380b4e4960b3932d0e56",
+    "public_release_ships_live_orchestrator": false
+  },
+  "published_artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "bbe03d239b4913f69cdfa095fd580511178ff26ab50e1dea73791f8e8bc4f773"
+    },
+    {
+      "path": "consume-event.json",
+      "sha256": "b8cc945c4dd97e1f4c1f7d707b991e84515079c2e01b9d5be7c1db1023991c56"
+    },
+    {
+      "path": "executor-receipt.json",
+      "sha256": "67ee3262ae241a1306475d864fe0652c804decfc4df3d99f208499482576906c"
+    },
+    {
+      "path": "frozen-action.json",
+      "sha256": "1ffc0231ab7bcc9b87ee419c5c9c2724cb5f71aecb202663fc63fdd486304d9c"
+    },
+    {
+      "path": "human-decision.json",
+      "sha256": "ee442672494487b27a02b43ca51d2531c69e1cd2337474f94a44ef2cd945ecf1"
+    },
+    {
+      "path": "public-github-readback.json",
+      "sha256": "d7cd211ab9badd407ee135c00db873c10b3783498fd09eb19e73dff8c45cd999"
+    },
+    {
+      "path": "verification.json",
+      "sha256": "e08080f2e886b62ccedb102633a7f36b5ece0d4ff917bba71b07ea6bdc055ac8"
+    }
+  ],
+  "request_counts": {
+    "authority_consumes": 1,
+    "credential_lookups": 1,
+    "decision_records": 1,
+    "freezes": 1,
+    "merge_requests": 1,
+    "retries": 0,
+    "verifier_launches": 1
+  },
+  "schema_version": "mothership-public-live-e2e-manifest.v1",
+  "status": "CONFIRMED"
+}

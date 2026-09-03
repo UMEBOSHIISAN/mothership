@@ -1,0 +1,10 @@
+{
+  "action_id": "act-live-e2e-pr18-74df5a29f8634566bf008fdf98e19a81",
+  "action_sha256": "bbbc20e78dc5ab98d41d4df2ca585ea45246f2ee3cdfe71ca65ef139cdbab3ca",
+  "approval_event_id": "event-2b16b799a0724badb0fc50840585df63",
+  "consumed_at": "2026-09-03T10:27:32Z",
+  "event_id": "event-ce1b58a1570d46ec9cccc63a9e685d35",
+  "event_type": "authority_action_consume",
+  "expires_at": "2026-09-03T10:33:01Z",
+  "schema_version": "authority-action-consume.v0"
+}

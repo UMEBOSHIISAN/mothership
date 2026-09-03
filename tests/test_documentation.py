@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -12,11 +13,15 @@ import tempfile
 import unittest
 import venv
 
+from orchestration.lib.contracts import validate_contract
+from orchestration.lib.external_action import validate_receipt_verification_binding
+
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
-E2E_EVIDENCE = ROOT / "docs/evidence/github-merge-pr-e2e-20260901.md"
-E2E_EVIDENCE_LINK = "docs/evidence/github-merge-pr-e2e-20260901.md"
+E2E_EVIDENCE = ROOT / "docs/evidence/github-merge-pr-e2e-20260903/README.md"
+E2E_EVIDENCE_LINK = "docs/evidence/github-merge-pr-e2e-20260903/README.md"
+E2E_EVIDENCE_DIR = E2E_EVIDENCE.parent
 GENERATED = ROOT / "docs/generated"
 POSITIONING_SENTENCE = (
     "Mothership sits between an AI proposal and a real external consequence. "
@@ -400,7 +405,7 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
             "Bounded Action Authority for AI",
             "One human decision. One exact action. One use.",
             POSITIONING_SENTENCE,
-            "Bounded public E2E proof — `github.merge_pr`",
+            "Public result from one live integration trial — `github.merge_pr`",
             "OBSERVE → PROPOSE → APPROVE → EXECUTE → VERIFY",
             f"]({E2E_EVIDENCE_LINK})",
             "## Quick start",
@@ -415,45 +420,45 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
     def test_evidence_separates_public_facts_from_private_trace_claims(self) -> None:
         evidence = self._evidence()
         public_heading = "## Public evidence"
+        sanitized_heading = "## Sanitized lifecycle records"
         private_heading = "## Privately retained lifecycle trace"
         self.assertIn(public_heading, evidence)
+        self.assertIn(sanitized_heading, evidence)
         self.assertIn(private_heading, evidence)
-        public = evidence.split(public_heading, 1)[1].split(private_heading, 1)[0]
+        public = evidence.split(public_heading, 1)[1].split(sanitized_heading, 1)[0]
+        sanitized = evidence.split(sanitized_heading, 1)[1].split(private_heading, 1)[0]
         private = evidence.split(private_heading, 1)[1]
 
         for fact in (
-            "PR #17",
-            "e2e/mothership-merge-canary-base-20260901a",
-            "3761aa359af5465c22e57482e71f85c574b35a07",
-            "027584f479da087fa660f875cd1afa8230bc0f9b",
-            "543dda851113fd62467469823465c8f93fe541da",
-            "2 files, +3/-0",
+            "PR #18",
+            "e2e/mothership-merge-canary-base-20260902b",
+            "0874166551f11d580168e8b4d0f354e742d39fe6",
+            "1cfbbf646b8ac227c8c411f08a961c4396cc69ca",
+            "1 file, +5/-0",
             "880e514382b1a9594a9d4a6f06f5939283e57c60",
-            "head branch preserved",
-            "ee8d960ee64d83593bccea5e87893668e3ed6e19008029502d47c6bdc42f1a9c",
-            "post-merge CI: success",
+            "a5fc0d5997199dea2db5800b561e9a972765d27d",
+            "Source fork head remained",
+            "3edb7363aa14a868313ece2e2eda57ef6643147cd27f54a7199e22c39dc642be",
         ):
             with self.subTest(fact=fact):
                 self.assertIn(fact, public)
 
-        private_only = (
-            "human decision and exact action digest",
-            "10-minute TTL",
-            "one-shot consume",
-            "executor preflight stopped after consume",
-            "replay was rejected",
-            "fresh human decision and fresh authority",
-            "one mutation request",
-            "local reviewer",
+        sanitized_lifecycle = (
+            "caller-attested human approval",
+            "one authority consumption",
+            "External Action Receipt",
+            "tokenless read-only External Action Verification",
         )
-        for claim in private_only:
+        for claim in sanitized_lifecycle:
             with self.subTest(claim=claim):
                 self.assertNotIn(claim, public)
-                self.assertIn(claim, private)
-        self.assertIn(
-            "CLOSED-BUNDLE PROOF OF RUN1 REMOTE MUTATION ZERO = UNKNOWN",
-            private,
-        )
+                self.assertIn(claim, sanitized)
+        self.assertNotIn("Independent review", public)
+        self.assertNotIn("Independent review", sanitized)
+        self.assertIn("Independent review", private)
+        self.assertIn("DECISION_B_CARD_COPY_TRANSPORT_FRICTION = OPEN", private)
+        self.assertIn("Receipt `SUCCESS` is executor-local evidence", sanitized)
+        self.assertIn("SANITIZED_LIFECYCLE_RECORDS_PUBLIC = TRUE", private)
 
     def test_readme_and_evidence_keep_paths_and_claims_bounded(self) -> None:
         evidence = self._evidence()
@@ -470,20 +475,117 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
                     self.assertNotIn(forbidden, text)
 
         for nonclaim in (
-            "E2E_GREEN_SCOPE = github.merge_pr only",
-            "HARNESS_VERTICAL_INTEGRATION = NOT_CLAIMED",
+            "LIVE_EXTERNAL_VERTICAL_GREEN = github.merge_pr PR #18 only",
+            "HARNESS_TO_MOTHERSHIP_VERTICAL = NOT_CLAIMED",
             "SECURITY_CLEAN = NOT_CLAIMED",
             "GENERAL_EXECUTOR_SAFETY = NOT_CLAIMED",
-            "MULTI_OPERATION_GENERALITY = NOT_CLAIMED",
-            "PUBLIC_PACKAGE_SHIPS_EXECUTOR = FALSE",
+            "PRODUCTION_READY = NOT_CLAIMED",
+            "PUBLIC_RELEASE_SHIPS_LIVE_ORCHESTRATOR = FALSE",
             "HUMAN_IDENTITY_AUTHENTICATION = NOT_CLAIMED",
-            "PRIVATE_TRACE_PUBLICLY_REPRODUCIBLE = FALSE",
+            "THIRD_PARTY_REPRODUCIBILITY = NOT_YET",
         ):
             self.assertIn(nonclaim, evidence)
         lowered = evidence.casefold()
         self.assertNotIn("security_clean = true", lowered)
         self.assertNotIn("production-ready", lowered)
         self.assertNotIn("full-stack harness integration is complete", lowered)
+
+    def test_sanitized_evidence_bundle_is_closed_and_action_bound(self) -> None:
+        expected_files = {
+            "README.md",
+            "SHA256SUMS",
+            "consume-event.json",
+            "executor-receipt.json",
+            "frozen-action.json",
+            "human-decision.json",
+            "manifest.json",
+            "public-github-readback.json",
+            "verification.json",
+        }
+        self.assertEqual(
+            expected_files,
+            {path.name for path in E2E_EVIDENCE_DIR.iterdir() if path.is_file()},
+        )
+
+        records = {
+            name: json.loads((E2E_EVIDENCE_DIR / name).read_text("utf-8"))
+            for name in expected_files
+            if name.endswith(".json")
+        }
+        frozen = records["frozen-action.json"]
+        decision = records["human-decision.json"]
+        consume = records["consume-event.json"]
+        receipt = records["executor-receipt.json"]
+        verification = records["verification.json"]["verification"]
+        action_id = frozen["action"]["action_id"]
+        action_sha256 = frozen["action_sha256"]
+
+        for record in (decision, consume, receipt, verification):
+            self.assertEqual(action_id, record["action_id"])
+            self.assertEqual(action_sha256, record["action_sha256"])
+        self.assertEqual(frozen["expires_at"], decision["expires_at"])
+        self.assertEqual(frozen["expires_at"], consume["expires_at"])
+        self.assertEqual(consume, validate_contract("authority-action-consume", consume))
+        self.assertEqual("SUCCESS", receipt["status"])
+        self.assertEqual("CONFIRMED", verification["status"])
+        self.assertNotEqual(receipt["status"], verification["status"])
+        validated_receipt, validated_verification = validate_receipt_verification_binding(
+            receipt,
+            verification,
+            expected_action_id=action_id,
+            expected_action_sha256=action_sha256,
+        )
+        self.assertEqual(receipt, validated_receipt)
+        self.assertEqual(verification, validated_verification)
+
+        parameters = frozen["action"]["execution_parameters"]
+        readback = records["public-github-readback.json"]
+        self.assertEqual(parameters["repository"], readback["repository"])
+        self.assertEqual(parameters["pull_request"], readback["pull_request"])
+        self.assertEqual(parameters["expected_head_sha"], readback["head"]["sha"])
+        self.assertEqual(parameters["expected_base"], readback["base"]["name"])
+        self.assertTrue(readback["merged"])
+
+    def test_sanitized_evidence_hashes_and_manifest_are_exact(self) -> None:
+        checksum_lines = (E2E_EVIDENCE_DIR / "SHA256SUMS").read_text("ascii").splitlines()
+        expected_hashed_files = {
+            "README.md",
+            "consume-event.json",
+            "executor-receipt.json",
+            "frozen-action.json",
+            "human-decision.json",
+            "manifest.json",
+            "public-github-readback.json",
+            "verification.json",
+        }
+        self.assertEqual(len(expected_hashed_files), len(checksum_lines))
+        checksums: dict[str, str] = {}
+        for line in checksum_lines:
+            digest, separator, name = line.partition("  ")
+            self.assertEqual("  ", separator)
+            self.assertNotIn(name, checksums)
+            checksums[name] = digest
+        self.assertEqual(expected_hashed_files, set(checksums))
+        for name, expected_digest in checksums.items():
+            actual_digest = hashlib.sha256((E2E_EVIDENCE_DIR / name).read_bytes()).hexdigest()
+            self.assertEqual(expected_digest, actual_digest, name)
+
+        manifest = json.loads((E2E_EVIDENCE_DIR / "manifest.json").read_text("utf-8"))
+        published = {
+            entry["path"]: entry["sha256"]
+            for entry in manifest["published_artifacts"]
+        }
+        self.assertEqual(len(manifest["published_artifacts"]), len(published))
+        self.assertEqual(expected_hashed_files - {"manifest.json"}, set(published))
+        for name, expected_digest in published.items():
+            self.assertEqual(checksums[name], expected_digest, name)
+        self.assertEqual("CONFIRMED", manifest["status"])
+        self.assertEqual(1, manifest["request_counts"]["merge_requests"])
+        self.assertEqual(0, manifest["request_counts"]["retries"])
+        self.assertFalse(manifest["claim_ceiling"]["base_sha_digest_binding"])
+        self.assertFalse(
+            manifest["claim_ceiling"]["public_release_ships_live_orchestrator"]
+        )
 
 
 class SupportingDocumentationTests(unittest.TestCase):

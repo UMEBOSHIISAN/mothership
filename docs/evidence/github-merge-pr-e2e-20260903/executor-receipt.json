@@ -1,0 +1,16 @@
+{
+  "action_id": "act-live-e2e-pr18-74df5a29f8634566bf008fdf98e19a81",
+  "action_sha256": "bbbc20e78dc5ab98d41d4df2ca585ea45246f2ee3cdfe71ca65ef139cdbab3ca",
+  "executor_observation_ref": {
+    "ref_id": "trial.github-merge-pr.executor-observation:bbbc20e78dc5ab98d41d4df2ca585ea45246f2ee3cdfe71ca65ef139cdbab3ca",
+    "sha256": "f2fdbd9edd501d064507131be6ce869c93eee6abcd69c666763ec1180bf075f6"
+  },
+  "executor_ref": {
+    "ref_id": "trial.github-merge-pr.executor-identity:71880ce7bef066bf4ce2380b4e4960b3932d0e56",
+    "sha256": "59d3d85dcdf4c9d72df66f061d4b2d7245e44f9b512930d79d52b681e759607e"
+  },
+  "finished_at": "2026-09-03T10:27:36Z",
+  "schema_version": "external-action-receipt.v0",
+  "started_at": "2026-09-03T10:27:32Z",
+  "status": "SUCCESS"
+}

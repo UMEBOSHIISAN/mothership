@@ -1,0 +1,25 @@
+{
+  "base": {
+    "name": "e2e/mothership-merge-canary-base-20260902b",
+    "sha": "1cfbbf646b8ac227c8c411f08a961c4396cc69ca"
+  },
+  "changed_files": 1,
+  "deletions": 0,
+  "diff_additions": 5,
+  "head": {
+    "repository": "keepsmile94/mothership-e2e-fixture-v1",
+    "sha": "0874166551f11d580168e8b4d0f354e742d39fe6",
+    "source_ref_preserved": true
+  },
+  "main_sha": "a5fc0d5997199dea2db5800b561e9a972765d27d",
+  "merge_commit_parents": [
+    "880e514382b1a9594a9d4a6f06f5939283e57c60",
+    "0874166551f11d580168e8b4d0f354e742d39fe6"
+  ],
+  "merge_commit_sha": "1cfbbf646b8ac227c8c411f08a961c4396cc69ca",
+  "merged": true,
+  "observed_at": "2026-09-03T13:10:01Z",
+  "pull_request": 18,
+  "repository": "UMEBOSHIISAN/mothership",
+  "schema_version": "mothership-public-github-readback-evidence.v1"
+}
