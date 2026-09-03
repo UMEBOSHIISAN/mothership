@@ -164,6 +164,7 @@ class ReadmeContractTests(unittest.TestCase):
     def test_authority_flow_and_decision_cardinality_match_v0_4_1(self) -> None:
         english = README_EN.read_text("utf-8")
 
+        self.assertIn("```mermaid\nflowchart TB", self.text)
         for phrase in (
             'E["Evidence / proposal"] -. "判断材料のみ<br/>v0.4.1では未結合" .-> H{{"人間の判断"}}',
             'P["対応済みの<br/>実行パラメータ"] --> F["FrozenAction"]',
@@ -176,6 +177,7 @@ class ReadmeContractTests(unittest.TestCase):
         ):
             self.assertIn(phrase, self.text)
 
+        self.assertIn("```mermaid\nflowchart TB", english)
         for phrase in (
             "One decision bound to one exact supported action. One use.",
             'E["Evidence / proposal"] -. "decision context only<br/>unbound in v0.4.1" .-> H{{"Human decision"}}',

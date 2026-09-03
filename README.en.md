@@ -42,7 +42,7 @@ generic safety, or production readiness.
 ## Boundary model
 
 ```mermaid
-flowchart LR
+flowchart TB
     E["Evidence / proposal"] -. "decision context only<br/>unbound in v0.4.1" .-> H{{"Human decision"}}
     P["Exact supported<br/>execution parameters"] --> F["FrozenAction"]
     F --> H
