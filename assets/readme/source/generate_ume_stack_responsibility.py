@@ -38,7 +38,7 @@ COPY = {
         "executor": ("別途構成する実行系",),
         "verifier": ("別経路の確認系",),
         "caption": ("現在の公開release同士に自動runtime bridgeはありません。", "破線部分は未実装です。"),
-        "legend": "実線 = 現在実装済み　　破線 = 現在未接続　　外枠 = 別途構成",
+        "legend": ("実線 = 現在実装済み", "破線 = 現在未接続", "外枠 = 別途構成"),
     },
     "en": {
         "title": "Responsibility split for humans and AI sharing work",
@@ -53,7 +53,7 @@ COPY = {
         "executor": ("Separately configured", "executor"),
         "verifier": ("Separate verification", "path"),
         "caption": ("The current public releases have no automatic runtime bridge.", "The dashed connection is not implemented."),
-        "legend": "Solid = implemented now    Dashed = not connected    Outline = separately configured",
+        "legend": ("Solid = implemented now", "Dashed = not connected", "Outline = separately configured"),
     },
 }
 
@@ -65,13 +65,20 @@ def line_text(lines: tuple[str, ...], start_y: int) -> str:
     )
 
 
-def centered_tspans(lines: tuple[str, ...], x: int, center_y: int, *, gap: int = 28) -> str:
+def centered_tspans(
+    lines: tuple[str, ...],
+    x: int,
+    center_y: int,
+    *,
+    gap: int = 28,
+    css_class: str = "body",
+) -> str:
     start_y = center_y - (len(lines) - 1) * gap // 2
     spans = "".join(
         f'<tspan x="{x}" y="{start_y + index * gap}">{escape(line)}</tspan>'
         for index, line in enumerate(lines)
     )
-    return f'<text class="body" x="{x}" text-anchor="middle">{spans}</text>'
+    return f'<text class="{css_class}" x="{x}" text-anchor="middle">{spans}</text>'
 
 
 def render(locale: str) -> str:
@@ -86,6 +93,7 @@ def render(locale: str) -> str:
     .state {{ font: 700 20px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #176b58; }}
     .body {{ font: 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }}
     .small {{ font: 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }}
+    .legend {{ font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }}
   </style>
   <rect width="{WIDTH}" height="{HEIGHT}" fill="#f7faf9"/>
   <text class="title" x="{CENTER}" y="58" text-anchor="middle">{escape(copy["title"])}</text>
@@ -123,9 +131,9 @@ def render(locale: str) -> str:
   {centered_tspans(copy["executor"], 190, 960)}
   {centered_tspans(copy["verifier"], 530, 960)}
 
-  <text class="small" x="{CENTER}" y="1030" text-anchor="middle">{escape(copy["caption"][0])}</text>
-  <text class="small" x="{CENTER}" y="1058" text-anchor="middle">{escape(copy["caption"][1])}</text>
-  <text class="small" x="{CENTER}" y="1092" text-anchor="middle">{escape(copy["legend"])}</text>
+  <text class="small" x="{CENTER}" y="1016" text-anchor="middle">{escape(copy["caption"][0])}</text>
+  <text class="small" x="{CENTER}" y="1044" text-anchor="middle">{escape(copy["caption"][1])}</text>
+  {centered_tspans(copy["legend"], CENTER, 1091, gap=21, css_class="legend")}
 </svg>
 '''
 

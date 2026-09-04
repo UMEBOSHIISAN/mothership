@@ -7,6 +7,7 @@
     .state { font: 700 20px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #176b58; }
     .body { font: 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }
     .small { font: 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
+    .legend { font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
   </style>
   <rect width="720" height="1120" fill="#f7faf9"/>
   <text class="title" x="360" y="58" text-anchor="middle">人間とAIが仕事を分け合うための責務分担</text>
@@ -48,7 +49,7 @@
   <text class="body" x="190" text-anchor="middle"><tspan x="190" y="960">別途構成する実行系</tspan></text>
   <text class="body" x="530" text-anchor="middle"><tspan x="530" y="960">別経路の確認系</tspan></text>
 
-  <text class="small" x="360" y="1030" text-anchor="middle">現在の公開release同士に自動runtime bridgeはありません。</text>
-  <text class="small" x="360" y="1058" text-anchor="middle">破線部分は未実装です。</text>
-  <text class="small" x="360" y="1092" text-anchor="middle">実線 = 現在実装済み　　破線 = 現在未接続　　外枠 = 別途構成</text>
+  <text class="small" x="360" y="1016" text-anchor="middle">現在の公開release同士に自動runtime bridgeはありません。</text>
+  <text class="small" x="360" y="1044" text-anchor="middle">破線部分は未実装です。</text>
+  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1070">実線 = 現在実装済み</tspan><tspan x="360" y="1091">破線 = 現在未接続</tspan><tspan x="360" y="1112">外枠 = 別途構成</tspan></text>
 </svg>

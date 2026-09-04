@@ -7,6 +7,7 @@
     .state { font: 700 20px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #176b58; }
     .body { font: 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }
     .small { font: 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
+    .legend { font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
   </style>
   <rect width="720" height="1120" fill="#f7faf9"/>
   <text class="title" x="360" y="58" text-anchor="middle">Responsibility split for humans and AI sharing work</text>
@@ -48,7 +49,7 @@
   <text class="body" x="190" text-anchor="middle"><tspan x="190" y="946">Separately configured</tspan><tspan x="190" y="974">executor</tspan></text>
   <text class="body" x="530" text-anchor="middle"><tspan x="530" y="946">Separate verification</tspan><tspan x="530" y="974">path</tspan></text>
 
-  <text class="small" x="360" y="1030" text-anchor="middle">The current public releases have no automatic runtime bridge.</text>
-  <text class="small" x="360" y="1058" text-anchor="middle">The dashed connection is not implemented.</text>
-  <text class="small" x="360" y="1092" text-anchor="middle">Solid = implemented now    Dashed = not connected    Outline = separately configured</text>
+  <text class="small" x="360" y="1016" text-anchor="middle">The current public releases have no automatic runtime bridge.</text>
+  <text class="small" x="360" y="1044" text-anchor="middle">The dashed connection is not implemented.</text>
+  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1070">Solid = implemented now</tspan><tspan x="360" y="1091">Dashed = not connected</tspan><tspan x="360" y="1112">Outline = separately configured</tspan></text>
 </svg>

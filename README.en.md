@@ -113,6 +113,8 @@ The current profile fixes:
 - merge method
 
 The base commit SHA is not bound. `expires_at` is not included in the action digest.
+Integrations must issue a fresh `action_id` for every freeze. They must correlate the response to the exact live issuance and displayed expiry,
+and reject delayed or reused responses.
 
 ## One public result
 

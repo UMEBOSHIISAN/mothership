@@ -109,6 +109,8 @@ action IDとdigestへ照合し、判断eventを記録します。同じaction ID
 - merge method
 
 base commit SHAは結び付けられません。`expires_at`はaction digestに含まれません。
+統合側は毎回新しい `action_id` を発行し、表示した発行情報と期限へ応答を対応付け、
+遅延または再利用された応答を拒否してください。
 
 ## 公開結果の一例
 
