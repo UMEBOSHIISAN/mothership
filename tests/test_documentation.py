@@ -24,6 +24,8 @@ README_EN = ROOT / "README.en.md"
 PUBLIC_RESULT_IMAGE = ROOT / "assets/readme/ja/pr18-public-result.svg"
 EXPLAINER_GIF = ROOT / "assets/readme/ja/mothership-flow.gif"
 EXPLAINER_POSTER = ROOT / "assets/readme/ja/mothership-flow-poster.png"
+ASSET_BUILD = ROOT / "assets/readme/source/asset-build.toml"
+ASSET_FONT = ROOT / "assets/readme/source/fonts/NotoSansJP-Regular.ttf"
 EXPECTED_POSITIONING_ASSETS = (
     "assets/readme/ja/mothership-flow.gif",
     "assets/readme/ja/mothership-flow-poster.png",
@@ -83,6 +85,72 @@ def _tracked_markdown_paths() -> tuple[Path, ...]:
         for raw in completed.stdout.split(b"\0")
         if raw
     )
+
+
+def _gif_metadata(path: Path) -> tuple[tuple[int, int], int, int, frozenset[int]]:
+    """Return dimensions, frame count, duration ms, and frame delays for a GIF."""
+    data = path.read_bytes()
+    if data[:6] not in (b"GIF87a", b"GIF89a"):
+        raise AssertionError(f"not a GIF: {path}")
+    dimensions = struct.unpack("<HH", data[6:10])
+    packed = data[10]
+    offset = 13
+    if packed & 0x80:
+        offset += 3 * (2 ** ((packed & 0x07) + 1))
+
+    delays: list[int] = []
+    pending_delay = 0
+
+    def skip_sub_blocks(start: int) -> int:
+        while True:
+            size = data[start]
+            start += 1
+            if size == 0:
+                return start
+            start += size
+
+    while offset < len(data):
+        marker = data[offset]
+        offset += 1
+        if marker == 0x3B:
+            break
+        if marker == 0x21:
+            label = data[offset]
+            offset += 1
+            if label == 0xF9:
+                block_size = data[offset]
+                if block_size != 4:
+                    raise AssertionError(f"invalid GIF control block: {path}")
+                pending_delay = struct.unpack("<H", data[offset + 2:offset + 4])[0] * 10
+                offset += 1 + block_size
+                if data[offset] != 0:
+                    raise AssertionError(f"unterminated GIF control block: {path}")
+                offset += 1
+            else:
+                offset = skip_sub_blocks(offset)
+            continue
+        if marker != 0x2C:
+            raise AssertionError(f"unexpected GIF marker 0x{marker:02x}: {path}")
+        local_packed = data[offset + 8]
+        offset += 9
+        if local_packed & 0x80:
+            offset += 3 * (2 ** ((local_packed & 0x07) + 1))
+        offset += 1
+        offset = skip_sub_blocks(offset)
+        delays.append(pending_delay)
+        pending_delay = 0
+
+    return dimensions, len(delays), sum(delays), frozenset(delays)
+
+
+def _asset_contract(path: Path) -> dict[str, object]:
+    """Parse the flat JSON-compatible values used by the asset TOML contract."""
+    text = path.read_text("utf-8")
+    entries = re.finditer(
+        r"(?ms)^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)(?=^[A-Za-z_][A-Za-z0-9_]*\s*=|\Z)",
+        text,
+    )
+    return {match.group(1): json.loads(match.group(2).strip()) for match in entries}
 
 
 class GeneratedDocumentationTests(unittest.TestCase):
@@ -210,6 +278,10 @@ class ReadmeContractTests(unittest.TestCase):
             "one consume per action ID in one trusted ledger history",
         ):
             self.assertIn(phrase, english)
+        self.assertNotIn("権限の受け渡しを具体的に閉じた", self.text)
+        self.assertNotIn("closed end to end", english)
+        self.assertIn("5つの実行パラメータ", self.text)
+        self.assertIn("five execution parameters", english)
 
     def test_public_result_and_links_are_bounded(self) -> None:
         self.assertIn(f"]({E2E_EVIDENCE_LINK})", self.text)
@@ -267,13 +339,23 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertLess(EXPLAINER_GIF.stat().st_size, 10 * 1024 * 1024)
         self.assertLess(EXPLAINER_POSTER.stat().st_size, 10 * 1024 * 1024)
 
-        gif_header = EXPLAINER_GIF.read_bytes()[:10]
-        self.assertIn(gif_header[:6], (b"GIF87a", b"GIF89a"))
-        self.assertEqual((1200, 675), struct.unpack("<HH", gif_header[6:10]))
+        contract = _asset_contract(ASSET_BUILD)
+        for locale in ("ja", "en"):
+            gif = ROOT / f"assets/readme/{locale}/mothership-flow.gif"
+            poster = ROOT / f"assets/readme/{locale}/mothership-flow-poster.png"
+            dimensions, frames, duration_ms, delays = _gif_metadata(gif)
+            self.assertEqual((contract["width"], contract["height"]), dimensions)
+            self.assertEqual(contract["frame_count"], frames)
+            self.assertEqual(contract["duration_ms"], duration_ms)
+            self.assertEqual(frozenset((120, 130)), delays)
+            self.assertLess(gif.stat().st_size, contract["max_gif_bytes"])
 
-        png_header = EXPLAINER_POSTER.read_bytes()[:24]
-        self.assertEqual(b"\x89PNG\r\n\x1a\n", png_header[:8])
-        self.assertEqual((1200, 675), struct.unpack(">II", png_header[16:24]))
+            png_header = poster.read_bytes()[:24]
+            self.assertEqual(b"\x89PNG\r\n\x1a\n", png_header[:8])
+            self.assertEqual(
+                (contract["poster_width"], contract["poster_height"]),
+                struct.unpack(">II", png_header[16:24]),
+            )
 
         source = (ROOT / "assets/readme/source/mothership-flow-storyboard.md").read_text("utf-8")
         for phrase in (
@@ -288,21 +370,48 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertNotIn(forbidden.casefold(), source.casefold())
         english = README_EN.read_text("utf-8")
         self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow.gif"))
-        self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow-poster.png"))
+        self.assertEqual(2, self.text.count("assets/readme/ja/mothership-flow-poster.png"))
         self.assertEqual(1, english.count("assets/readme/en/mothership-flow.gif"))
-        self.assertEqual(1, english.count("assets/readme/en/mothership-flow-poster.png"))
+        self.assertEqual(2, english.count("assets/readme/en/mothership-flow-poster.png"))
         self.assertIn("仕組みの図解です", self.text)
         generator = (ROOT / "assets/readme/source/generate_mothership_flow.py").read_text("utf-8")
         self.assertNotIn("/System/Library/Fonts/", generator)
         self.assertIn("First current reference profile: github.merge_pr", generator)
+        self.assertIn("Unbound decision context", generator)
+        self.assertIn("v0.4.1では未結合", generator)
+        self.assertNotIn("仕事と操作案を準備", generator)
+        self.assertNotIn("Prepare work and action", generator)
 
     def test_bilingual_positioning_assets_have_portable_generation_inputs(self) -> None:
         for relative in EXPECTED_POSITIONING_ASSETS:
             self.assertTrue((ROOT / relative).is_file(), relative)
-        build = (ROOT / "assets/readme/source/asset-build.toml").read_text("utf-8")
-        self.assertIn('font = "fonts/NotoSansJP-Regular.ttf"', build)
+        contract = _asset_contract(ASSET_BUILD)
+        self.assertEqual("fonts/NotoSansJP-Regular.ttf", contract["font"])
+        self.assertEqual(400, contract["normal_weight"])
+        self.assertEqual(700, contract["bold_weight"])
+        self.assertEqual(sorted(EXPECTED_POSITIONING_ASSETS[:-1]), sorted(contract["outputs"]))
+        self.assertEqual(contract["font_sha256"], hashlib.sha256(ASSET_FONT.read_bytes()).hexdigest())
         generator = (ROOT / "assets/readme/source/generate_mothership_flow.py").read_text("utf-8")
         self.assertNotIn("/System/Library/Fonts/", generator)
+        self.assertIn("tomllib", generator)
+        self.assertIn("NORMAL_WEIGHT", generator)
+
+        for locale in ("ja", "en"):
+            svg = (ROOT / f"assets/readme/{locale}/ume-stack-responsibility.svg").read_text("utf-8")
+            self.assertIn('viewBox="0 0 720 1120"', svg)
+            self.assertEqual(2, svg.count("stroke-dasharray="))
+            self.assertEqual(1, svg.count('data-role="bridge"'))
+            self.assertEqual(2, svg.count('data-role="external"'))
+            if locale == "en":
+                self.assertIn(">Separately configured</tspan>", svg)
+                self.assertIn(">executor</tspan>", svg)
+                self.assertIn(">Separate verification</tspan>", svg)
+                self.assertIn(">path</tspan>", svg)
+                self.assertNotIn(">Separately configured executor</text>", svg)
+
+        for readme in (self.text, README_EN.read_text("utf-8")):
+            self.assertIn('media="(max-width: 600px)"', readme)
+            self.assertIn('media="(prefers-reduced-motion: reduce)"', readme)
 
     def test_code_tour_and_cli_scope_are_exact(self) -> None:
         for path in (
