@@ -30,14 +30,15 @@ COPY = {
         "human": "人間",
         "human_detail": "目的を持ち、何を任せるかを決める",
         "harness": "UME-HARNESS",
-        "harness_lines": ("曖昧な日本語を整理", "やる / 確認 / しない", "PC内の作業範囲"),
-        "bridge": "DIRECTION / NOT_SHIPPED",
-        "bridge_detail": ("責務上の接続候補", "現在のreleaseは未接続"),
+        "harness_lines": ("曖昧な日本語を整理", "確認範囲 / 承認要求", "ローカル作業のプレビュー"),
+        "state_current": "現在の実装",
+        "bridge": "方向性・未実装",
+        "bridge_detail": ("責務上の接続候補", "現在の公開版は未接続"),
         "mothership": "Mothership",
         "mothership_lines": ("具体的な外部操作を固定", "人間の判断と照合", "同じ台帳履歴内で一度だけ"),
         "executor": ("別途構成する実行系",),
         "verifier": ("別経路の確認系",),
-        "caption": ("現在の公開release同士に自動runtime bridgeはありません。", "破線部分は未実装です。"),
+        "caption": ("現在の公開版同士に自動接続はありません。", "破線部分は未実装です。"),
         "legend": ("実線 = 現在実装済み", "破線 = 現在未接続", "外枠 = 別途構成"),
     },
     "en": {
@@ -45,7 +46,8 @@ COPY = {
         "human": "Human",
         "human_detail": "Holds the purpose and decides what to entrust",
         "harness": "UME-HARNESS",
-        "harness_lines": ("Organize ambiguous Japanese intent", "Will do / confirm / will not do", "Bound local work"),
+        "harness_lines": ("Organize ambiguous Japanese intent", "Visible scope / confirmation", "Local-work preview"),
+        "state_current": "CURRENT",
         "bridge": "DIRECTION / NOT_SHIPPED",
         "bridge_detail": ("Reviewed responsibility-link candidate", "Current releases are not connected"),
         "mothership": "Mothership",
@@ -106,7 +108,7 @@ def render(locale: str) -> str:
   <path d="M350 235 L360 250 L370 235" fill="#2b67a7"/>
 
   <rect x="45" y="250" width="630" height="235" rx="26" fill="#e1edf9" stroke="#2b67a7" stroke-width="5"/>
-  <text class="state" x="75" y="287">CURRENT</text>
+  <text class="state" x="75" y="287">{escape(copy["state_current"])}</text>
   <text class="label" x="{CENTER}" y="323" text-anchor="middle">{escape(copy["harness"])}</text>
   {line_text(copy["harness_lines"], 370)}
 
@@ -120,7 +122,7 @@ def render(locale: str) -> str:
   </g>
 
   <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>
-  <text class="state" x="75" y="667">CURRENT</text>
+  <text class="state" x="75" y="667">{escape(copy["state_current"])}</text>
   <text class="label" x="{CENTER}" y="703" text-anchor="middle">{escape(copy["mothership"])}</text>
   {line_text(copy["mothership_lines"], 750)}
 
