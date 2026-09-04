@@ -147,8 +147,8 @@ mothership verify
 <!-- quickstart:end -->
 
 `python examples/authority_core_walkthrough.py` runs without network access or credentials. It shows exact action freeze,
-derived display, human decision recording, one consume, and rejection of a second consume. It does not change GitHub or
-start an executor or verifier.
+derived display, a synthetic approval fixture, one consume, and rejection of a second consume. It is not a human approval
+ceremony or identity-authentication flow; it does not change GitHub or start an executor or verifier.
 
 `mothership verify` checks bundled resource inventory, schemas, registry,
 fixtures, and digests offline. It does not check the host, external safety,

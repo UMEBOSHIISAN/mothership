@@ -143,8 +143,8 @@ mothership verify
 <!-- quickstart:end -->
 
 `python examples/authority_core_walkthrough.py`は、外部通信や認証情報を使わず、
-操作の固定、表示の導出、人間の判断記録、一度だけのconsume、二度目の取り出し拒否を確認します。
-GitHubを変更せず、executorや確認系も起動しません。
+操作の固定、表示の導出、合成した承認記録、一度だけのconsume、二度目の取り出し拒否を確認します。
+これは人間の承認ceremonyや本人認証ではありません。GitHubを変更せず、executorや確認系も起動しません。
 
 `mothership verify`は、同梱resource inventory、schema、registry、fixture、digestを
 オフラインで検査します。host、外部環境、インストール済みの全コードの安全性を検査するものではありません。

@@ -13,7 +13,10 @@
 - PR #21 follow-up: added an offline Authority Core walkthrough, made the
   current onboarding path distinct from the legacy 0.2 demo, and clarified
   that the main-branch positioning changes are unreleased docs-only work for
-  the next v0.4.2 candidate. No runtime authority behavior changed.
+  the next v0.4.2 candidate. The walkthrough uses a synthetic approval
+  fixture, writes only a temporary ledger, and is not a human approval
+  ceremony. README raster assets use the pinned Pillow build input. No
+  runtime authority behavior changed.
 
 ## 0.4.0 - 2026-09-02
 

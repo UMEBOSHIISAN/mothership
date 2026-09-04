@@ -575,6 +575,7 @@ class ReadmeContractTests(unittest.TestCase):
             )
             self.assertEqual(0, walkthrough.returncode, walkthrough.stderr.decode("utf-8", "replace"))
             self.assertIn(b"replay: \xe6\x8b\x92\xe5\x90\xa6", walkthrough.stdout)
+            self.assertIn("合成した承認記録".encode(), walkthrough.stdout)
 
             runtime_environment = _minimal_environment(root)
             for command, generated in (

@@ -2,9 +2,10 @@
 """Show the current Authority Core boundary without external side effects.
 
 This walkthrough is intentionally local: it freezes one supported action,
-shows the display derived by the core, records an approval in a temporary
-ledger, consumes it once, and demonstrates that replay is rejected.  It does
-not contact GitHub, load credentials, or execute the action.
+shows the display derived by the core, records a synthetic approval fixture in
+a temporary ledger, consumes it once, and demonstrates that replay is
+rejected.  It does not perform a human approval ceremony, contact GitHub, load
+credentials, or execute the action.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ def main() -> int:
             frozen.action["action_id"],
             frozen.action_sha256,
         )
-        print("\n2. 人間の判断を記録")
+        print("\n2. 合成した承認記録を記録（人間の承認ではありません）")
         print(f"   decision: {approval['decision']}")
         print(f"   event: {approval['event_id']}")
 
@@ -74,12 +75,13 @@ def main() -> int:
                 consumed_action_id,
                 approval["action_sha256"],
             )
-        except action_authority.ActionLedgerError as exc:
+        except action_authority.ActionAlreadyConsumedError as exc:
             print(f"\n4. replay: 拒否 ({type(exc).__name__})")
         else:  # pragma: no cover - the ledger contract must reject this path
             raise RuntimeError("authority replay was unexpectedly accepted")
 
-    print("\nこの例はfreeze / decision / consumeの境界だけを示します。")
+    print("\nこの例はfreeze / 合成したdecision / consumeの境界だけを示します。")
+    print("人間の本人認証や承認ceremonyを行うものではありません。")
     print("executor、GitHub変更、結果確認は含みません。")
     return 0
 

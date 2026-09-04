@@ -21,7 +21,8 @@ mothership verify
 ```
 
 Side effects: Git creates the checkout, `venv` creates `.venv`, and pip installs Mothership and build metadata into the
-environment. The walkthrough and verification command are read-only and use no external service.
+environment. The source-checkout walkthrough writes only a temporary ledger and removes it on exit; `mothership verify`
+is read-only. Neither uses an external service.
 
 ## Wheel install
 
@@ -36,6 +37,7 @@ mothership verify
 
 `--no-deps` is valid because the wheel declares zero runtime requirements. Verify the expected digest before install.
 Mothership 0.4.1 has not been claimed as available on a package index.
+The walkthrough is a source-checkout example and is not included as an installed CLI command in the wheel-only path.
 
 ## Editable development install
 
@@ -79,7 +81,9 @@ There is no self-updater.
 1. Obtain the intended source commit, tag, or wheel through a trusted channel.
 2. Read `CHANGELOG.md` and verify its checksum evidence.
 3. Install into a new virtual environment rather than overwriting the working one.
-4. Run the Authority Core walkthrough, `mothership verify`, `mothership demo`, and the applicable tests.
+4. From a source checkout, run the Authority Core walkthrough; then run `mothership verify`, `mothership demo`, and the
+   applicable tests. A wheel-only install should use the installed `mothership verify` command and omit the source-only
+   walkthrough.
 5. Switch your own workflow only after reviewing the result.
 
 The operator owns the environment switch and rollback.
