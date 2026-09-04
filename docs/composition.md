@@ -15,8 +15,8 @@ implemented end-to-end pipeline.
 
 ## UME Stack responsibility map
 
-UME-HARNESS turns human intent into bounded local work.
-Mothership turns a human decision into bounded external consequence.
+UME-HARNESS turns human intent into a bounded local-work preview.
+Mothership binds a human decision to bounded authority for one external action.
 
 This is a responsibility relationship, not a runtime dependency. The current
 public releases do not contain an automatic Harness-to-Mothership bridge.

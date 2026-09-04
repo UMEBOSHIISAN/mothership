@@ -7,6 +7,9 @@
   <img src="assets/mothership-banner.png" alt="海流を進む版画調のMothershipクジラ" width="100%">
 </p>
 
+このmain上のREADMEには、歴史的なv0.4.1 Release後の未公開の文書・導入改善が含まれます。
+runtimeの版はv0.4.1のままで、次の候補はdocs-onlyのv0.4.2です。
+
 > 人間が全部を抱えず、AIにも全部を明け渡さない。
 >
 > 人間とAIが仕事を分け合うために、
@@ -40,8 +43,8 @@ Mothershipは、AIを止めることではなく、人間が具体的な仕事�
 
 ## 責務分担
 
-UME-HARNESSは、人間の意図を範囲の決まったローカル作業へ整理します。
-Mothershipは、人間の判断を範囲の決まった外部結果へ結び付けます。
+UME-HARNESSは、人間の意図を範囲の見えるローカル作業案へ整理します。
+Mothershipは、人間の判断をひとつの外部操作に対する限定Authorityへ結び付けます。
 
 <p align="center">
   <img src="assets/readme/ja/ume-stack-responsibility.svg"
@@ -49,7 +52,7 @@ Mothershipは、人間の判断を範囲の決まった外部結果へ結び付�
        width="760">
 </p>
 
-これは責務分担の方向を示す図です。現在の公開release同士に自動runtime bridgeはありません。破線部分は未実装です。
+これは責務分担の方向を示す図です。現在の公開版同士に自動接続はありません。破線部分は未実装です。
 外部の実行系と確認系も別途構成します。
 
 ## CURRENT: v0.4.1
@@ -134,16 +137,21 @@ base commit SHAは結び付けられません。`expires_at`はaction digestに�
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install .
+python examples/authority_core_walkthrough.py
 mothership verify
-mothership demo
 ```
 <!-- quickstart:end -->
+
+`python examples/authority_core_walkthrough.py`は、外部通信や認証情報を使わず、
+操作の固定、表示の導出、人間の判断記録、一度だけのconsume、二度目の取り出し拒否を確認します。
+GitHubを変更せず、executorや確認系も起動しません。
 
 `mothership verify`は、同梱resource inventory、schema、registry、fixture、digestを
 オフラインで検査します。host、外部環境、インストール済みの全コードの安全性を検査するものではありません。
 
 `mothership demo`はlegacy 0.2のsyntheticなprotocol-composition demoです。
 Authority Coreの証明でも、agent実行、人間の承認、実タスク完了の証拠でもありません。
+現在のAuthority Coreを体験する入口ではありません。
 
 ## 現在の制約
 

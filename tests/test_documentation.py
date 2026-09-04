@@ -43,8 +43,8 @@ QUICKSTART = (
     "python3 -m venv .venv",
     ". .venv/bin/activate",
     "python -m pip install .",
+    "python examples/authority_core_walkthrough.py",
     "mothership verify",
-    "mothership demo",
 )
 
 
@@ -258,6 +258,19 @@ class ReadmeContractTests(unittest.TestCase):
             "本番運用または規制対象の高リスク用途への適合",
         ):
             self.assertIn(phrase, self.text)
+
+    def test_shared_responsibility_copy_matches_current_surfaces(self) -> None:
+        composition = (ROOT / "docs/composition.md").read_text("utf-8")
+        japanese_map = (ROOT / "assets/readme/ja/ume-stack-responsibility.svg").read_text("utf-8")
+        english_map = (ROOT / "assets/readme/en/ume-stack-responsibility.svg").read_text("utf-8")
+        self.assertIn("UME-HARNESS turns human intent into a bounded local-work preview.", composition)
+        self.assertIn("Mothership binds a human decision to bounded authority for one external action.", composition)
+        self.assertIn("ローカル作業のプレビュー", japanese_map)
+        self.assertIn("Visible scope / confirmation", english_map)
+        self.assertIn("方向性・未実装", japanese_map)
+        self.assertIn("DIRECTION / NOT_SHIPPED", english_map)
+        self.assertNotIn("やる / 確認 / しない", japanese_map)
+        self.assertNotIn("Will do / confirm / will not do", english_map)
         purpose = self.text.split("## PURPOSE", 1)[1].split("## 責務分担", 1)[0]
         self.assertNotIn("github.merge_pr", purpose)
         self.assertNotIn("医療製品", self.text)
@@ -266,7 +279,7 @@ class ReadmeContractTests(unittest.TestCase):
         english = README_EN.read_text("utf-8")
 
         for phrase in (
-            "現在の公開release同士に自動runtime bridgeはありません。破線部分は未実装です。",
+            "現在の公開版同士に自動接続はありません。破線部分は未実装です。",
             "proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません",
             "同じactionへ複数のdecision eventを記録できる",
             "同じaction IDは同じ台帳履歴内で一度だけconsumeできる",
@@ -421,6 +434,11 @@ class ReadmeContractTests(unittest.TestCase):
                 self.assertIn(">Dashed = not connected</tspan>", svg)
                 self.assertIn(">Outline = separately configured</tspan>", svg)
                 self.assertNotIn("Solid = implemented now    Dashed = not connected", svg)
+            else:
+                self.assertEqual(2, svg.count(">現在の実装</text>"))
+                self.assertIn(">方向性・未実装</text>", svg)
+                self.assertNotIn(">CURRENT</text>", svg)
+                self.assertNotIn("DIRECTION / NOT_SHIPPED", svg)
 
         for readme in (self.text, README_EN.read_text("utf-8")):
             self.assertIn('media="(max-width: 600px)"', readme)
@@ -544,6 +562,19 @@ class ReadmeContractTests(unittest.TestCase):
                 timeout=30,
             )
             self.assertEqual(0, installed.returncode, installed.stderr.decode("utf-8", "replace"))
+
+            walkthrough = subprocess.run(
+                [str(binary), str(source / "examples/authority_core_walkthrough.py")],
+                cwd=root,
+                env=install_environment,
+                input=b"",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=15,
+            )
+            self.assertEqual(0, walkthrough.returncode, walkthrough.stderr.decode("utf-8", "replace"))
+            self.assertIn(b"replay: \xe6\x8b\x92\xe5\x90\xa6", walkthrough.stdout)
 
             runtime_environment = _minimal_environment(root)
             for command, generated in (

@@ -19,8 +19,8 @@ QUICKSTART = (
     "python3 -m venv .venv",
     ". .venv/bin/activate",
     "python -m pip install .",
+    "python examples/authority_core_walkthrough.py",
     "mothership verify",
-    "mothership demo",
 )
 
 
@@ -48,6 +48,13 @@ class DocumentationCommandTests(unittest.TestCase):
         self.assertEqual((QUICKSTART,), _shell_blocks(README))
         self.assertEqual((), _shell_blocks(JAPANESE_GUIDE))
         self.assertIn("../../README.md", JAPANESE_GUIDE.read_text("utf-8"))
+
+    def test_primary_quickstart_exercises_current_core_before_legacy_demo(self) -> None:
+        readme = README.read_text("utf-8")
+        self.assertIn("python examples/authority_core_walkthrough.py", readme)
+        self.assertIn("mothership demo", readme)
+        self.assertIn("legacy 0.2", readme)
+        self.assertNotIn("mothership demo\n```", readme)
 
     def test_installation_commands_match_the_supported_lifecycle(self) -> None:
         version = (ROOT / "VERSION").read_text("utf-8").strip()

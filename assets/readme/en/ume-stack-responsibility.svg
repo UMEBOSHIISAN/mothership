@@ -23,8 +23,8 @@
   <text class="state" x="75" y="287">CURRENT</text>
   <text class="label" x="360" y="323" text-anchor="middle">UME-HARNESS</text>
   <text class="body" x="360" y="370" text-anchor="middle">Organize ambiguous Japanese intent</text>
-<text class="body" x="360" y="412" text-anchor="middle">Will do / confirm / will not do</text>
-<text class="body" x="360" y="454" text-anchor="middle">Bound local work</text>
+<text class="body" x="360" y="412" text-anchor="middle">Visible scope / confirmation</text>
+<text class="body" x="360" y="454" text-anchor="middle">Local-work preview</text>
 
   <g data-role="bridge">
     <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>

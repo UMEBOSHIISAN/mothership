@@ -7,6 +7,9 @@
   <img src="assets/mothership-banner.png" alt="Linocut-style Mothership whale swimming through ocean currents" width="100%">
 </p>
 
+This main-branch README includes unreleased documentation and onboarding follow-up to the historical v0.4.1 release.
+The runtime version remains v0.4.1; the next candidate is a docs-only v0.4.2.
+
 > Humans should not have to do everything.
 > Nor should they hand everything over to AI.
 >
@@ -41,8 +44,8 @@ responsibilities distinct.
 
 ## Responsibility split
 
-UME-HARNESS turns human intent into bounded local work.
-Mothership turns a human decision into bounded external consequence.
+UME-HARNESS turns human intent into a bounded local-work preview.
+Mothership binds a human decision to bounded authority for one external action.
 
 <p align="center">
   <img src="assets/readme/en/ume-stack-responsibility.svg"
@@ -138,10 +141,14 @@ lifecycle is reproducible from public material, generic safety, or production su
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install .
+python examples/authority_core_walkthrough.py
 mothership verify
-mothership demo
 ```
 <!-- quickstart:end -->
+
+`python examples/authority_core_walkthrough.py` runs without network access or credentials. It shows exact action freeze,
+derived display, human decision recording, one consume, and rejection of a second consume. It does not change GitHub or
+start an executor or verifier.
 
 `mothership verify` checks bundled resource inventory, schemas, registry,
 fixtures, and digests offline. It does not check the host, external safety,
@@ -149,7 +156,7 @@ or every installed byte.
 
 `mothership demo` is the legacy 0.2 synthetic protocol-composition demo.
 It is not Authority Core proof, agent execution, human approval, or evidence
-that a real task completed.
+that a real task completed. It is not the current Authority Core onboarding path.
 
 ## Current limitations
 

@@ -16,12 +16,12 @@ cd mothership
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install .
+python examples/authority_core_walkthrough.py
 mothership verify
-mothership demo
 ```
 
 Side effects: Git creates the checkout, `venv` creates `.venv`, and pip installs Mothership and build metadata into the
-environment. The two Mothership commands are read-only.
+environment. The walkthrough and verification command are read-only and use no external service.
 
 ## Wheel install
 
@@ -79,7 +79,7 @@ There is no self-updater.
 1. Obtain the intended source commit, tag, or wheel through a trusted channel.
 2. Read `CHANGELOG.md` and verify its checksum evidence.
 3. Install into a new virtual environment rather than overwriting the working one.
-4. Run `mothership verify`, `mothership demo`, and the applicable tests.
+4. Run the Authority Core walkthrough, `mothership verify`, `mothership demo`, and the applicable tests.
 5. Switch your own workflow only after reviewing the result.
 
 The operator owns the environment switch and rollback.
