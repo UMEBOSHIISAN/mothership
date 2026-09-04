@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 760" role="img" aria-labelledby="title desc">
+  <title id="title">PR #18 public result</title>
+  <desc id="desc">Public result for merging PR #18 into isolated branch e2e/mothership-merge-canary-base-20260902b. Source commit 0874166551f11d580168e8b4d0f354e742d39fe6, merge commit 1cfbbf646b8ac227c8c411f08a961c4396cc69ca, one file with five additions and no deletions; Mothership public main was not targeted.</desc>
+  <rect width="720" height="760" fill="#f8fafc"/>
+  <rect x="24" y="24" width="672" height="712" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>
+  <text x="48" y="78" fill="#0f172a" font-family="Arial,sans-serif" font-size="30" font-weight="700">PR #18 — public result</text>
+  <rect x="48" y="104" width="180" height="64" rx="32" fill="#166534"/>
+  <text x="138" y="147" text-anchor="middle" fill="#ffffff" font-family="Arial,sans-serif" font-size="28" font-weight="700">MERGED</text>
+  <text x="270" y="128" fill="#475569" font-family="Arial,sans-serif" font-size="22" font-weight="700">DIFF</text>
+  <text x="270" y="164" fill="#0f172a" font-family="Arial,sans-serif" font-size="27" font-weight="700">1 file · +5 / -0</text>
+  <line x1="48" y1="202" x2="672" y2="202" stroke="#e2e8f0" stroke-width="3"/>
+  <text x="48" y="246" fill="#475569" font-family="Arial,sans-serif" font-size="26" font-weight="700">TARGET BRANCH</text>
+  <text x="48" y="284" fill="#0f172a" font-family="SFMono-Regular,Consolas,monospace" font-size="27">
+    <tspan x="48" dy="0">e2e/mothership-merge-</tspan>
+    <tspan x="48" dy="34">canary-base-20260902b</tspan>
+  </text>
+  <text x="48" y="370" fill="#475569" font-family="Arial,sans-serif" font-size="26" font-weight="700">SOURCE COMMIT</text>
+  <text x="48" y="408" fill="#0f172a" font-family="SFMono-Regular,Consolas,monospace" font-size="27">
+    <tspan x="48" dy="0">0874166551f11d580168</tspan>
+    <tspan x="48" dy="34">e8b4d0f354e742d39fe6</tspan>
+  </text>
+  <text x="48" y="494" fill="#475569" font-family="Arial,sans-serif" font-size="26" font-weight="700">MERGE COMMIT</text>
+  <text x="48" y="532" fill="#0f172a" font-family="SFMono-Regular,Consolas,monospace" font-size="27">
+    <tspan x="48" dy="0">1cfbbf646b8ac227c8c4</tspan>
+    <tspan x="48" dy="34">11f08a961c4396cc69ca</tspan>
+  </text>
+  <rect x="48" y="620" width="624" height="84" rx="12" fill="#f1f5f9"/>
+  <text x="360" y="655" text-anchor="middle" fill="#334155" font-family="Arial,sans-serif" font-size="24">
+    <tspan x="360" dy="0">Mothership public main</tspan>
+    <tspan x="360" dy="30">was not targeted</tspan>
+  </text>
+</svg>

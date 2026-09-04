@@ -1,35 +1,26 @@
-"""Generate the Japanese Mothership README explainer GIF and poster.
+"""Generate bilingual Mothership Core explainer GIFs and static posters.
 
-This source generates the committed explanatory assets in the release build
-environment.  The committed output bytes are checksum-pinned.  It intentionally
-contains no runtime output, credentials, browser capture, or external evidence.
+These are explanatory presentation assets, not execution evidence. The font,
+dimensions, frame rate, and output paths are explicit build inputs.
 """
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from textwrap import wrap
 
 from PIL import Image, ImageDraw, ImageFont
 
 
-ROOT = Path(__file__).resolve().parents[3]
-OUT_DIR = ROOT / "assets" / "readme" / "ja"
-GIF_PATH = OUT_DIR / "mothership-flow.gif"
-POSTER_PATH = OUT_DIR / "mothership-flow-poster.png"
-
 WIDTH, HEIGHT = 1200, 675
 FPS = 8
-STAGE_SECONDS = 1.25
-STAGES = 8
-FRAME_COUNT = int(FPS * STAGE_SECONDS * STAGES)
-
-# Release-asset build inputs. These host font paths are intentionally explicit;
-# cross-host portability or byte-identical regeneration is not claimed.
-FONT_PATH = "/System/Library/Fonts/ヒラギノ角ゴシック W5.ttc"
-FONT_BOLD_PATH = "/System/Library/Fonts/ヒラギノ角ゴシック W7.ttc"
+SCENE_SECONDS = 1.5
+SCENES = 6
+FRAME_COUNT = int(FPS * SCENE_SECONDS * SCENES)
 
 BG = "#f7faf9"
+PAPER = "#ffffff"
 INK = "#17332d"
 MUTED = "#55706a"
 GREEN = "#176b58"
@@ -42,195 +33,248 @@ PURPLE = "#7356a8"
 PURPLE_LIGHT = "#eee8fb"
 CYAN = "#237e91"
 CYAN_LIGHT = "#def3f6"
-RED = "#bd3d3d"
-RED_LIGHT = "#fde7e7"
 LINE = "#c6d5d1"
-WHITE = "#ffffff"
+
+COPY = {
+    "ja": {
+        "title": "現在のMothership Core",
+        "subtitle": "人間とAIのあいだで、現実を変える権限の範囲を明確にする",
+        "work": ("人間 + AI", "仕事と操作案を準備"),
+        "core": "公開Mothership",
+        "freeze": ("具体的な操作", "対応済み項目を固定"),
+        "decision": ("人間の判断", "承認 / 拒否"),
+        "consume": ("ローカル台帳", "同じ履歴内で一度"),
+        "executor": ("別構成の実行系", "外部状態を変更"),
+        "verifier": ("別経路の確認系", "外部状態を読む"),
+        "profile": "現在の最初の参照profile：github.merge_pr",
+        "explain": "仕組みの図解です。実行系・確認系や広い安全性の証拠ではありません。",
+        "scenes": (
+            ("人間とAIが仕事を分ける", "AIは仕事と操作案を準備し、人間は目的と判断を保持します。"),
+            ("具体的な操作を固定", "repository・PR・head・base名・merge方法を固定します。"),
+            ("表示された操作を人間が判断", "caller-attestedな承認または拒否をaction IDとdigestへ照合します。"),
+            ("判断を記録し、一度だけ取り出す", "同じ信頼されたローカル台帳履歴内で二度目のconsumeを拒否します。"),
+            ("外部実行系は別途構成", "公開Mothershipはexecutor、credential、retryを同梱しません。"),
+            ("結果を別経路で確認", "ReceiptとVerificationを分けます。verifier producerは別途構成します。"),
+        ),
+    },
+    "en": {
+        "title": "How the current Mothership Core works",
+        "subtitle": "Make the scope of consequential authority explicit between humans and AI",
+        "work": ("Human + AI", "Prepare work and action"),
+        "core": "Public Mothership",
+        "freeze": ("Exact operation", "Freeze supported fields"),
+        "decision": ("Human decision", "Approve / Reject"),
+        "consume": ("Local ledger", "One use in this history"),
+        "executor": ("Separate executor", "Changes external state"),
+        "verifier": ("Separate verifier", "Reads external state"),
+        "profile": "First current reference profile: github.merge_pr",
+        "explain": "An explainer, not evidence for the executor, verifier, or general safety.",
+        "scenes": (
+            ("Humans and AI divide the work", "AI prepares work and an action; the human retains purpose and judgment."),
+            ("Freeze one exact supported operation", "Repository, PR, head, base name, and merge method are fixed."),
+            ("The human judges the displayed operation", "A caller-attested approve or reject is checked against its action ID and digest."),
+            ("Record the decision and consume once", "A second consume is rejected within the same trusted local ledger history."),
+            ("The external executor is separate", "Public Mothership ships no executor, credentials, or retry mechanism."),
+            ("Verify through a separate path", "Receipt and Verification are distinct; the verifier producer is separately configured."),
+        ),
+    },
+}
+
+FONT_PATH: Path
 
 
-def font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(FONT_BOLD_PATH if bold else FONT_PATH, size)
+def load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
+    result = ImageFont.truetype(str(FONT_PATH), size)
+    if bold:
+        try:
+            result.set_variation_by_axes([700])
+        except (AttributeError, OSError):
+            pass
+    return result
 
 
-def centered(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, fnt, fill=INK) -> None:
-    box = draw.textbbox((0, 0), text, font=fnt)
-    draw.text((xy[0] - (box[2] - box[0]) / 2, xy[1] - (box[3] - box[1]) / 2), text, font=fnt, fill=fill)
+def centered(draw: ImageDraw.ImageDraw, x: int, y: int, value: str, size: int, *, color: str = INK, bold: bool = False) -> None:
+    current = load_font(size, bold=bold)
+    box = draw.textbbox((0, 0), value, font=current)
+    draw.text((x - (box[2] - box[0]) / 2, y - (box[3] - box[1]) / 2), value, font=current, fill=color)
 
 
-def multiline_center(
+def centered_lines(
     draw: ImageDraw.ImageDraw,
     box: tuple[int, int, int, int],
-    lines: list[str],
-    fnt,
+    lines: tuple[str, ...] | list[str],
+    size: int,
     *,
-    fill=INK,
-    gap: int = 7,
+    color: str = INK,
+    bold: bool = False,
+    gap: int = 5,
 ) -> None:
-    x0, y0, x1, y1 = box
-    heights = [draw.textbbox((0, 0), line, font=fnt)[3] for line in lines]
+    current = load_font(size, bold=bold)
+    heights = [draw.textbbox((0, 0), value, font=current)[3] for value in lines]
     total = sum(heights) + gap * max(0, len(lines) - 1)
+    x0, y0, x1, y1 = box
     y = (y0 + y1 - total) / 2
-    for line, height in zip(lines, heights):
-        centered(draw, ((x0 + x1) // 2, int(y + height / 2)), line, fnt, fill)
+    for value, height in zip(lines, heights, strict=True):
+        text_box = draw.textbbox((0, 0), value, font=current)
+        x = (x0 + x1 - (text_box[2] - text_box[0])) / 2
+        draw.text((x, y), value, font=current, fill=color)
         y += height + gap
 
 
-def rounded_box(
-    draw: ImageDraw.ImageDraw,
-    box: tuple[int, int, int, int],
-    *,
-    fill: str,
-    outline: str,
-    width: int = 3,
-    radius: int = 22,
-    dashed: bool = False,
-) -> None:
-    if not dashed:
-        draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
-        return
+def solid_box(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], fill: str, outline: str, *, active: bool = False) -> None:
+    draw.rounded_rectangle(box, radius=18, fill=fill, outline=outline, width=6 if active else 3)
+
+
+def dashed_box(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], fill: str, outline: str, *, active: bool = False) -> None:
     x0, y0, x1, y1 = box
-    draw.rounded_rectangle(box, radius=radius, fill=fill)
-    # A dashed outline keeps external integration visually distinct without
-    # depending on a particular rendering backend.
-    dash = 15
-    gap = 10
-    for start in range(x0 + radius, x1 - radius, dash + gap):
-        draw.line((start, y0, min(start + dash, x1 - radius), y0), fill=outline, width=width)
-        draw.line((start, y1, min(start + dash, x1 - radius), y1), fill=outline, width=width)
-    for start in range(y0 + radius, y1 - radius, dash + gap):
-        draw.line((x0, start, x0, min(start + dash, y1 - radius)), fill=outline, width=width)
-        draw.line((x1, start, x1, min(start + dash, y1 - radius)), fill=outline, width=width)
-
-
-def arrow(draw: ImageDraw.ImageDraw, start: tuple[int, int], end: tuple[int, int], *, fill=GREEN, active=False) -> None:
+    draw.rounded_rectangle(box, radius=18, fill=fill)
     width = 6 if active else 3
-    draw.line((*start, *end), fill=fill, width=width)
+    dash, gap = 14, 9
+    for start in range(x0 + 15, x1 - 15, dash + gap):
+        draw.line((start, y0, min(start + dash, x1 - 15), y0), fill=outline, width=width)
+        draw.line((start, y1, min(start + dash, x1 - 15), y1), fill=outline, width=width)
+    for start in range(y0 + 15, y1 - 15, dash + gap):
+        draw.line((x0, start, x0, min(start + dash, y1 - 15)), fill=outline, width=width)
+        draw.line((x1, start, x1, min(start + dash, y1 - 15)), fill=outline, width=width)
+
+
+def arrow(draw: ImageDraw.ImageDraw, start: tuple[int, int], end: tuple[int, int], color: str, *, active: bool = False) -> None:
+    width = 6 if active else 3
+    draw.line((*start, *end), fill=color, width=width)
     x, y = end
-    draw.polygon([(x, y), (x - 15, y - 9), (x - 15, y + 9)], fill=fill)
+    draw.polygon(((x, y), (x - 13, y - 8), (x - 13, y + 8)), fill=color)
 
 
-def draw_header(draw: ImageDraw.ImageDraw) -> None:
-    centered(draw, (WIDTH // 2, 40), "Mothershipの役割", font(28, bold=True), INK)
-    centered(draw, (WIDTH // 2, 78), "AIに「できる」を渡しても、「やってよい」は人間に残す。", font(22), MUTED)
+def draw_map(draw: ImageDraw.ImageDraw, copy: dict[str, object], scene: int | None) -> None:
+    work = (35, 130, 235, 285)
+    core = (265, 105, 820, 315)
+    freeze = (285, 155, 445, 280)
+    decision = (465, 155, 625, 280)
+    consume = (645, 155, 800, 280)
+    executor = (855, 115, 1165, 205)
+    verifier = (855, 225, 1165, 315)
+
+    solid_box(draw, work, BLUE_LIGHT, BLUE, active=scene == 0)
+    centered_lines(draw, work, copy["work"], 17, color=BLUE, bold=scene == 0)
+
+    draw.rounded_rectangle(core, radius=24, fill="#eef7f3", outline=GREEN, width=5)
+    centered(draw, 542, 130, str(copy["core"]), 23, color=GREEN, bold=True)
+    solid_box(draw, freeze, PAPER, GREEN, active=scene == 1)
+    solid_box(draw, decision, ORANGE_LIGHT, ORANGE, active=scene == 2)
+    solid_box(draw, consume, GREEN_LIGHT, GREEN, active=scene == 3)
+    centered_lines(draw, freeze, copy["freeze"], 16, bold=scene == 1)
+    centered_lines(draw, decision, copy["decision"], 16, color=ORANGE, bold=scene == 2)
+    centered_lines(draw, consume, copy["consume"], 15, color=GREEN, bold=scene == 3)
+
+    dashed_box(draw, executor, PURPLE_LIGHT, PURPLE, active=scene == 4)
+    dashed_box(draw, verifier, CYAN_LIGHT, CYAN, active=scene == 5)
+    centered_lines(draw, executor, copy["executor"], 16, color=PURPLE, bold=scene == 4)
+    centered_lines(draw, verifier, copy["verifier"], 16, color=CYAN, bold=scene == 5)
+
+    arrow(draw, (240, 208), (280, 208), BLUE, active=scene in (0, 1))
+    arrow(draw, (450, 218), (460, 218), GREEN, active=scene == 2)
+    arrow(draw, (630, 218), (640, 218), ORANGE, active=scene == 3)
+    arrow(draw, (805, 185), (850, 160), GREEN, active=scene == 4)
+    draw.line((1010, 210, 1010, 220), fill=CYAN, width=6 if scene == 5 else 3)
+    draw.polygon(((1010, 225), (1002, 212), (1018, 212)), fill=CYAN)
 
 
-def draw_flow(draw: ImageDraw.ImageDraw, stage: int) -> None:
-    boxes = {
-        "ai": (45, 130, 255, 255),
-        "m": (290, 110, 650, 285),
-        "x": (700, 130, 920, 255),
-        "v": (965, 130, 1155, 255),
-    }
-
-    rounded_box(draw, boxes["ai"], fill=BLUE_LIGHT, outline=BLUE, width=4 if stage == 0 else 3)
-    multiline_center(draw, (55, 145, 245, 240), ["AI・呼び出し側", "操作案を用意"], font(25, bold=stage == 0), fill=BLUE)
-
-    rounded_box(draw, boxes["m"], fill=GREEN_LIGHT, outline=GREEN, width=5 if 1 <= stage <= 4 else 3)
-    centered(draw, (470, 136), "公開Mothership", font(25, bold=True), GREEN)
-    multiline_center(
-        draw,
-        (310, 160, 630, 270),
-        ["操作内容を固定", "人間が 承認 / 拒否", "台帳へ記録"],
-        font(24, bold=stage in (1, 2, 3, 4)),
-        fill=INK,
-        gap=5,
-    )
-
-    rounded_box(draw, boxes["x"], fill=PURPLE_LIGHT, outline=PURPLE, dashed=True, width=4 if stage == 5 else 3)
-    multiline_center(draw, (715, 145, 905, 240), ["別途構成する", "実行系", "外部状態を変更"], font(23, bold=stage == 5), fill=PURPLE, gap=4)
-
-    rounded_box(draw, boxes["v"], fill=CYAN_LIGHT, outline=CYAN, dashed=True, width=4 if stage == 6 else 3)
-    multiline_center(draw, (975, 145, 1145, 240), ["別経路の", "確認系", "外部状態を読む"], font(22, bold=stage == 6), fill=CYAN, gap=4)
-
-    arrow(draw, (260, 192), (285, 192), fill=BLUE, active=stage >= 1)
-    arrow(draw, (655, 192), (695, 192), fill=GREEN, active=stage >= 5)
-    arrow(draw, (925, 192), (960, 192), fill=PURPLE, active=stage >= 6)
-
-    # The dotted return path is deliberately outside the public box: it
-    # describes a separately configured observation path, not a shipped tool.
-    draw.line((810, 260, 810, 320, 1060, 320, 1060, 260), fill=CYAN, width=3)
-    draw.polygon([(1060, 260), (1051, 275), (1069, 275)], fill=CYAN)
-
-
-def draw_stage_panel(draw: ImageDraw.ImageDraw, stage: int) -> None:
-    panel = (45, 350, 1155, 535)
-    draw.rounded_rectangle(panel, radius=24, fill=WHITE, outline=LINE, width=2)
-
-    captions = [
-        ("AIが操作案を用意", "提案と、実行したい操作の材料を用意します。"),
-        ("実行する内容を固定", "リポジトリ・PR番号・元コミット識別子・対象ブランチ名・統合方法。"),
-        ("決めるのは人間", "承認または拒否を、表示されたこの操作へ照合します。"),
-        ("台帳へ記録", "判断を信頼されたローカル台帳へ記録します。"),
-        ("同じ台帳履歴内で一度だけ", "二度目の取り出しは停止します。"),
-        ("実行系は別途構成", "公開パッケージは外部の実行系を同梱しません。"),
-        ("結果は別経路で確認", "実行側の結果報告だけで終わらせず、外部状態を読み取ります。"),
-        ("現在の対応：github.merge_pr のみ", "参照実装。汎用の実行系は非同梱。本番安全性は未主張。"),
-    ]
-    title, detail = captions[stage]
-    centered(draw, (600, 385), title, font(30, bold=True), INK)
-    # Keep the explanatory sentence readable even on a narrow README view.
-    lines = wrap(detail, width=39, break_long_words=False, break_on_hyphens=False)
-    multiline_center(draw, (85, 410, 1115, 475), lines, font(23), fill=MUTED, gap=3)
-
-    if stage == 2:
-        draw.rounded_rectangle((400, 490, 545, 525), radius=10, fill=GREEN, outline=GREEN)
-        centered(draw, (472, 507), "承認", font(21, bold=True), WHITE)
-        draw.rounded_rectangle((560, 490, 705, 525), radius=10, fill=RED_LIGHT, outline=RED, width=2)
-        centered(draw, (632, 507), "拒否", font(21, bold=True), RED)
-    elif stage == 4:
-        draw.rounded_rectangle((480, 490, 720, 525), radius=10, fill=RED_LIGHT, outline=RED, width=2)
-        centered(draw, (600, 507), "二度目は停止", font(21, bold=True), RED)
-    elif stage == 7:
-        draw.rounded_rectangle((235, 490, 965, 525), radius=10, fill=GREEN_LIGHT, outline=GREEN, width=2)
-        centered(draw, (600, 507), "操作を限定して示す。広い安全性は主張しない。", font(20, bold=True), GREEN)
-
-
-def draw_frame(stage: int, progress: float = 1.0) -> Image.Image:
+def draw_scene(locale: str, scene: int, progress: float) -> Image.Image:
+    copy = COPY[locale]
     image = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(image)
-    draw_header(draw)
-    draw_flow(draw, stage)
-    # Keep a real 8 fps timeline in the GIF rather than collapsing each
-    # storyboard scene into a single long frame during palette optimization.
-    timeline_start, timeline_end, timeline_y = 140, 1060, 316
-    draw.line((timeline_start, timeline_y, timeline_end, timeline_y), fill=LINE, width=3)
-    for index in range(STAGES):
-        x = timeline_start + int((timeline_end - timeline_start) * index / (STAGES - 1))
-        fill = GREEN if index <= stage else WHITE
-        draw.ellipse((x - 7, timeline_y - 7, x + 7, timeline_y + 7), fill=fill, outline=GREEN, width=2)
-    cursor = timeline_start + int((timeline_end - timeline_start) * max(0.0, min(1.0, progress)))
-    draw.ellipse((cursor - 8, timeline_y - 8, cursor + 8, timeline_y + 8), fill=GREEN, outline=WHITE, width=2)
-    draw_stage_panel(draw, stage)
-    centered(draw, (WIDTH // 2, 610), "ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。", font(24, bold=True), GREEN)
-    centered(draw, (WIDTH // 2, 642), "これは仕組みの図解です。実行系・確認系の提供や本番安全性を証明するものではありません。", font(16), MUTED)
+    centered(draw, WIDTH // 2, 36, str(copy["title"]), 30, bold=True)
+    centered(draw, WIDTH // 2, 76, str(copy["subtitle"]), 20, color=MUTED)
+    draw_map(draw, copy, scene)
+
+    panel = (35, 350, 1165, 555)
+    draw.rounded_rectangle(panel, radius=22, fill=PAPER, outline=LINE, width=2)
+    title, detail = copy["scenes"][scene]
+    centered(draw, WIDTH // 2, 390, title, 29, bold=True)
+    lines = wrap(detail, width=54 if locale == "en" else 42, break_long_words=False, break_on_hyphens=False)
+    centered_lines(draw, (80, 415, 1120, 505), lines, 21, color=MUTED)
+
+    start, end, y = 170, 1030, 530
+    draw.line((start, y, end, y), fill=LINE, width=3)
+    for index in range(SCENES):
+        x = start + int((end - start) * index / (SCENES - 1))
+        fill = GREEN if index <= scene else PAPER
+        draw.ellipse((x - 7, y - 7, x + 7, y + 7), fill=fill, outline=GREEN, width=2)
+    cursor = start + int((end - start) * progress)
+    draw.ellipse((cursor - 8, y - 8, cursor + 8, y + 8), fill=GREEN, outline=PAPER, width=2)
+
+    draw.rounded_rectangle((265, 580, 935, 620), radius=12, fill=GREEN_LIGHT, outline=GREEN, width=2)
+    centered(draw, WIDTH // 2, 600, str(copy["profile"]), 19, color=GREEN, bold=True)
+    centered(draw, WIDTH // 2, 649, str(copy["explain"]), 15, color=MUTED)
     return image
 
 
+def draw_poster(locale: str) -> Image.Image:
+    copy = COPY[locale]
+    image = Image.new("RGB", (WIDTH, HEIGHT), BG)
+    draw = ImageDraw.Draw(image)
+    centered(draw, WIDTH // 2, 36, str(copy["title"]), 30, bold=True)
+    centered(draw, WIDTH // 2, 76, str(copy["subtitle"]), 20, color=MUTED)
+    draw_map(draw, copy, None)
+
+    panel = (35, 345, 1165, 565)
+    draw.rounded_rectangle(panel, radius=22, fill=PAPER, outline=LINE, width=2)
+    for index, (title, _) in enumerate(copy["scenes"]):
+        column = index % 2
+        row = index // 2
+        x = 70 + column * 560
+        y = 375 + row * 58
+        draw.ellipse((x, y - 7, x + 14, y + 7), fill=GREEN)
+        draw.text((x + 28, y - 15), title, font=load_font(19, bold=True), fill=INK)
+
+    draw.rounded_rectangle((265, 585, 935, 625), radius=12, fill=GREEN_LIGHT, outline=GREEN, width=2)
+    centered(draw, WIDTH // 2, 605, str(copy["profile"]), 19, color=GREEN, bold=True)
+    centered(draw, WIDTH // 2, 650, str(copy["explain"]), 15, color=MUTED)
+    return image
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--locale", choices=tuple(COPY), required=True)
+    parser.add_argument("--font", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True)
+    return parser.parse_args()
+
+
 def main() -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    frames: list[Image.Image] = []
-    for index in range(FRAME_COUNT):
-        stage = min(STAGES - 1, index // int(FPS * STAGE_SECONDS))
-        frames.append(draw_frame(stage, index / max(1, FRAME_COUNT - 1)))
+    global FONT_PATH
+    args = parse_args()
+    FONT_PATH = args.font.resolve()
+    if not FONT_PATH.is_file():
+        raise SystemExit("font input is missing or is not a regular file")
 
-    # The poster is a complete, non-animated explanation.  It remains useful
-    # for readers who disable animation and as a thumbnail for the GIF.
-    poster = draw_frame(STAGES - 1, 1.0)
-    poster.save(POSTER_PATH, format="PNG", optimize=True)
+    output_dir = args.output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    gif_path = output_dir / "mothership-flow.gif"
+    poster_path = output_dir / "mothership-flow-poster.png"
 
-    palette_frames = [frame.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for frame in frames]
-    palette_frames[0].save(
-        GIF_PATH,
+    frames = []
+    for frame_index in range(FRAME_COUNT):
+        scene = min(SCENES - 1, frame_index // int(FPS * SCENE_SECONDS))
+        frames.append(draw_scene(args.locale, scene, frame_index / max(1, FRAME_COUNT - 1)))
+
+    draw_poster(args.locale).save(poster_path, format="PNG", optimize=True)
+    palette = [
+        frame.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+        for frame in frames
+    ]
+    palette[0].save(
+        gif_path,
         format="GIF",
         save_all=True,
-        append_images=palette_frames[1:],
+        append_images=palette[1:],
         duration=int(1000 / FPS),
         loop=0,
         optimize=True,
         disposal=2,
     )
-    print(f"generated {GIF_PATH} ({GIF_PATH.stat().st_size} bytes)")
-    print(f"generated {POSTER_PATH} ({POSTER_PATH.stat().st_size} bytes)")
+    print(f"generated {gif_path} ({gif_path.stat().st_size} bytes)")
+    print(f"generated {poster_path} ({poster_path.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":

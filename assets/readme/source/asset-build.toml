@@ -1,0 +1,8 @@
+schema = "mothership-readme-assets.v1"
+width = 1200
+height = 675
+fps = 8
+max_gif_bytes = 10000000
+font = "fonts/NotoSansJP-Regular.ttf"
+font_sha256 = "c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f"
+font_source_commit = "google/fonts@295d98a7a0c17c68f1341eaeea354e7960ea70d3"

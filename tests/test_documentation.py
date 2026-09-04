@@ -24,6 +24,15 @@ README_EN = ROOT / "README.en.md"
 PUBLIC_RESULT_IMAGE = ROOT / "assets/readme/ja/pr18-public-result.svg"
 EXPLAINER_GIF = ROOT / "assets/readme/ja/mothership-flow.gif"
 EXPLAINER_POSTER = ROOT / "assets/readme/ja/mothership-flow-poster.png"
+EXPECTED_POSITIONING_ASSETS = (
+    "assets/readme/ja/mothership-flow.gif",
+    "assets/readme/ja/mothership-flow-poster.png",
+    "assets/readme/en/mothership-flow.gif",
+    "assets/readme/en/mothership-flow-poster.png",
+    "assets/readme/ja/ume-stack-responsibility.svg",
+    "assets/readme/en/ume-stack-responsibility.svg",
+    "assets/readme/en/pr18-public-result.svg",
+)
 E2E_EVIDENCE = ROOT / "docs/evidence/github-merge-pr-e2e-20260903/README.md"
 E2E_EVIDENCE_LINK = "docs/evidence/github-merge-pr-e2e-20260903/README.md"
 E2E_EVIDENCE_DIR = E2E_EVIDENCE.parent
@@ -119,19 +128,39 @@ class ReadmeContractTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "現在の公開範囲",
-                "公開されている結果",
-                "境界モデル",
+                "PURPOSE",
+                "責務分担",
+                "CURRENT: v0.4.1",
+                "現在のMothership Core",
+                "現在の参照profile",
+                "公開結果の一例",
                 "クイックスタート",
-                "何を提供するか",
-                "コードツアー",
                 "現在の制約",
-                "事故から生まれた境界",
-                "0.2 compatibility",
-                "関連ドキュメント",
+                "詳細ドキュメント",
                 "License",
             ),
             headings,
+        )
+        english = README_EN.read_text("utf-8")
+        english_headings = tuple(
+            line.removeprefix("## ")
+            for line in english.splitlines()
+            if line.startswith("## ")
+        )
+        self.assertEqual(
+            (
+                "PURPOSE",
+                "Responsibility split",
+                "CURRENT: v0.4.1",
+                "How the current Mothership Core works",
+                "Current reference profile",
+                "One public result",
+                "Quick start",
+                "Current limitations",
+                "Documentation",
+                "License",
+            ),
+            english_headings,
         )
 
     def test_quickstart_is_one_exact_executable_block(self) -> None:
@@ -147,50 +176,40 @@ class ReadmeContractTests(unittest.TestCase):
 
     def test_reference_positioning_and_scope_are_explicit(self) -> None:
         for phrase in (
-            "AIに「できる」を渡しても、「やってよい」は人間に残す。",
-            "ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。",
+            "人間が全部を抱えず、AIにも全部を明け渡さない。",
+            "「どこまで任せるか」を曖昧にしない。",
+            "現実を変える権限を限定的に受け渡す",
             "リファレンス実装",
             "github.merge_pr",
             "base commit SHAは結び付けられません",
             "`expires_at`はaction digestに含まれません",
             "人間の本人確認は行いません",
             "信頼されたローカル台帳履歴",
-            "本番向けの権限サービス",
-            "汎用的な\nエージェントセキュリティ基盤ではありません",
+            "本番運用または規制対象の高リスク用途への適合",
         ):
             self.assertIn(phrase, self.text)
-        self.assertNotIn("ひとつの判断。ひとつの具体的な操作。一度だけ。", self.text)
+        purpose = self.text.split("## PURPOSE", 1)[1].split("## 責務分担", 1)[0]
+        self.assertNotIn("github.merge_pr", purpose)
+        self.assertNotIn("医療製品", self.text)
 
     def test_authority_flow_and_decision_cardinality_match_v0_4_1(self) -> None:
         english = README_EN.read_text("utf-8")
 
-        self.assertIn("```mermaid\nflowchart TB", self.text)
         for phrase in (
-            'E["Evidence / proposal"] -. "判断材料のみ<br/>v0.4.1では未結合" .-> H{{"人間の判断"}}',
-            'P["対応済みの<br/>実行パラメータ"] --> F["FrozenAction"]',
-            'F --> H',
-            'H --> A["判断eventを記録"]',
-            'A --> C["同じ台帳履歴内で<br/>一度だけconsume"]',
-            'C --> X["別途構成した<br/>executor"]',
+            "現在の公開release同士に自動runtime bridgeはありません。破線部分は未実装です。",
+            "proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません",
             "同じactionへ複数のdecision eventを記録できる",
             "同じaction IDは同じ台帳履歴内で一度だけconsumeできる",
         ):
             self.assertIn(phrase, self.text)
 
-        self.assertIn("```mermaid\nflowchart TB", english)
         for phrase in (
-            "One decision bound to one exact supported action. One use.",
-            'E["Evidence / proposal"] -. "decision context only<br/>unbound in v0.4.1" .-> H{{"Human decision"}}',
-            'P["Exact supported<br/>execution parameters"] --> F["FrozenAction"]',
-            'F --> H',
-            'H --> A["Record decision event"]',
-            'A --> C["One consume in the same<br/>trusted ledger history"]',
-            'C --> X["Separately configured<br/>executor"]',
+            "The current public releases have no automatic runtime bridge. The dashed connection is not implemented.",
+            "Proposal and evidence are decision context, but they are not mechanically bound to a FrozenAction",
             "Multiple decision events may be recorded for the same action",
             "one consume per action ID in one trusted ledger history",
         ):
             self.assertIn(phrase, english)
-        self.assertNotIn("One human decision. One exact supported action. One use.", english)
 
     def test_public_result_and_links_are_bounded(self) -> None:
         self.assertIn(f"]({E2E_EVIDENCE_LINK})", self.text)
@@ -229,6 +248,18 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("alt", self.text)
         self.assertIn("assets/readme/ja/pr18-public-result.svg", self.text)
         self.assertIn('width="720"', self.text)
+        english = README_EN.read_text("utf-8")
+        english_image = (ROOT / "assets/readme/en/pr18-public-result.svg").read_text("utf-8")
+        for value in (
+            "PR #18",
+            "e2e/mothership-merge-canary-base-20260902b",
+            "0874166551f11d580168e8b4d0f354e742d39fe6",
+            "1cfbbf646b8ac227c8c411f08a961c4396cc69ca",
+            "1 file · +5 / -0",
+            "Mothership public main",
+        ):
+            self.assertIn(value, english_image)
+        self.assertIn("assets/readme/en/pr18-public-result.svg", english)
 
     def test_japanese_explainer_assets_are_bounded_and_factual(self) -> None:
         self.assertTrue(EXPLAINER_GIF.is_file())
@@ -255,13 +286,23 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, source)
         for forbidden in ("/Users/", "/" + "private/", "token", "secret"):
             self.assertNotIn(forbidden.casefold(), source.casefold())
+        english = README_EN.read_text("utf-8")
         self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow.gif"))
         self.assertEqual(1, self.text.count("assets/readme/ja/mothership-flow-poster.png"))
+        self.assertEqual(1, english.count("assets/readme/en/mothership-flow.gif"))
+        self.assertEqual(1, english.count("assets/readme/en/mothership-flow-poster.png"))
         self.assertIn("仕組みの図解です", self.text)
         generator = (ROOT / "assets/readme/source/generate_mothership_flow.py").read_text("utf-8")
-        self.assertIn("cross-host", generator)
-        self.assertNotIn("deterministic explanatory asset", generator)
-        self.assertIn("ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。", generator)
+        self.assertNotIn("/System/Library/Fonts/", generator)
+        self.assertIn("First current reference profile: github.merge_pr", generator)
+
+    def test_bilingual_positioning_assets_have_portable_generation_inputs(self) -> None:
+        for relative in EXPECTED_POSITIONING_ASSETS:
+            self.assertTrue((ROOT / relative).is_file(), relative)
+        build = (ROOT / "assets/readme/source/asset-build.toml").read_text("utf-8")
+        self.assertIn('font = "fonts/NotoSansJP-Regular.ttf"', build)
+        generator = (ROOT / "assets/readme/source/generate_mothership_flow.py").read_text("utf-8")
+        self.assertNotIn("/System/Library/Fonts/", generator)
 
     def test_code_tour_and_cli_scope_are_exact(self) -> None:
         for path in (
@@ -415,10 +456,12 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
         ordered = (
             "# Mothership",
             'src="assets/mothership-banner.png"',
-            "AIに「できる」を渡しても、「やってよい」は人間に残す。",
-            "ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。",
-            "Mothershipは、AIの提案と外部操作の境界を扱う、範囲を限定した",
-            "## 現在の公開範囲",
+            "人間が全部を抱えず、AIにも全部を明け渡さない。",
+            "## PURPOSE",
+            "## 責務分担",
+            "## CURRENT: v0.4.1",
+            "## 現在の参照profile",
+            "## 公開結果の一例",
             f"]({E2E_EVIDENCE_LINK})",
             "## クイックスタート",
         )
