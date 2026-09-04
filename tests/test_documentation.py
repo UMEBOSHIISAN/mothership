@@ -251,6 +251,8 @@ class ReadmeContractTests(unittest.TestCase):
             "github.merge_pr",
             "base commit SHAは結び付けられません",
             "`expires_at`はaction digestに含まれません",
+            "毎回新しい `action_id` を発行",
+            "表示した発行情報と期限へ応答を対応付け",
             "人間の本人確認は行いません",
             "信頼されたローカル台帳履歴",
             "本番運用または規制対象の高リスク用途への適合",
@@ -282,6 +284,8 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertNotIn("closed end to end", english)
         self.assertIn("5つの実行パラメータ", self.text)
         self.assertIn("five execution parameters", english)
+        self.assertIn("issue a fresh `action_id` for every freeze", english)
+        self.assertIn("correlate the response to the exact live issuance and displayed expiry", english)
 
     def test_public_result_and_links_are_bounded(self) -> None:
         self.assertIn(f"]({E2E_EVIDENCE_LINK})", self.text)
@@ -381,6 +385,11 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("v0.4.1では未結合", generator)
         self.assertNotIn("仕事と操作案を準備", generator)
         self.assertNotIn("Prepare work and action", generator)
+        self.assertIn('"parameters": ("Execution fields", "Caller-supplied")', generator)
+        self.assertIn('"freeze": ("Exact operation", "Freeze five fields")', generator)
+        self.assertIn('"consume": ("Local ledger", "One use per", "ledger history")', generator)
+        self.assertIn('"consume_poster": ("Local ledger", "One use / ledger history")', generator)
+        self.assertIn("FRAME_COUNT * 1000 != FPS * DURATION_MS", generator)
 
     def test_bilingual_positioning_assets_have_portable_generation_inputs(self) -> None:
         for relative in EXPECTED_POSITIONING_ASSETS:
@@ -408,6 +417,10 @@ class ReadmeContractTests(unittest.TestCase):
                 self.assertIn(">Separate verification</tspan>", svg)
                 self.assertIn(">path</tspan>", svg)
                 self.assertNotIn(">Separately configured executor</text>", svg)
+                self.assertIn(">Solid = implemented now</tspan>", svg)
+                self.assertIn(">Dashed = not connected</tspan>", svg)
+                self.assertIn(">Outline = separately configured</tspan>", svg)
+                self.assertNotIn("Solid = implemented now    Dashed = not connected", svg)
 
         for readme in (self.text, README_EN.read_text("utf-8")):
             self.assertIn('media="(max-width: 600px)"', readme)

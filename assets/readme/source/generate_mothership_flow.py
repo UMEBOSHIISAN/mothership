@@ -39,6 +39,8 @@ NORMAL_WEIGHT = int(CONTRACT["normal_weight"])
 BOLD_WEIGHT = int(CONTRACT["bold_weight"])
 if FRAME_COUNT % SCENES:
     raise SystemExit("frame_count must divide evenly across scenes")
+if FRAME_COUNT * 1000 != FPS * DURATION_MS:
+    raise SystemExit("frame_count, duration_ms, and fps are inconsistent")
 FRAMES_PER_SCENE = FRAME_COUNT // SCENES
 
 BG = "#f7faf9"
@@ -64,9 +66,10 @@ COPY = {
         "context": ("提案・証拠", "判断材料のみ", "v0.4.1では未結合"),
         "parameters": ("正確な実行項目", "呼び出し側が別に用意"),
         "core": "公開Mothership",
-        "freeze": ("具体的な操作", "対応済み項目を固定"),
+        "freeze": ("具体的な操作", "5項目を固定"),
         "decision": ("人間の判断", "承認 / 拒否"),
         "consume": ("ローカル台帳", "同じ履歴内で一度"),
+        "consume_poster": ("ローカル台帳", "同じ履歴内で一度"),
         "executor": ("別構成の実行系", "外部状態を変更"),
         "verifier": ("別経路の確認系", "外部状態を読む"),
         "profile": "現在の最初の参照profile：github.merge_pr",
@@ -84,11 +87,12 @@ COPY = {
         "title": "How the current Mothership Core works",
         "subtitle": "Make the scope of consequential authority explicit between humans and AI",
         "context": ("Proposal / evidence", "Unbound decision context", "Not bound in v0.4.1"),
-        "parameters": ("Exact execution fields", "Supplied separately by caller"),
+        "parameters": ("Execution fields", "Caller-supplied"),
         "core": "Public Mothership",
-        "freeze": ("Exact operation", "Freeze supported fields"),
+        "freeze": ("Exact operation", "Freeze five fields"),
         "decision": ("Human decision", "Approve / Reject"),
-        "consume": ("Local ledger", "One use in this history"),
+        "consume": ("Local ledger", "One use per", "ledger history"),
+        "consume_poster": ("Local ledger", "One use / ledger history"),
         "executor": ("Separate executor", "Changes external state"),
         "verifier": ("Separate verifier", "Reads external state"),
         "profile": "First current reference profile: github.merge_pr",
@@ -276,7 +280,7 @@ def draw_poster(locale: str) -> Image.Image:
     boxes = (
         ((65, 410, 655, 485), copy["freeze"], PAPER, GREEN),
         ((65, 510, 655, 585), copy["decision"], ORANGE_LIGHT, ORANGE),
-        ((65, 610, 655, 675), copy["consume"], GREEN_LIGHT, GREEN),
+        ((65, 610, 655, 675), copy["consume_poster"], GREEN_LIGHT, GREEN),
     )
     for box, values, fill, outline in boxes:
         solid_box(draw, box, fill, outline)
