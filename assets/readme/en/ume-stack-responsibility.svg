@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
+  <title id="title">Responsibility split for humans and AI sharing work</title>
+  <desc id="desc">The current public releases have no automatic runtime bridge. The dashed connection is not implemented.</desc>
+  <style>
+    .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
+    .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
+    .state { font: 700 20px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #176b58; }
+    .body { font: 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }
+    .small { font: 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
+    .legend { font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
+  </style>
+  <rect width="720" height="1120" fill="#f7faf9"/>
+  <text class="title" x="360" y="58" text-anchor="middle">Responsibility split for humans and AI sharing work</text>
+
+  <rect x="60" y="95" width="600" height="112" rx="22" fill="#fff0d7" stroke="#b66a17" stroke-width="4"/>
+  <text class="label" x="360" y="139" text-anchor="middle">Human</text>
+  <text class="body" x="360" y="178" text-anchor="middle">Holds the purpose and decides what to entrust</text>
+
+  <path d="M360 207 V247" stroke="#2b67a7" stroke-width="5"/>
+  <path d="M350 235 L360 250 L370 235" fill="#2b67a7"/>
+
+  <rect x="45" y="250" width="630" height="235" rx="26" fill="#e1edf9" stroke="#2b67a7" stroke-width="5"/>
+  <text class="state" x="75" y="287">CURRENT</text>
+  <text class="label" x="360" y="323" text-anchor="middle">UME-HARNESS</text>
+  <text class="body" x="360" y="370" text-anchor="middle">Organize ambiguous Japanese intent</text>
+<text class="body" x="360" y="412" text-anchor="middle">Will do / confirm / will not do</text>
+<text class="body" x="360" y="454" text-anchor="middle">Bound local work</text>
+
+  <g data-role="bridge">
+    <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>
+    <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
+    <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
+    <text class="state" x="360" y="542" text-anchor="middle">DIRECTION / NOT_SHIPPED</text>
+    <text class="small" x="360" y="574" text-anchor="middle">Reviewed responsibility-link candidate</text>
+    <text class="small" x="360" y="602" text-anchor="middle">Current releases are not connected</text>
+  </g>
+
+  <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>
+  <text class="state" x="75" y="667">CURRENT</text>
+  <text class="label" x="360" y="703" text-anchor="middle">Mothership</text>
+  <text class="body" x="360" y="750" text-anchor="middle">Freeze one concrete external action</text>
+<text class="body" x="360" y="792" text-anchor="middle">Check the human decision</text>
+<text class="body" x="360" y="834" text-anchor="middle">Consume once in one ledger history</text>
+
+  <path d="M360 855 V900" stroke="#176b58" stroke-width="5"/>
+  <path d="M350 885 L360 903 L370 885" fill="#176b58"/>
+  <rect data-role="external" x="40" y="905" width="300" height="92" rx="20" fill="#ffffff" stroke="#7356a8" stroke-width="4"/>
+  <rect data-role="external" x="380" y="905" width="300" height="92" rx="20" fill="#ffffff" stroke="#237e91" stroke-width="4"/>
+  <text class="body" x="190" text-anchor="middle"><tspan x="190" y="946">Separately configured</tspan><tspan x="190" y="974">executor</tspan></text>
+  <text class="body" x="530" text-anchor="middle"><tspan x="530" y="946">Separate verification</tspan><tspan x="530" y="974">path</tspan></text>
+
+  <text class="small" x="360" y="1016" text-anchor="middle">The current public releases have no automatic runtime bridge.</text>
+  <text class="small" x="360" y="1044" text-anchor="middle">The dashed connection is not implemented.</text>
+  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1070">Solid = implemented now</tspan><tspan x="360" y="1091">Dashed = not connected</tspan><tspan x="360" y="1112">Outline = separately configured</tspan></text>
+</svg>

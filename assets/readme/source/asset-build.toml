@@ -1,0 +1,25 @@
+schema = "mothership-readme-assets.v1"
+python_min = "3.12"
+width = 1200
+height = 675
+fps = 8
+frame_count = 72
+duration_ms = 9000
+max_gif_bytes = 10000000
+poster_width = 720
+poster_height = 1080
+responsibility_width = 720
+responsibility_height = 1120
+normal_weight = 400
+bold_weight = 700
+font = "fonts/NotoSansJP-Regular.ttf"
+font_sha256 = "c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f"
+font_source_commit = "google/fonts@295d98a7a0c17c68f1341eaeea354e7960ea70d3"
+outputs = [
+  "assets/readme/ja/mothership-flow.gif",
+  "assets/readme/ja/mothership-flow-poster.png",
+  "assets/readme/en/mothership-flow.gif",
+  "assets/readme/en/mothership-flow-poster.png",
+  "assets/readme/ja/ume-stack-responsibility.svg",
+  "assets/readme/en/ume-stack-responsibility.svg"
+]

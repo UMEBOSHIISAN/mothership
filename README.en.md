@@ -1,23 +1,110 @@
 # Mothership
 
-<p align="center"><img src="assets/mothership-banner.png" alt="Linocut-style Mothership whale swimming through ocean currents" width="100%"></p>
+[日本語](README.md) · [v0.4.1](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.1) ·
+[CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
-> Give AI the capability to prepare work. Keep authority with the human.
+<p align="center">
+  <img src="assets/mothership-banner.png" alt="Linocut-style Mothership whale swimming through ocean currents" width="100%">
+</p>
+
+> Humans should not have to do everything.
+> Nor should they hand everything over to AI.
 >
-> One decision bound to one exact supported action. One use.
+> Make the scope of entrusted work explicit
+> between humans and AI.
 
-Mothership is a field-built reference implementation and executable design thesis for a bounded Action Authority.
-It defines a narrow boundary for relating one human decision to one exact supported action with a short validity window
-and one consumption.
+Mothership is an open-source reference implementation for
+bounded authority handoff in AI-assisted work.
 
-It is not an enterprise product, medical product, production authority service, or generic agent-security platform.
+It freezes an exact supported operation, checks the human decision
+against that operation, and permits one consume within one trusted
+local ledger history.
 
-## Current public scope
+Mothership does not choose the work, run a model, or execute
+the external operation itself.
 
-The only current public action profile is `github.merge_pr`. The public package ships no AI model, live executor,
-verifier producer, credential manager, or medical function. Its default CLI performs no consequential external mutation.
+## PURPOSE
 
-The exact action scope is:
+Sharing work between humans and AI requires separating what a system can do
+from what it may do. Mothership exists to make that handoff explicit so a
+human can entrust concrete work without surrendering all control.
+
+| Distinction | Meaning |
+| --- | --- |
+| Capability | what an AI or tool can do |
+| Authority | which part it may do |
+| Decision | what a human chose to entrust this time |
+| Execution | what operation actually occurred |
+
+Security is not the product category. It is a condition for keeping those
+responsibilities distinct.
+
+## Responsibility split
+
+UME-HARNESS turns human intent into bounded local work.
+Mothership turns a human decision into bounded external consequence.
+
+<p align="center">
+  <img src="assets/readme/en/ume-stack-responsibility.svg"
+       alt="Responsibility map in which UME-HARNESS bounds local work and Mothership handles consequential authority across an unimplemented dashed bridge."
+       width="760">
+</p>
+
+This diagram shows a responsibility direction. The current public releases have no automatic runtime bridge. The dashed connection is not implemented.
+The external executor and verifier are separately configured too.
+
+## CURRENT: v0.4.1
+
+The public implementation freezes one supported external operation, checks a
+caller-attested human decision, records it in a local ledger, and permits one
+consume.
+
+Implemented:
+
+- validation and freezing of supported parameters into a `FrozenAction`
+- approve/reject checks against the action ID and digest
+- local recording of decision events
+- one consume in the same trusted local ledger history
+- closed contracts that separate an executor Receipt from Verification
+
+Not shipped:
+
+- an automatic UME-HARNESS runtime bridge
+- a general executor, verifier producer, credential manager, retry, or daemon
+- human identity authentication
+- arbitrary operation profiles or autonomous execution
+
+Proposal and evidence are decision context, but they are not mechanically bound to a FrozenAction in v0.4.1.
+Mothership receives the supported execution parameters separately and freezes them first.
+Human identity is not authenticated.
+
+## How the current Mothership Core works
+
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/mothership-flow-poster.png">
+    <source media="(max-width: 600px)" srcset="assets/readme/en/mothership-flow-poster.png">
+    <img src="assets/readme/en/mothership-flow.gif"
+         alt="Proposal and evidence remain unbound decision context; Mothership freezes caller-supplied exact execution fields and binds a human decision to one use."
+         width="100%">
+  </picture>
+</p>
+
+This is an explanatory diagram, not execution evidence.
+Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
+
+Supported parameters are frozen before a caller-attested decision is checked
+against the action ID and digest and recorded. The same action ID can be
+consumed once within one trusted local ledger history.
+
+## Current reference profile
+
+The first current reference profile is `github.merge_pr`.
+It is not the identity or full intended use of Mothership. It is the first
+concrete example that closes the five execution parameters, decision check,
+ledger record, and one-use consume boundary.
+
+The current profile fixes:
 
 - repository
 - pull request number
@@ -25,36 +112,24 @@ The exact action scope is:
 - expected base branch name
 - merge method
 
-Repository, PR number, expected head SHA, expected base branch name, and merge method are fixed. The base commit SHA is
-not bound. `expires_at` is not included in the action digest. Integrations must issue a fresh `action_id` for each freeze,
-correlate the response to the exact live issuance and expiry shown to the human, and reject delayed or reused responses.
+The base commit SHA is not bound. `expires_at` is not included in the action digest.
+Integrations must issue a fresh `action_id` for every freeze. They must correlate the response to the exact live issuance and displayed expiry,
+and reject delayed or reused responses.
 
-Human identity is not authenticated. One-shot replay protection is scoped to one trusted local ledger history. Copied or
-restored ledgers are another replay domain. A process fork after issuance is not process-identity isolation.
+## One public result
 
-## Public result
+The [bounded public result for PR #18](docs/evidence/github-merge-pr-e2e-20260903/README.md)
+records one `github.merge_pr` against an isolated canary base. Public GitHub
+read-back shows the target head SHA, merge commit, parents, and bounded diff size.
 
-The [PR #18 bounded public result](docs/evidence/github-merge-pr-e2e-20260903/README.md) records one `github.merge_pr`
-trial against an isolated canary base. Public GitHub read-back records the target head SHA, merge commit, parents,
-and bounded diff counts. This is one result for PR #18 only. It does not claim publicly reproducible private lifecycle traces,
-generic safety, or production readiness.
+<p align="center">
+  <img src="assets/readme/en/pr18-public-result.svg"
+       alt="Public result for merging PR 18 into an isolated canary branch, showing the source commit, merge commit, one file with five added lines, and that public main was not targeted."
+       width="720">
+</p>
 
-## Boundary model
-
-```mermaid
-flowchart TB
-    E["Evidence / proposal"] -. "decision context only<br/>unbound in v0.4.1" .-> H{{"Human decision"}}
-    P["Exact supported<br/>execution parameters"] --> F["FrozenAction"]
-    F --> H
-    H --> A["Record decision event"]
-    A --> C["One consume in the same<br/>trusted ledger history"]
-    C --> X["Separately configured<br/>executor"]
-```
-
-Evidence and proposals are decision inputs, but v0.4.1 does not mechanically bind them to a `FrozenAction`. Exact supported
-execution parameters are frozen first; a caller-attested human decision is then checked against the action ID and digest
-before its event is recorded. The same action ID can be consumed once in one trusted local ledger history. The executor is
-separately configured. Mothership does not call a model or mutate GitHub.
+This is one public result for PR #18. It does not claim that the private
+lifecycle is reproducible from public material, generic safety, or production suitability.
 
 ## Quick start
 
@@ -68,60 +143,53 @@ mothership demo
 ```
 <!-- quickstart:end -->
 
-`mothership verify` checks the bundled resource inventory, schemas, registry, fixtures, and digests. It does not check
-all installed code, the host, or external safety. `mothership demo` is the legacy 0.2 synthetic protocol-composition
-demo. It is not Authority Core proof, agent execution, human approval, or evidence that a real task completed.
+`mothership verify` checks bundled resource inventory, schemas, registry,
+fixtures, and digests offline. It does not check the host, external safety,
+or every installed byte.
 
-## What it provides
-
-- validation and freezing for one exact `github.merge_pr` action
-- binding of a caller-attested human decision to the action SHA-256
-- ledger recording and one-shot consumption in a trusted local history
-- strict JSON contracts, a compatibility registry, and offline checks for bundled resources and fixtures
-- read-only validation of legacy 0.2 protocols and a synthetic demo
-
-Decision Approval (review evidence) and Action Authority Decision (consequential authority) are separate. A Decision
-Card does not automatically become a `FrozenAction`; the caller supplies exact parameters separately.
-
-## Code tour
-
-- [`orchestration/lib/action_authority.py`](orchestration/lib/action_authority.py) — action freeze and decision transport
-- [`orchestration/lib/action_authority_ledger.py`](orchestration/lib/action_authority_ledger.py) — ledger append and one-shot consume
-- [`orchestration/lib/external_action.py`](orchestration/lib/external_action.py) — receipt and verification record contracts
-- [`tests/test_action_authority.py`](tests/test_action_authority.py) — Authority Core boundary tests
-- [`tests/test_action_authority_ledger.py`](tests/test_action_authority_ledger.py) — replay and ledger-history tests
-- [`tests/test_external_action_contracts.py`](tests/test_external_action_contracts.py) — external action contract tests
+`mothership demo` is the legacy 0.2 synthetic protocol-composition demo.
+It is not Authority Core proof, agent execution, human approval, or evidence
+that a real task completed.
 
 ## Current limitations
 
-| Area | The public implementation supports | It does not claim |
+| Area | Implemented in v0.4.1 | Not implemented or certified |
 | --- | --- | --- |
 | identity | caller-attested decisions | human identity authentication |
-| decision events | Multiple decision events may be recorded for the same action | one terminal decision per action, or supersession/revocation semantics |
-| consume | one consume per action ID in one trusted ledger history | global replay prevention across copied/restored ledgers |
-| action scope | five exact parameters for `github.merge_pr` | base-commit binding or arbitrary operations |
-| expiry | a short TTL that is shown and checked | binding `expires_at` into the digest |
-| execution | returning data for a separate executor | a live executor, credentials, retries, or a daemon |
-| verification | shape and binding checks for separate records | verifier identity or read-only behavior |
-| package check | offline checks of bundled inventory and digests | host, all installed code, or external safety |
+| decision events | Multiple decision events may be recorded for the same action | one terminal decision, supersession, or revocation |
+| consume | one consume per action ID in one trusted ledger history | global replay prevention across copied or restored ledgers |
+| action scope | five exact `github.merge_pr` parameters | base-commit binding or arbitrary operations |
+| expiry | a short TTL that is shown and checked | binding `expires_at` into the action digest |
+| execution | data returned for a separate executor | a live executor, credentials, retries, or a daemon |
+| verification | shape and binding checks for Receipt and Verification | verifier-producer identity or read-only behavior |
+| package check | bundled inventory and digest checks | host, all installed code, or external safety |
 | public result | one bounded PR #18 result | generic safety, production readiness, or private-trace reproducibility |
 
-## Incident origin
-
-The design carries concise lessons from real operational incidents. A human approved deletion of 21 files; pattern
-expansion at execution deleted 94. The approval was real, but the approved set was never frozen. Mothership therefore
-rejects unreviewed fields and keeps action scope closed and exact.
-
-A second incident reported success after an unchecked tool failure. Mothership therefore does not treat labels as
-evidence, and separates executor receipts from independent verification with fail-closed validation.
-
-## 0.2 compatibility
-
-Frontdoor, WGM, Router, and Secretary protocols remain a legacy interoperability and history surface. They are not the
-current Authority Core execution path. `mothership demo` checks four bundled fictional documents offline. Mothership does
-not discover, install, or execute companions.
+This reference implementation is not certified for production or regulated
+high-stakes deployment. One-use enforcement is scoped to one trusted local
+ledger history.
 
 ## Documentation
+
+### Code tour
+
+- [`orchestration/lib/action_authority.py`](orchestration/lib/action_authority.py) — action freeze and decision transport
+- [ledger implementation](orchestration/lib/action_authority_ledger.py) — append and one-shot consume
+- [external-action contracts](orchestration/lib/external_action.py) — Receipt and Verification records
+- [`tests/test_action_authority.py`](tests/test_action_authority.py) — Authority Core boundary tests
+- [ledger tests](tests/test_action_authority_ledger.py) — replay and ledger-history tests
+- [external-action tests](tests/test_external_action_contracts.py) — external-action contract tests
+
+### Origin and compatibility
+
+This boundary carries lessons from incidents where the reviewed target changed
+before execution and where an unchecked tool failure was summarized as success.
+Labels are not evidence; unknown results stop.
+
+Frontdoor, WGM, Router, and Secretary protocols remain for legacy 0.2
+compatibility and history. They are not the current Authority Core path.
+
+### References
 
 - [Architecture](docs/architecture.md)
 - [Installation](docs/installation.md)
@@ -133,4 +201,6 @@ not discover, install, or execute companions.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+The project code is MIT; see [LICENSE](LICENSE). The bundled Noto Sans JP font
+used to generate README assets remains under the
+[SIL Open Font License 1.1](assets/readme/source/fonts/OFL-1.1.txt).
