@@ -78,13 +78,17 @@ Mothershipは、対応済みの実行パラメータを別に受け取り、そ�
 ## 現在のMothership Core
 
 <p align="center">
-  <img src="assets/readme/ja/mothership-flow.gif"
-       alt="人間とAIが仕事を分け、Mothershipが具体的な操作を固定し、人間の判断を一度の使用へ結び付け、外部の実行と確認を分ける図解。"
-       width="100%">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/mothership-flow-poster.png">
+    <source media="(max-width: 600px)" srcset="assets/readme/ja/mothership-flow-poster.png">
+    <img src="assets/readme/ja/mothership-flow.gif"
+         alt="提案と証拠は未結合の判断材料として分け、呼び出し側の正確な実行項目をMothershipが固定し、人間の判断を一度の使用へ結び付ける図解。"
+         width="100%">
+  </picture>
 </p>
 
 これは仕組みの図解です。GIFそのものは実行証拠ではありません。
-動きを止めて読む場合は[静止画ポスター](assets/readme/ja/mothership-flow-poster.png)を参照してください。
+動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
 
 対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
 action IDとdigestへ照合し、判断eventを記録します。同じaction IDのconsumeは、
@@ -93,7 +97,8 @@ action IDとdigestへ照合し、判断eventを記録します。同じaction ID
 ## 現在の参照profile
 
 最初のcurrent reference profileは `github.merge_pr` です。
-これはMothershipの用途全体ではなく、権限の受け渡しを具体的に閉じた最初の実装例です。
+これはMothershipの用途全体ではなく、5つの実行パラメータの固定、判断との照合、
+台帳記録、一回限りのconsume境界を具体化した最初の実装例です。
 
 現在固定する値:
 
@@ -186,4 +191,6 @@ Frontdoor、WGM、Router、Secretaryのprotocolはlegacy 0.2互換と履歴の�
 
 ## License
 
-MIT. 詳細は [LICENSE](LICENSE) を参照してください。
+プロジェクトのコードはMITです。詳細は [LICENSE](LICENSE) を参照してください。
+README asset生成用に同梱するNoto Sans JPは
+[SIL Open Font License 1.1](assets/readme/source/fonts/OFL-1.1.txt)です。

@@ -81,13 +81,17 @@ Human identity is not authenticated.
 ## How the current Mothership Core works
 
 <p align="center">
-  <img src="assets/readme/en/mothership-flow.gif"
-       alt="Humans and AI divide work; Mothership fixes an exact operation, relates the human decision to one use, and keeps external execution and verification separate."
-       width="100%">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/mothership-flow-poster.png">
+    <source media="(max-width: 600px)" srcset="assets/readme/en/mothership-flow-poster.png">
+    <img src="assets/readme/en/mothership-flow.gif"
+         alt="Proposal and evidence remain unbound decision context; Mothership freezes caller-supplied exact execution fields and binds a human decision to one use."
+         width="100%">
+  </picture>
 </p>
 
 This is an explanatory diagram, not execution evidence.
-For a non-animated equivalent, see the [static poster](assets/readme/en/mothership-flow-poster.png).
+Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
 
 Supported parameters are frozen before a caller-attested decision is checked
 against the action ID and digest and recorded. The same action ID can be
@@ -96,8 +100,9 @@ consumed once within one trusted local ledger history.
 ## Current reference profile
 
 The first current reference profile is `github.merge_pr`.
-It is not the identity or full intended use of Mothership; it is the first
-concrete example whose authority handoff is closed end to end at this boundary.
+It is not the identity or full intended use of Mothership. It is the first
+concrete example that closes the five execution parameters, decision check,
+ledger record, and one-use consume boundary.
 
 The current profile fixes:
 
@@ -194,4 +199,6 @@ compatibility and history. They are not the current Authority Core path.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+The project code is MIT; see [LICENSE](LICENSE). The bundled Noto Sans JP font
+used to generate README assets remains under the
+[SIL Open Font License 1.1](assets/readme/source/fonts/OFL-1.1.txt).
