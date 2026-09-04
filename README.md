@@ -1,38 +1,101 @@
 # Mothership
 
+[English](README.en.md) · [v0.4.1](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.1) ·
+[CI](https://github.com/UMEBOSHIISAN/mothership/actions)
+
 <p align="center">
   <img src="assets/mothership-banner.png" alt="海流を進む版画調のMothershipクジラ" width="100%">
 </p>
 
-> AIに「できる」を渡しても、「やってよい」は人間に残す。
+> 人間が全部を抱えず、AIにも全部を明け渡さない。
 >
-> ひとつの判断を、ひとつの具体的な操作へ。使用は一度だけ。
+> 人間とAIが仕事を分け合うために、
+> 「どこまで任せるか」を曖昧にしない。
 
-Mothershipは、AIの提案と外部操作の境界を扱う、範囲を限定した
-Action Authorityのリファレンス実装です。人間が確認したひとつの
-具体的な操作を、短い有効期間と一回限りの使用に結び付けます。
+Mothershipは、AIが関わる仕事で
+現実を変える権限を限定的に受け渡すための
+オープンソース・リファレンス実装です。
 
-これは現場で組み立てたリファレンス実装／実行可能な設計論です。
-企業向けの完成品、医療製品、本番向けの権限サービス、汎用的な
-エージェントセキュリティ基盤ではありません。
+対応済みの具体的な操作を固定し、
+人間の判断と照合して、
+同じ信頼されたローカル台帳履歴の中で一度だけ取り出せるようにします。
+
+Mothership自身は、仕事を選ばず、AIモデルを動かさず、
+外部操作も実行しません。
+
+## PURPOSE
+
+人間とAIが仕事を分け合うには、「できる」と「やってよい」を分ける必要があります。
+Mothershipは、AIを止めることではなく、人間が具体的な仕事を安心して任せられるように、
+その受け渡しを曖昧にしないことを目指します。
+
+| 区別 | 意味 |
+| --- | --- |
+| Capability | AIやツールに何ができるか |
+| Authority | そのうち何をしてよいか |
+| Decision | 人間が今回どこまで任せると決めたか |
+| Execution | 現実にどの操作が行われたか |
+
+安全性は製品カテゴリーではなく、これらを混ぜずに扱うための成立条件です。
+
+## 責務分担
+
+UME-HARNESSは、人間の意図を範囲の決まったローカル作業へ整理します。
+Mothershipは、人間の判断を範囲の決まった外部結果へ結び付けます。
+
+<p align="center">
+  <img src="assets/readme/ja/ume-stack-responsibility.svg"
+       alt="UME-HARNESSがローカル作業を整え、未実装の破線を経てMothershipが外部結果の権限を扱う責務分担図。"
+       width="760">
+</p>
+
+これは責務分担の方向を示す図です。現在の公開release同士に自動runtime bridgeはありません。破線部分は未実装です。
+外部の実行系と確認系も別途構成します。
+
+## CURRENT: v0.4.1
+
+現在の公開実装が提供するのは、ひとつの対応済み外部操作を固定し、
+caller-attestedな人間の判断と照合し、ローカル台帳へ記録して一度だけ取り出す境界です。
+
+実装済み:
+
+- 対応済み操作パラメータの検証と `FrozenAction` への固定
+- approve / rejectとaction ID・digestの照合
+- decision eventのローカル台帳への記録
+- 同じ信頼されたローカル台帳履歴での一回限りのconsume
+- executorのReceiptと別経路Verificationを分けるclosed contract
+
+現在含まないもの:
+
+- UME-HARNESSとのruntime bridge
+- 汎用executor、verifier producer、credential manager、retry、daemon
+- human identity authentication
+- 任意operationや自動実行
+
+proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません。
+Mothershipは、対応済みの実行パラメータを別に受け取り、それを先にfreezeします。
+
+## 現在のMothership Core
 
 <p align="center">
   <img src="assets/readme/ja/mothership-flow.gif"
-       alt="AIの操作案とは別にMothershipが対応済みの操作パラメータを固定し、人間の判断と照合して、同じ台帳履歴内で一度だけ取り出し、実行と確認を別経路に分ける説明図。"
+       alt="人間とAIが仕事を分け、Mothershipが具体的な操作を固定し、人間の判断を一度の使用へ結び付け、外部の実行と確認を分ける図解。"
        width="100%">
 </p>
 
-これは仕組みの図解です。公開パッケージが実行系・確認系を同梱することや、
-一般的な安全性を証明するものではありません。動きを止めて読む場合は
-[静止画ポスター](assets/readme/ja/mothership-flow-poster.png)を参照してください。
+これは仕組みの図解です。GIFそのものは実行証拠ではありません。
+動きを止めて読む場合は[静止画ポスター](assets/readme/ja/mothership-flow-poster.png)を参照してください。
 
-## 現在の公開範囲
+対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
+action IDとdigestへ照合し、判断eventを記録します。同じaction IDのconsumeは、
+ひとつの信頼されたローカル台帳履歴内で一度だけです。
 
-公開されているAction profileは `github.merge_pr` のみです。公開パッケージは
-AIモデル、実行系、確認結果の生成器、認証情報管理、医療機能を同梱しません。
-デフォルトCLIも外部の重要な変更を実行しません。
+## 現在の参照profile
 
-現在のActionのscopeは次の固定値です。
+最初のcurrent reference profileは `github.merge_pr` です。
+これはMothershipの用途全体ではなく、権限の受け渡しを具体的に閉じた最初の実装例です。
+
+現在固定する値:
 
 - repository
 - pull request number
@@ -40,47 +103,22 @@ AIモデル、実行系、確認結果の生成器、認証情報管理、医療
 - expected base branch name
 - merge method
 
-repository、PR number、expected head SHA、expected base branch name、
-merge methodは固定されます。base commit SHAは結び付けられません。
-`expires_at`はaction digestに含まれません。統合側は毎回新しい
-`action_id`を発行し、表示した発行情報と期限へ人間の応答を対応付け、
-遅延・再利用応答を拒否してください。
+base commit SHAは結び付けられません。`expires_at`はaction digestに含まれません。
 
-人間の本人確認は行いません。一回限りの再利用拒否は、ひとつの
-信頼されたローカル台帳履歴に限られます。コピーまたは復元された台帳は
-別の再利用範囲です。発行後のプロセスforkも本人確認の代わりにはなりません。
+## 公開結果の一例
 
-## 公開されている結果
-
-[PR #18の公開結果](docs/evidence/github-merge-pr-e2e-20260903/README.md)では、
-隔離されたcanary baseに対するひとつの `github.merge_pr` を記録しています。
-公開GitHubのread-backは、対象head SHA、merge commit、親、対象差分量を示します。
-これはPR #18についての一例です。非公開の全履歴が公開物だけで再現できること、
-汎用的な安全性、本番運用への適合は主張しません。
+[PR #18の公開結果](docs/evidence/github-merge-pr-e2e-20260903/README.md)は、
+隔離されたcanary baseに対するひとつの `github.merge_pr` を記録した一例です。
+公開GitHubのread-backから、対象head SHA、merge commit、親、対象差分量を確認できます。
 
 <p align="center">
   <img src="assets/readme/ja/pr18-public-result.svg"
-       alt="PR #18を隔離用ブランチへ統合。PR元コミット識別子、統合後コミット識別子、1ファイル5行、公開本線は対象外。"
+       alt="PR #18を隔離用ブランチへ統合した公開結果。PR元コミット、統合後コミット、1ファイル5行、公開本線が対象外であることを示す。"
        width="720">
 </p>
 
-## 境界モデル
-
-```mermaid
-flowchart TB
-    E["Evidence / proposal"] -. "判断材料のみ<br/>v0.4.1では未結合" .-> H{{"人間の判断"}}
-    P["対応済みの<br/>実行パラメータ"] --> F["FrozenAction"]
-    F --> H
-    H --> A["判断eventを記録"]
-    A --> C["同じ台帳履歴内で<br/>一度だけconsume"]
-    C --> X["別途構成した<br/>executor"]
-```
-
-Evidenceとproposalは判断材料ですが、v0.4.1では `FrozenAction`へ機械的に
-結び付けられません。対応済みの実行パラメータを先にfreezeし、人間の判断として
-渡された応答をaction IDとdigestへ照合してeventを記録します。同じaction IDの
-consumeは、ひとつの信頼されたローカル台帳履歴内で一度だけです。実行系は別途
-設定されます。Mothership自身がモデルを呼び出したり、GitHubを変更したりはしません。
+これはPR #18に限った公開結果です。非公開の全履歴を公開物だけで再現できること、
+汎用的な安全性、本番運用への適合は主張しません。
 
 ## クイックスタート
 
@@ -94,25 +132,32 @@ mothership demo
 ```
 <!-- quickstart:end -->
 
-`mothership verify`は、同梱resource inventory、schema、registry、fixture、
-digestをオフラインで検査します。インストール済みの全コード、host、
-外部環境の安全性を検査するものではありません。`mothership demo`は
-legacy 0.2のsyntheticなprotocol-composition demoです。Authority Coreの
-証明でも、agent実行・人間の承認・実タスク完了の証拠でもありません。
+`mothership verify`は、同梱resource inventory、schema、registry、fixture、digestを
+オフラインで検査します。host、外部環境、インストール済みの全コードの安全性を検査するものではありません。
 
-## 何を提供するか
+`mothership demo`はlegacy 0.2のsyntheticなprotocol-composition demoです。
+Authority Coreの証明でも、agent実行、人間の承認、実タスク完了の証拠でもありません。
 
-- exactな `github.merge_pr` actionをvalidateしてfreezeするAPI
-- caller-attested human decisionをaction SHA-256へbindするAPI
-- ledger eventを記録し、trusted local ledgerで一度だけconsumeするAPI
-- strict JSON contract、compatibility registry、同梱資料とfixtureのオフライン検査
-- legacy 0.2 protocolのread-only validationとsynthetic demo
+## 現在の制約
 
-Decision Approval（review evidence）とAction Authority Decision（consequential authority）は別物です。
-Decision Cardが自動的にFrozenActionになることはありません。callerが
-exact parametersを別途渡します。
+| 項目 | v0.4.1で実装していること | 実装・認証していないこと |
+| --- | --- | --- |
+| identity | caller-attested decisionを保持 | 人間の本人確認は行いません |
+| decision event | 同じactionへ複数のdecision eventを記録できる | 一つのterminal decision、supersede、revoke |
+| consume | 同じaction IDは同じ台帳履歴内で一度だけconsumeできる | コピー・復元した台帳をまたぐglobal replay防止 |
+| action scope | `github.merge_pr`の5つのexact parameterを固定 | base commit SHAのbind、任意operation |
+| expiry | 短いTTLを表示・検査 | `expires_at`をaction digestへbind |
+| execution | 別executorへ渡すdataを返す | live executor、credential、retry、daemon |
+| verification | ReceiptとVerificationのshape・bindingを検査 | verifier producerのidentityやread-only動作 |
+| package check | 同梱inventoryとdigestを検査 | host、全インストールコード、外部安全性 |
+| public result | PR #18のbounded result | generic safety、production readiness、private trace再現性 |
 
-## コードツアー
+本実装は、本番運用または規制対象の高リスク用途への適合を認証するものではありません。
+一回限りの再利用拒否は、ひとつの信頼されたローカル台帳履歴に限られます。
+
+## 詳細ドキュメント
+
+### コードツアー
 
 - [`orchestration/lib/action_authority.py`](orchestration/lib/action_authority.py) — 操作の固定と判断の照合
 - [ledger implementation](orchestration/lib/action_authority_ledger.py) — 台帳への追記と一回限りの使用
@@ -121,39 +166,15 @@ exact parametersを別途渡します。
 - [ledger tests](tests/test_action_authority_ledger.py) — 再利用と台帳履歴のテスト
 - [external-action tests](tests/test_external_action_contracts.py) — 外部操作の記録形式のテスト
 
-## 現在の制約
+### 背景と互換性
 
-| 項目 | 公開実装が言えること | 言えないこと |
-| --- | --- | --- |
-| identity | caller-attested decisionを保持する | human identityの認証 |
-| decision event | 同じactionへ複数のdecision eventを記録できる | actionごとに判断が一つだけ、または後続判断が過去の判断を取り消すこと |
-| consume | 同じaction IDは同じ台帳履歴内で一度だけconsumeできる | 台帳コピー／復元をまたぐ全体の再利用防止 |
-| action scope | `github.merge_pr`の5つのexact parameterを固定 | base commit SHAのbind、任意operation |
-| expiry | 短いTTLを表示・検査する | `expires_at`をdigestへbindすること |
-| execution | 別executorへ渡すdataを返す | live executor、credential、retry、daemon |
-| verification | 独立recordのshapeとbindingを検査する | verifierのidentityやread-only動作を保証する |
-| package check | 同梱inventoryとdigestを検査する | host／全インストールコード／外部安全性 |
-| public result | PR #18の一bounded result | generic safety、production readiness、private trace再現性 |
+この境界は、承認時に見た対象と実行時の対象がずれた運用事故、および未確認のtool failureを
+success summaryとして扱った事故から学んでいます。labelをevidenceとして扱わず、不明なら停止します。
 
-## 事故から生まれた境界
+Frontdoor、WGM、Router、Secretaryのprotocolはlegacy 0.2互換と履歴のために残しています。
+現在のAuthority Core実行経路ではありません。
 
-この設計には、実際の運用事故から得た短い教訓があります。人間が21ファイルの
-削除を承認した後、実行時のpattern展開で94ファイルが削除されました。
-承認は本物でも、承認対象の集合が固定されていませんでした。そこで、見えていない
-fieldや対象を黙って吸収せず、閉じた操作範囲として拒否します。
-
-もう一つの教訓は、tool callの失敗を確認しないまま、もっともらしい
-success summaryを出してしまったことです。このため、labelをevidenceと扱わず、
-実行側の結果報告と外部状態の独立確認を分け、不明なら停止します。
-
-## 0.2 compatibility
-
-Frontdoor、WGM、Router、Secretaryのprotocolは、相互運用性と履歴のための
-legacy surfaceです。現在のAuthority Coreの実行経路ではありません。
-`mothership demo`は同梱された4つのfictional documentをオフラインで検査します。
-companionをdiscover、install、実行する機能はありません。
-
-## 関連ドキュメント
+### リファレンス
 
 - [Architecture](docs/architecture.md)
 - [Installation](docs/installation.md)

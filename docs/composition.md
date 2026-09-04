@@ -13,6 +13,14 @@ Mothership is the Consequential Authority Plane in a three-product UME Stack:
 There is no automatic runtime dependency between these products. The table is a responsibility map, not an
 implemented end-to-end pipeline.
 
+## UME Stack responsibility map
+
+UME-HARNESS turns human intent into bounded local work.
+Mothership turns a human decision into bounded external consequence.
+
+This is a responsibility relationship, not a runtime dependency. The current
+public releases do not contain an automatic Harness-to-Mothership bridge.
+
 ## Public protocol, private policy
 
 Public protocol describes what happened, what evidence exists, what exact object or action is referenced, and which
