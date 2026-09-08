@@ -23,8 +23,8 @@ It freezes an exact supported operation, checks the human decision
 against that operation, and permits one consume within one trusted
 local ledger history.
 
-Mothership does not choose the work, run a model, or execute
-the external operation itself.
+Mothership does not choose the work, run a model, or mutate external state.
+It does provide explicitly invoked, read-only GitHub observation commands.
 
 ## PURPOSE
 
@@ -134,7 +134,21 @@ read-back shows the target head SHA, merge commit, parents, and bounded diff siz
 This is one public result for PR #18. It does not claim that the private
 lifecycle is reproducible from public material, generic safety, or production suitability.
 
+**Maintenance in this branch**
+
+The README image-generation dependency changes from Pillow 11.3.0 to 12.3.0.
+The Japanese and English GIFs and static posters are regenerated, with matching
+`SHA256SUMS` entries. Diagram meaning, Authority Core behavior, and authority
+boundaries are unchanged. Pillow is needed only for image generation and is not
+added as a Mothership runtime dependency. This change is not in the published
+v0.4.1 tag.
+
 ## Quick start
+
+Use Python 3.12 or newer and a source checkout of this branch or current main.
+Follow the [clone instructions](docs/installation.md#clone-first-install), then run
+these commands from the repository root. The walkthrough was added after v0.4.1;
+it is not included in the v0.4.1 tag or wheel.
 
 <!-- quickstart:start -->
 ```sh
