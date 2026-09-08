@@ -23,8 +23,8 @@ It freezes an exact supported operation, checks the human decision
 against that operation, and permits one consume within one trusted
 local ledger history.
 
-Mothership does not choose the work, run a model, or execute
-the external operation itself.
+Mothership does not choose the work, run a model, or mutate external state.
+It does provide explicitly invoked, read-only GitHub observation commands.
 
 ## PURPOSE
 
