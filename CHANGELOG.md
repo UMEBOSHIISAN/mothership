@@ -10,6 +10,12 @@
 
 ## Unreleased
 
+- Update the README asset-build dependency from Pillow 11.3.0 to 12.3.0,
+  regenerate the four bilingual GIF/PNG outputs, and refresh their checksum
+  entries. This is asset maintenance, with no runtime dependency or Authority
+  Core behavior change. Clarify that the current source walkthrough is not
+  included in the published v0.4.1 tag or wheel.
+
 - PR #21 follow-up: added an offline Authority Core walkthrough, made the
   current onboarding path distinct from the legacy 0.2 demo, and clarified
   that the main-branch positioning changes are unreleased docs-only work for

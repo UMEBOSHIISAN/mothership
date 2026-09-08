@@ -8,7 +8,9 @@ edit settings, credentials, schedulers, startup configuration, or companion repo
 
 ## Clone-first install
 
-Use this path to inspect source before installing:
+Use this path to inspect the current main source before installing. It includes
+unreleased documentation and an offline walkthrough added after v0.4.1; it is
+not a checkout of the v0.4.1 release tag:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git
@@ -37,7 +39,9 @@ mothership verify
 
 `--no-deps` is valid because the wheel declares zero runtime requirements. Verify the expected digest before install.
 Mothership 0.4.1 has not been claimed as available on a package index.
-The walkthrough is a source-checkout example and is not included as an installed CLI command in the wheel-only path.
+The walkthrough was added to source after v0.4.1 and is absent from that release tag
+and wheel. It is not an installed CLI command. Use `mothership verify` for the
+v0.4.1 wheel-only path.
 
 ## Editable development install
 

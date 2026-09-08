@@ -130,7 +130,19 @@ base commit SHAは結び付けられません。`expires_at`はaction digestに�
 これはPR #18に限った公開結果です。非公開の全履歴を公開物だけで再現できること、
 汎用的な安全性、本番運用への適合は主張しません。
 
+**このブランチの保守更新**
+
+README画像の生成用依存関係をPillow 11.3.0から12.3.0へ更新しました。
+日英のGIFと静止ポスターを再生成し、`SHA256SUMS`を更新しています。
+図の意味、Authority Coreの機能、実行権限の扱いは変わりません。
+Pillowは画像生成時だけ必要で、Mothershipの実行時依存関係には追加されません。
+この変更は公開済みv0.4.1タグには含まれません。
+
 ## クイックスタート
+
+Python 3.12以上と、このブランチまたは現在のmainのソースcheckoutが必要です。
+まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
+下記のwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
 
 <!-- quickstart:start -->
 ```sh
