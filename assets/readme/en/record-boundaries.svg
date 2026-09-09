@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 920" role="img" aria-labelledby="title desc">
+<title id="title">Entrusted does not mean completed</title><desc id="desc">Distinct facts. This diagram does not show automatic integration or success.</desc>
+<rect width="840" height="920" rx="24" fill="#f7faf9"/>
+<g font-family="Noto Sans JP, sans-serif" fill="#17332d">
+<text x="42" y="62" font-size="32" font-weight="700">Entrusted does not mean completed</text>
+<text x="42" y="100" font-size="20" fill="#55706a">Roles of current records · Not an execution demo</text>
+<rect x="34" y="136" width="772" height="212" rx="18" fill="white" stroke="#176b58" stroke-width="2"/>
+<text x="58" y="178" font-size="23" fill="#176b58">01</text>
+<text x="111" y="178" font-size="27" font-weight="700">Authority consumption</text>
+<text x="58" y="220" font-size="21" fill="#176b58">Mothership</text>
+<text x="58" y="268" font-size="22">Match the frozen action and decision.</text>
+<text x="58" y="307" font-size="22">Once within the same trusted ledger history.</text>
+<rect x="34" y="372" width="772" height="212" rx="18" fill="white" stroke="#7356a8" stroke-width="2" stroke-dasharray="9 6"/>
+<text x="58" y="414" font-size="23" fill="#7356a8">02</text>
+<text x="111" y="414" font-size="27" font-weight="700">Executor report</text>
+<text x="58" y="456" font-size="21" fill="#7356a8">Separate executor → Receipt</text>
+<text x="58" y="504" font-size="22">“Success” is the executor’s report.</text>
+<text x="58" y="543" font-size="22">Consumption alone does not execute an action.</text>
+<rect x="34" y="608" width="772" height="212" rx="18" fill="white" stroke="#7356a8" stroke-width="2" stroke-dasharray="9 6"/>
+<text x="58" y="650" font-size="23" fill="#7356a8">03</text>
+<text x="111" y="650" font-size="27" font-weight="700">Independent result check</text>
+<text x="58" y="692" font-size="21" fill="#7356a8">Separate verifier → Verification</text>
+<text x="58" y="740" font-size="22">Observe external state via a separate path.</text>
+<text x="58" y="779" font-size="22">Mothership validates record shape and binding.</text>
+<text x="42" y="883" font-size="18" fill="#55706a">Distinct facts. This diagram does not show automatic integration or success.</text>
+</g></svg>
