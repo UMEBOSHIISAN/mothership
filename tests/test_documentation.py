@@ -245,9 +245,9 @@ class ReadmeContractTests(unittest.TestCase):
     def test_reference_positioning_and_scope_are_explicit(self) -> None:
         for phrase in (
             "人間が全部を抱えず、AIにも全部を明け渡さない。",
-            "「どこまで任せるか」を曖昧にしない。",
-            "現実を変える権限を限定的に受け渡す",
-            "リファレンス実装",
+            "使うAIが変わっても、仕事の主導権は手元に。",
+            "任せる操作を事前に固定し",
+            "オープンソースの中核実装",
             "github.merge_pr",
             "base commit SHAは結び付けられません",
             "`expires_at`はaction digestに含まれません",

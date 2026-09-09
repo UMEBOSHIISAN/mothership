@@ -10,20 +10,24 @@
 This main-branch README includes unreleased documentation and onboarding follow-up to the historical v0.4.1 release.
 The runtime version remains v0.4.1; the next candidate is a docs-only v0.4.2.
 
+> Keep control of your work, even as the AI you use changes.
+>
 > Humans should not have to do everything.
 > Nor should they hand everything over to AI.
->
-> Make the scope of entrusted work explicit
-> between humans and AI.
 
-Mothership is an open-source reference implementation for
-bounded authority handoff in AI-assisted work.
+Mothership is an open-source core implementation for sharing work between humans
+and AI. It freezes the operation to be entrusted in advance and binds it to a
+human decision.
+It treats decisions, authority use, execution reports, and independent result
+verification as separate records.
 
-It freezes an exact supported operation, checks the human decision
-against that operation, and permits one consume within one trusted
-local ledger history.
+With GitHub PR merging as its first reference example, the current implementation
+provides operation freezing, decision matching, and one-time authority consumption
+within the same trusted local ledger history.
 
-Mothership does not choose the work, run a model, or mutate external state.
+It is not an AI chat app or a complete business system. Model execution, human
+identity authentication, business-system connections, and the processes that
+execute actions and verify results must be configured separately.
 It does provide explicitly invoked, read-only GitHub observation commands.
 
 ## PURPOSE
@@ -99,6 +103,15 @@ Reduced-motion settings and screens up to 600px use the equivalent vertical stat
 Supported parameters are frozen before a caller-attested decision is checked
 against the action ID and digest and recorded. The same action ID can be
 consumed once within one trusted local ledger history.
+
+### Consuming authority is not completing the work
+
+<p align="center">
+  <img src="assets/readme/en/record-boundaries.svg"
+       alt="Three separate cards for authority consumption, executor report, and independent result check; no automatic integration is shown." width="840">
+</p>
+
+Mothership validates execution reports and independent verification as separate records. The executor and verifier processes are configured separately.
 
 ## Current reference profile
 
