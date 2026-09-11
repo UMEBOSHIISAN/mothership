@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.2 - 2026-09-11
+
+- Added an offline Authority Core walkthrough (`examples/authority_core_walkthrough.py`)
+  that freezes one supported action, derives its display, records a synthetic
+  approval fixture in a temporary ledger, consumes it once, and demonstrates
+  replay rejection. It performs no human approval ceremony, no GitHub contact,
+  and loads no credentials. This walkthrough is a source-checkout entry point;
+  it is not included in the v0.4.1 tag or wheel and is not added to the wheel
+  in this release either.
+- Distinguished the current onboarding path from the legacy 0.2
+  protocol-composition demo in the README quickstart.
+- Updated the README asset-build dependency from Pillow 11.3.0 to 12.3.0,
+  regenerated the four bilingual GIF/PNG outputs, and refreshed their checksum
+  entries. This is asset-generation-time maintenance only; Pillow is not added
+  to the runtime dependency set.
+- Closed remaining public-truth documentation gaps and clarified the purpose
+  and authority/results boundary in the README.
+- Added a regression test that detects unexpected socket attempts during the
+  offline Authority Core walkthrough, closing a gap where the walkthrough's
+  "no external contact" claim was previously undocumented by a test.
+- No runtime Authority Core behavior changed. No new operation profile,
+  executor, or approval-transport relaxation was added.
+
 ## 0.4.1 - 2026-09-04
 
 - Reworked the public README as a Japanese-first reference-implementation landing page.
@@ -7,22 +30,6 @@
 - Corrected public claim boundaries and removed stale showcase links and asset references.
 - Documented the bounded PR #18 result without expanding it into a general safety or production claim.
 - No runtime behavior change.
-
-## Unreleased
-
-- Update the README asset-build dependency from Pillow 11.3.0 to 12.3.0,
-  regenerate the four bilingual GIF/PNG outputs, and refresh their checksum
-  entries. This is asset maintenance, with no runtime dependency or Authority
-  Core behavior change. Clarify that the current source walkthrough is not
-  included in the published v0.4.1 tag or wheel.
-
-- PR #21 follow-up: added an offline Authority Core walkthrough, made the
-  current onboarding path distinct from the legacy 0.2 demo, and clarified
-  that the main-branch positioning changes are unreleased docs-only work for
-  the next v0.4.2 candidate. The walkthrough uses a synthetic approval
-  fixture, writes only a temporary ledger, and is not a human approval
-  ceremony. README raster assets use the pinned Pillow build input. No
-  runtime authority behavior changed.
 
 ## 0.4.0 - 2026-09-02
 

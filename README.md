@@ -1,14 +1,13 @@
 # Mothership
 
-[English](README.en.md) · [v0.4.1](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.1) ·
+[English](README.en.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
 <p align="center">
   <img src="assets/mothership-banner.png" alt="海流を進む版画調のMothershipクジラ" width="100%">
 </p>
 
-このmain上のREADMEには、歴史的なv0.4.1 Release後の未公開の文書・導入改善が含まれます。
-runtimeの版はv0.4.1のままで、次の候補はdocs-onlyのv0.4.2です。
+このREADMEはv0.4.2（docs-onlyのリリース）の内容です。runtimeのAuthority Core挙動はv0.4.1から変更していません。
 
 > 使うAIが変わっても、仕事の主導権は手元に。
 >
@@ -54,7 +53,7 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 これは責務分担の方向を示す図です。現在の公開版同士に自動接続はありません。破線部分は未実装です。
 外部の実行系と確認系も別途構成します。
 
-## CURRENT: v0.4.1
+## CURRENT: v0.4.2
 
 現在の公開実装が提供するのは、ひとつの対応済み外部操作を固定し、
 caller-attestedな人間の判断と照合し、ローカル台帳へ記録して一度だけ取り出す境界です。
@@ -138,19 +137,21 @@ base commit SHAは結び付けられません。`expires_at`はaction digestに�
 これはPR #18に限った公開結果です。非公開の全履歴を公開物だけで再現できること、
 汎用的な安全性、本番運用への適合は主張しません。
 
-**このブランチの保守更新**
+**v0.4.2での変更点**
 
 README画像の生成用依存関係をPillow 11.3.0から12.3.0へ更新しました。
 日英のGIFと静止ポスターを再生成し、`SHA256SUMS`を更新しています。
 図の意味、Authority Coreの機能、実行権限の扱いは変わりません。
 Pillowは画像生成時だけ必要で、Mothershipの実行時依存関係には追加されません。
-この変更は公開済みv0.4.1タグには含まれません。
+オフラインのAuthority Core walkthrough（下記）を追加しました。
+runtimeのAuthority Core挙動、承認受理条件、対応操作profileはv0.4.1から変更していません。
 
 ## クイックスタート
 
-Python 3.12以上と、このブランチまたは現在のmainのソースcheckoutが必要です。
+Python 3.12以上と、このリポジトリのソースcheckoutが必要です。
 まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
 下記のwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
+v0.4.2のwheelにも含まれません（source checkout専用の実行例です）。
 
 <!-- quickstart:start -->
 ```sh
@@ -175,7 +176,7 @@ Authority Coreの証明でも、agent実行、人間の承認、実タスク完�
 
 ## 現在の制約
 
-| 項目 | v0.4.1で実装していること | 実装・認証していないこと |
+| 項目 | v0.4.2で実装していること | 実装・認証していないこと |
 | --- | --- | --- |
 | identity | caller-attested decisionを保持 | 人間の本人確認は行いません |
 | decision event | 同じactionへ複数のdecision eventを記録できる | 一つのterminal decision、supersede、revoke |
