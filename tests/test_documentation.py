@@ -198,7 +198,7 @@ class ReadmeContractTests(unittest.TestCase):
             (
                 "PURPOSE",
                 "責務分担",
-                "CURRENT: v0.4.1",
+                "CURRENT: v0.4.2",
                 "現在のMothership Core",
                 "現在の参照profile",
                 "公開結果の一例",
@@ -219,7 +219,7 @@ class ReadmeContractTests(unittest.TestCase):
             (
                 "PURPOSE",
                 "Responsibility split",
-                "CURRENT: v0.4.1",
+                "CURRENT: v0.4.2",
                 "How the current Mothership Core works",
                 "Current reference profile",
                 "One public result",
@@ -395,7 +395,7 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertNotIn("/System/Library/Fonts/", generator)
         self.assertIn("First current reference profile: github.merge_pr", generator)
         self.assertIn("Unbound decision context", generator)
-        self.assertIn("v0.4.1では未結合", generator)
+        self.assertIn("v0.4.2では未結合", generator)
         self.assertNotIn("仕事と操作案を準備", generator)
         self.assertNotIn("Prepare work and action", generator)
         self.assertIn('"parameters": ("Execution fields", "Caller-supplied")', generator)
@@ -613,7 +613,7 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
             "人間が全部を抱えず、AIにも全部を明け渡さない。",
             "## PURPOSE",
             "## 責務分担",
-            "## CURRENT: v0.4.1",
+            "## CURRENT: v0.4.2",
             "## 現在の参照profile",
             "## 公開結果の一例",
             f"]({E2E_EVIDENCE_LINK})",

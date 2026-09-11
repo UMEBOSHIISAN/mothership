@@ -63,7 +63,7 @@ COPY = {
     "ja": {
         "title": "現在のMothership Core",
         "subtitle": "人間とAIのあいだで、現実を変える権限の範囲を明確にする",
-        "context": ("提案・証拠", "判断材料のみ", "v0.4.1では未結合"),
+        "context": ("提案・証拠", "判断材料のみ", "v0.4.2では未結合"),
         "parameters": ("正確な実行項目", "呼び出し側が別に用意"),
         "core": "公開Mothership",
         "freeze": ("具体的な操作", "5項目を固定"),
@@ -86,7 +86,7 @@ COPY = {
     "en": {
         "title": "How the current Mothership Core works",
         "subtitle": "Make the scope of consequential authority explicit between humans and AI",
-        "context": ("Proposal / evidence", "Unbound decision context", "Not bound in v0.4.1"),
+        "context": ("Proposal / evidence", "Unbound decision context", "Not bound in v0.4.2"),
         "parameters": ("Execution fields", "Caller-supplied"),
         "core": "Public Mothership",
         "freeze": ("Exact operation", "Freeze five fields"),

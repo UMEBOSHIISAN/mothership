@@ -1,14 +1,13 @@
 # Mothership
 
-[日本語](README.md) · [v0.4.1](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.1) ·
+[日本語](README.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
 <p align="center">
   <img src="assets/mothership-banner.png" alt="Linocut-style Mothership whale swimming through ocean currents" width="100%">
 </p>
 
-This main-branch README includes unreleased documentation and onboarding follow-up to the historical v0.4.1 release.
-The runtime version remains v0.4.1; the next candidate is a docs-only v0.4.2.
+This README is for v0.4.2 (a docs-only release). Runtime Authority Core behavior is unchanged from v0.4.1.
 
 > Keep control of your work, even as the AI you use changes.
 >
@@ -60,7 +59,7 @@ Mothership binds a human decision to bounded authority for one external action.
 This diagram shows a responsibility direction. The current public releases have no automatic runtime bridge. The dashed connection is not implemented.
 The external executor and verifier are separately configured too.
 
-## CURRENT: v0.4.1
+## CURRENT: v0.4.2
 
 The public implementation freezes one supported external operation, checks a
 caller-attested human decision, records it in a local ledger, and permits one
@@ -147,21 +146,23 @@ read-back shows the target head SHA, merge commit, parents, and bounded diff siz
 This is one public result for PR #18. It does not claim that the private
 lifecycle is reproducible from public material, generic safety, or production suitability.
 
-**Maintenance in this branch**
+**Changes in v0.4.2**
 
 The README image-generation dependency changes from Pillow 11.3.0 to 12.3.0.
 The Japanese and English GIFs and static posters are regenerated, with matching
 `SHA256SUMS` entries. Diagram meaning, Authority Core behavior, and authority
 boundaries are unchanged. Pillow is needed only for image generation and is not
-added as a Mothership runtime dependency. This change is not in the published
-v0.4.1 tag.
+added as a Mothership runtime dependency. An offline Authority Core walkthrough
+(below) is added. Runtime Authority Core behavior, approval-acceptance
+conditions, and the supported operation profile are unchanged from v0.4.1.
 
 ## Quick start
 
-Use Python 3.12 or newer and a source checkout of this branch or current main.
+Use Python 3.12 or newer and a source checkout of this repository.
 Follow the [clone instructions](docs/installation.md#clone-first-install), then run
 these commands from the repository root. The walkthrough was added after v0.4.1;
-it is not included in the v0.4.1 tag or wheel.
+it is not included in the v0.4.1 tag or wheel, and it is not included in the
+v0.4.2 wheel either (it is a source-checkout-only example).
 
 <!-- quickstart:start -->
 ```sh
@@ -187,7 +188,7 @@ that a real task completed. It is not the current Authority Core onboarding path
 
 ## Current limitations
 
-| Area | Implemented in v0.4.1 | Not implemented or certified |
+| Area | Implemented in v0.4.2 | Not implemented or certified |
 | --- | --- | --- |
 | identity | caller-attested decisions | human identity authentication |
 | decision events | Multiple decision events may be recorded for the same action | one terminal decision, supersession, or revocation |
