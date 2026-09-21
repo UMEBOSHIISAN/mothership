@@ -407,11 +407,17 @@ class ReceiptTestCase(unittest.TestCase):
         def worker():
             barrier.wait()
             try:
-                return self._start()
+                return receipts.record_attempt_started(
+                    self.receipt, self.authority, self.consume_event, self.action.action,
+                )
             except Exception as exc:  # pragma: no cover - assertion below classifies it
                 return exc
 
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        # Patch the process-global clock once; per-thread patches can restore
+        # another thread's mock and leak a stale clock into subsequent tests.
+        with mock.patch.object(
+            receipts, "_utc_now", return_value=BASE + datetime.timedelta(seconds=3)
+        ), ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(lambda _: worker(), (1, 2)))
         self.assertEqual(1, sum(isinstance(item, dict) for item in results))
         self.assertEqual(1, sum(isinstance(item, receipts.ReceiptReplayError) for item in results))
