@@ -18,6 +18,18 @@ FIXTURE_ROOT = Path(tempfile.gettempdir()).resolve() / "mothership-doctor-tests"
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 DOCTOR_CLI = PACKAGE_ROOT / "orchestration" / "bin" / "llm-doctor"
 WRAPPER = PACKAGE_ROOT / "bootstrap" / "doctor.sh"
+DOCTOR_SOURCE_FILES = (
+    Path("orchestration/__init__.py"),
+    Path("orchestration/lib/__init__.py"),
+    Path("orchestration/lib/adapters.py"),
+    Path("orchestration/lib/canonical.py"),
+    Path("orchestration/lib/contracts.py"),
+    Path("orchestration/lib/errors.py"),
+    Path("orchestration/lib/jsonio.py"),
+    Path("orchestration/lib/paths.py"),
+    Path("orchestration/lib/registry.py"),
+    Path("orchestration/bin/llm-doctor"),
+)
 ALIASES = ("claude-code-agent", "codex-cli", "ollama-local")
 LIMITATIONS = [
     "authentication-external",
@@ -98,13 +110,26 @@ class DoctorTests(unittest.TestCase):
             "__CF_USER_TEXT_ENCODING": "must-not-pass",
         }
 
-    def _assert_package_bytecode_absent(self) -> None:
-        artifacts = sorted(
-            path.relative_to(PACKAGE_ROOT).as_posix()
-            for path in PACKAGE_ROOT.rglob("*")
+    def _doctor_source_fixture(self) -> tuple[Path, Path]:
+        fixture_root = self.root / "doctor-source"
+        fixture_root.mkdir(mode=0o700)
+        for relative in DOCTOR_SOURCE_FILES:
+            destination = fixture_root / relative
+            destination.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+            shutil.copyfile(PACKAGE_ROOT / relative, destination)
+        doctor_cli = fixture_root / "orchestration" / "bin" / "llm-doctor"
+        doctor_cli.chmod(0o755)
+        return fixture_root, doctor_cli
+
+    def _bytecode_artifacts(self, root: Path) -> tuple[str, ...]:
+        return tuple(sorted(
+            path.relative_to(root).as_posix()
+            for path in root.rglob("*")
             if path.name == "__pycache__" or path.suffix == ".pyc"
-        )
-        self.assertEqual([], artifacts)
+        ))
+
+    def _assert_source_fixture_bytecode_absent(self, root: Path) -> None:
+        self.assertEqual((), self._bytecode_artifacts(root))
 
     def _normalized_recorded_environment(self, value: object) -> dict[str, object]:
         self.assertIsInstance(value, dict)
@@ -366,6 +391,7 @@ raise SystemExit(9)
                 self.assertEqual("available" if expected else "unavailable", result["status"])
 
     def test_cli_records_exact_diagnostic_process_boundary(self) -> None:
+        source_root, doctor_cli = self._doctor_source_fixture()
         self._install_fake(
             "claude",
             " ".join(f"[{flag}=VALUE]," for flag in REQUIRED["claude-code-agent"]).encode("utf-8"),
@@ -377,9 +403,9 @@ raise SystemExit(9)
         self._install_fake("ollama", b"NAME ID SIZE\nfriend-core-advisory abc 1GB\n")
         parent = self._parent_environment(self.fake_bin)
         before = dict(parent)
-        self._assert_package_bytecode_absent()
+        self._assert_source_fixture_bytecode_absent(source_root)
         completed = subprocess.run(
-            [sys.executable, "-B", str(DOCTOR_CLI)],
+            [sys.executable, "-B", str(doctor_cli)],
             shell=False,
             cwd=self.root,
             env=dict(parent),
@@ -388,7 +414,7 @@ raise SystemExit(9)
             stderr=subprocess.PIPE,
             check=False,
         )
-        self._assert_package_bytecode_absent()
+        self._assert_source_fixture_bytecode_absent(source_root)
         self.assertEqual(0, completed.returncode)
         self.assertEqual(b"", completed.stderr)
         self.assertEqual(before, parent)
@@ -425,6 +451,7 @@ raise SystemExit(9)
         )
 
     def test_cli_fails_closed_before_or_after_fixed_probes(self) -> None:
+        source_root, doctor_cli = self._doctor_source_fixture()
         parent = self._parent_environment(self.fake_bin)
         invalid_cases = (
             ["invalid"],
@@ -432,9 +459,9 @@ raise SystemExit(9)
         )
         for arguments in invalid_cases:
             with self.subTest(arguments=arguments):
-                self._assert_package_bytecode_absent()
+                self._assert_source_fixture_bytecode_absent(source_root)
                 completed = subprocess.run(
-                    [sys.executable, "-B", str(DOCTOR_CLI), *arguments],
+                    [sys.executable, "-B", str(doctor_cli), *arguments],
                     shell=False,
                     cwd=self.root,
                     env=dict(parent),
@@ -443,7 +470,7 @@ raise SystemExit(9)
                     stderr=subprocess.PIPE,
                     check=False,
                 )
-                self._assert_package_bytecode_absent()
+                self._assert_source_fixture_bytecode_absent(source_root)
                 self.assertEqual(2, completed.returncode)
                 self.assertEqual(b"", completed.stdout)
                 self.assertEqual(b"", completed.stderr)
@@ -455,9 +482,9 @@ raise SystemExit(9)
             if flag != "--safe-mode"
         ).encode("utf-8")
         self._install_fake("claude", missing_safe_mode)
-        self._assert_package_bytecode_absent()
+        self._assert_source_fixture_bytecode_absent(source_root)
         completed = subprocess.run(
-            [sys.executable, "-B", str(DOCTOR_CLI), "claude-code-agent"],
+            [sys.executable, "-B", str(doctor_cli), "claude-code-agent"],
             shell=False,
             cwd=self.root,
             env=dict(parent),
@@ -466,7 +493,7 @@ raise SystemExit(9)
             stderr=subprocess.PIPE,
             check=False,
         )
-        self._assert_package_bytecode_absent()
+        self._assert_source_fixture_bytecode_absent(source_root)
         expected = dict(self._expected_available_results()[0])
         expected["status"] = "unavailable"
         expected["required_flags"] = dict(expected["required_flags"])

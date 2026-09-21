@@ -34,7 +34,7 @@ After obtaining a reviewed wheel and its SHA-256 through a trusted channel:
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --no-deps mothership_control_plane-0.4.2-py3-none-any.whl
+python -m pip install --no-deps mothership_control_plane-0.4.3.dev0-py3-none-any.whl
 mothership verify
 ```
 

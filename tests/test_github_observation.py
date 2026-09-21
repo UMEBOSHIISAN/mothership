@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 from http.client import IncompleteRead
 import sys
 from typing import Any
@@ -130,6 +131,7 @@ def governance_handoff() -> dict[str, object]:
     }
 
 
+@unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
 class GitHubObservationTests(unittest.TestCase):
     def test_repository_ref_is_strict_and_candidate_fetch_uses_one_bounded_get(self) -> None:
         calls: list[object] = []
@@ -209,7 +211,7 @@ class GitHubObservationTests(unittest.TestCase):
         try:
             sys.setrecursionlimit(1_000)
             with mock.patch(
-                "orchestration.lib.github_observation.loads_strict",
+                "mothership_github.public_observation.loads_strict",
                 side_effect=RecursionError(),
             ):
                 with self.assertRaises(GitHubObservationError):

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mothership-github"
+version = "0.2.0.dev0"
+description = "GitHub Observation & Bounded Merge Action Integration for Mothership Authority Kernel"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "mothership-control-plane==0.4.3.dev0",
+]
+
+[project.scripts]
+mothership-github = "mothership_github.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mothership_github*"]

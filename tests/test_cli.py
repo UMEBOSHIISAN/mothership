@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import importlib.util
 import os
 from http.client import IncompleteRead
 from pathlib import Path
@@ -484,6 +485,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(b"", completed.stdout)
         self.assertNotEqual(b"", completed.stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_decision_card_command_maps_one_source_observation(self) -> None:
         from mothership.cli import command_github_decision_card
 
@@ -514,6 +516,7 @@ class CliTests(unittest.TestCase):
         self.assertFalse(card["authority_effect"])
         self.assertFalse(card["execution_effect"])
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_decision_card_parser_requires_explicit_ref_and_contract_inputs(self) -> None:
         from mothership.cli import build_parser
 
@@ -539,6 +542,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertIsNone(arguments.recommendation)
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_candidate_window_is_ephemeral_and_preserves_api_order(self) -> None:
         from mothership.cli import command_github_candidate_window
 
@@ -568,9 +572,10 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("authority_effect", output)
         self.assertNotIn("execution_effect", output)
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_candidate_window_cli_fails_closed_without_partial_output(self) -> None:
         from mothership.cli import main
-        import orchestration.lib.github_observation as github_observation
+        import mothership_github.public_observation as github_observation
 
         class _Opener:
             def __init__(self) -> None:
@@ -608,6 +613,7 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(1, len(opener.calls))
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_candidate_window_empty_success_is_not_a_decision_result(self) -> None:
         from mothership.cli import command_github_candidate_window
 
@@ -620,6 +626,7 @@ class CliTests(unittest.TestCase):
         self.assertIn("- none", output)
         self.assertNotIn("NO_CARD", output)
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_decision_card_cli_rejects_invalid_source_without_card(self) -> None:
         with tempfile.TemporaryDirectory() as directory_name:
             directory = Path(directory_name).resolve()
@@ -647,6 +654,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(b"", completed.stdout)
         self.assertEqual(b"github-decision-card: unable to produce card\n", completed.stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_decision_card_cli_rejects_oversized_ref_without_traceback(self) -> None:
         with tempfile.TemporaryDirectory() as directory_name:
             directory = Path(directory_name).resolve()
@@ -674,9 +682,10 @@ class CliTests(unittest.TestCase):
         self.assertEqual(b"", completed.stdout)
         self.assertEqual(b"github-decision-card: unable to produce card\n", completed.stderr)
 
+    @unittest.skipUnless(importlib.util.find_spec("mothership_github"), "optional GitHub companion required")
     def test_github_decision_card_cli_rejects_truncated_response_without_card(self) -> None:
         from mothership.cli import main
-        import orchestration.lib.github_observation as github_observation
+        import mothership_github.public_observation as github_observation
 
         class _Opener:
             def __init__(self) -> None:

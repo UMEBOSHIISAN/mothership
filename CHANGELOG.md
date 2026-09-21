@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.3.dev0 — local Option A candidate
+
+- Preserve the published v0.4.2 documentation, assets and release history.
+- Separate optional GitHub transport into mothership-github 0.2.0.dev0, pinned to Core 0.4.3.dev0.
+- Bind one-shot execution attempts to consumed Core authority; preserve unknown external outcomes and reject contradictory failure receipts.
+- Document preflight-only base checks, consume-time TTL, and executor-observed success limits. No consumer cutover or publication is implied.
+
 ## 0.4.2 - 2026-09-11
 
 - Added an offline Authority Core walkthrough (`examples/authority_core_walkthrough.py`)
