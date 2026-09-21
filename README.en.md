@@ -1,5 +1,8 @@
 # Mothership
 
+> Local Option A candidate (Core 0.4.3.dev0), not a release or live-operation proof.
+> Preserves published v0.4.2 changes and adds companion separation and executor contracts. See [candidate changes and limits](docs/option-a-candidate.md).
+
 [日本語](README.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
@@ -7,7 +10,7 @@
   <img src="assets/mothership-banner.png" alt="Linocut-style Mothership whale swimming through ocean currents" width="100%">
 </p>
 
-This README is for v0.4.2 (a docs-only release). Runtime Authority Core behavior is unchanged from v0.4.1.
+Published v0.4.2 was a docs-only release. This candidate retains its documentation and imagery and adds Option A changes. Runtime Authority Core contracts are preserved.
 
 > Keep control of your work, even as the AI you use changes.
 >

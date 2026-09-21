@@ -1,5 +1,8 @@
 # Mothership
 
+> 案Aのローカル候補（Core 0.4.3.dev0）。公開・実運用済みではありません。
+> 公開済みv0.4.2の変更を保持し、companion分離とexecutor契約を追加します。[候補の変更と制約](docs/option-a-candidate.md)。
+
 [English](README.en.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
@@ -7,7 +10,7 @@
   <img src="assets/mothership-banner.png" alt="海流を進む版画調のMothershipクジラ" width="100%">
 </p>
 
-このREADMEはv0.4.2（docs-onlyのリリース）の内容です。runtimeのAuthority Core挙動はv0.4.1から変更していません。
+公開済みv0.4.2はdocs-onlyのリリースでした。この候補はその文書・画像を継承し、案Aの変更を追加しています。Authority Coreのruntime契約は保持します。
 
 > 使うAIが変わっても、仕事の主導権は手元に。
 >

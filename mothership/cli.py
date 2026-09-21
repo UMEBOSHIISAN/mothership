@@ -10,6 +10,10 @@ import subprocess
 from collections.abc import Sequence
 from collections.abc import Callable
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from orchestration.lib.github_observation import GitHubObservation
 
 from orchestration.lib.adapters import _ALIASES, _diagnostic_environment, doctor_adapter
 from orchestration.lib.canonical import canonical_json_bytes
@@ -18,12 +22,6 @@ from orchestration.lib.decision import (
     build_decision_batch,
     build_decision_card,
     format_decision_batch,
-)
-from orchestration.lib.github_observation import (
-    GitHubObservation,
-    GitHubObservationError,
-    build_github_decision_card,
-    fetch_github_candidates,
 )
 
 from .demo import DemoError, run_demo
@@ -349,8 +347,8 @@ def command_decision_batch(
     questions: Sequence[str],
     consequences: Sequence[str],
     router_paths: Sequence[Path] = (),
-    recommendations: Sequence[object] = (),
-    reasons: Sequence[object] = (),
+    recommendations: Sequence[GitHubObservation] = (),
+    reasons: Sequence[GitHubObservation] = (),
 ) -> tuple[int, str]:
     """Render explicit Decision Discovery inputs in memory."""
 
@@ -403,7 +401,7 @@ def command_decision_card(
     question: str,
     consequence_if_approved: str,
     recommendation: object = None,
-    reasons: Sequence[object] = (),
+    reasons: Sequence[GitHubObservation] = (),
     router_path: Path | None = None,
 ) -> dict[str, object]:
     """Emit one existing Decision Card contract without adding semantics."""
@@ -453,11 +451,12 @@ def command_github_decision_card(
     question: str,
     consequence_if_approved: str,
     recommendation: object = None,
-    reasons: Sequence[object] = (),
+    reasons: Sequence[GitHubObservation] = (),
     router_path: Path | None = None,
     opener: Callable[..., object] | None = None,
 ) -> dict[str, object]:
     """Fetch one explicit GitHub ref and emit the existing Card contract."""
+    from orchestration.lib.github_observation import GitHubObservationError, build_github_decision_card
 
     frontdoor, frontdoor_valid = _load_decision_protocol(
         "frontdoor-task", frontdoor_path
@@ -541,6 +540,7 @@ def command_github_candidate_window(
     opener: Callable[..., object] | None = None,
 ) -> str:
     """Fetch and render one bounded, presentation-only candidate window."""
+    from orchestration.lib.github_observation import fetch_github_candidates
 
     observations = fetch_github_candidates(repo, opener=opener)
     return format_github_candidate_window(observations)
@@ -565,6 +565,18 @@ def _emit_text(document: str) -> bool:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     arguments = parser.parse_args(argv)
+    if arguments.command in {"github-decision-card", "github-candidate-window"}:
+        from orchestration.lib.github_observation import (
+            GitHubObservationError, MissingGitHubIntegrationError, require_github_companion,
+        )
+        try:
+            require_github_companion()
+        except MissingGitHubIntegrationError:
+            try:
+                sys.stderr.write("GitHub commands require the matching mothership-github companion\n")
+            except (BrokenPipeError, OSError, UnicodeError):
+                pass
+            return 1
     if arguments.command == "verify":
         exit_code, document = command_verify()
     elif arguments.command == "doctor":
