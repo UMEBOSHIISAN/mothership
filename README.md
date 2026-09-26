@@ -10,7 +10,7 @@
   <img src="assets/mothership-banner.png" alt="海流を進む版画調のMothershipクジラ" width="100%">
 </p>
 
-公開済みv0.4.2はdocs-onlyのリリースでした。公開source mainはその文書・画像とAuthority Coreのruntime契約を保持し、未リリースの案A変更を追加しています。
+公開済みv0.4.2はdocs-onlyのリリースでした。公開source mainはAuthority Coreのruntime契約を保持し、文書・画像を更新して、未リリースの案A変更を追加しています。
 
 > 使うAIが変わっても、仕事の主導権は手元に。
 >
@@ -49,12 +49,12 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 
 <p align="center">
   <img src="assets/readme/ja/ume-stack-responsibility.svg"
-       alt="UME-HARNESSがローカル作業を整え、未実装の破線を経てMothershipが外部結果の権限を扱う責務分担図。"
+       alt="UME-HARNESSとの未実装の接続、Mothership Coreの操作権限、任意GitHub companionと独立確認系を分けた責務図。"
        width="760">
 </p>
 
 これは責務分担の方向を示す図です。現在の公開版同士に自動接続はありません。破線部分は未実装です。
-外部の実行系と確認系も別途構成します。
+source mainの任意GitHub companionは実行とreceipt変換を担い、transportと独立確認系は別途構成します。
 
 ## CURRENT: v0.4.2
 
@@ -115,12 +115,12 @@ Coreとcompanionは別packageで、adapterの利用はopt-inです。自動runti
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <img src="assets/readme/ja/mothership-flow.gif"
-         alt="提案と証拠は未結合の判断材料として分け、呼び出し側の正確な実行項目をMothershipが固定し、人間の判断を一度の使用へ結び付ける図解。"
+         alt="Coreが正確な操作を固定し判断を一度の使用へ結び付け、任意GitHub companionの実行報告をadapterでReceiptへ変換する。独立確認は別経路。"
          width="100%">
   </picture>
 </p>
 
-これは仕組みの図解です。GIFそのものは実行証拠ではありません。
+これは未リリースsource mainの仕組みの図解です。Core、任意companion、receipt adapter、別経路の独立確認を区別しています。GIFそのものは実行証拠ではありません。
 動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
 
 対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
@@ -131,10 +131,12 @@ action IDとdigestへ照合し、判断eventを記録します。同じaction ID
 
 <p align="center">
   <img src="assets/readme/ja/record-boundaries.svg"
-       alt="権限の取り出し、実行側の報告、別経路の結果確認を3枚のカードで分けた図。自動接続は示していない。" width="840">
+       alt="権限の使用、companionとadapterによるReceipt、独立Verificationを分けた図。UNKNOWNを保持し、finish欠落を拒否する。" width="840">
 </p>
 
-Mothershipは実行報告と独立確認の記録を分けて検証します。実行系・確認系の処理は別途構成します。
+Mothershipは実行報告と独立確認の記録を分けて検証します。
+任意adapterはterminal attempt pairをReceiptへ変換し、UNKNOWNを保持します。
+finish欠落は拒否します。ReceiptのSUCCESSだけでは独立確認になりません。
 
 ## 現在の参照profile
 

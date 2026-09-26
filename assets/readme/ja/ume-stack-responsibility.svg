@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
   <title id="title">人間とAIが仕事を分け合うための責務分担</title>
-  <desc id="desc">現在の公開版同士に自動接続はありません。 破線部分は未実装です。</desc>
+  <desc id="desc">任意companion / adapterはCoreと自動接続しません。 独立確認は別経路。Receipt成功は外部真実ではありません。</desc>
   <style>
     .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .state { font: 700 20px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #176b58; }
     .body { font: 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }
     .small { font: 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
+    .boxbody { font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }
     .legend { font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }
   </style>
   <rect width="720" height="1120" fill="#f7faf9"/>
@@ -31,8 +32,8 @@
     <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
     <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
     <text class="state" x="360" y="542" text-anchor="middle">方向性・未実装</text>
-    <text class="small" x="360" y="574" text-anchor="middle">責務上の接続候補</text>
-    <text class="small" x="360" y="602" text-anchor="middle">現在の公開版は未接続</text>
+    <text class="small" x="360" y="574" text-anchor="middle">明示adapterの境界候補</text>
+    <text class="small" x="360" y="602" text-anchor="middle">自動runtime bridgeは未実装</text>
   </g>
 
   <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>
@@ -40,16 +41,18 @@
   <text class="label" x="360" y="703" text-anchor="middle">Mothership</text>
   <text class="body" x="360" y="750" text-anchor="middle">具体的な外部操作を固定</text>
 <text class="body" x="360" y="792" text-anchor="middle">人間の判断と照合</text>
-<text class="body" x="360" y="834" text-anchor="middle">同じ台帳履歴内で一度だけ</text>
+<text class="body" x="360" y="834" text-anchor="middle">台帳履歴内で一度だけ</text>
 
-  <path d="M360 855 V900" stroke="#176b58" stroke-width="5"/>
-  <path d="M350 885 L360 903 L370 885" fill="#176b58"/>
-  <rect data-role="external" x="40" y="905" width="300" height="92" rx="20" fill="#ffffff" stroke="#7356a8" stroke-width="4"/>
-  <rect data-role="external" x="380" y="905" width="300" height="92" rx="20" fill="#ffffff" stroke="#237e91" stroke-width="4"/>
-  <text class="body" x="190" text-anchor="middle"><tspan x="190" y="960">別途構成する実行系</tspan></text>
-  <text class="body" x="530" text-anchor="middle"><tspan x="530" y="960">別経路の確認系</tspan></text>
+  <path d="M360 855 V875 H137 V895" fill="none" stroke="#176b58" stroke-width="5"/>
+  <path d="M137 899 L129 886 L145 886 Z" fill="#176b58"/>
+  <path d="M245 956 H262" stroke="#7356a8" stroke-width="4"/>
+  <path d="M262 956 L250 948 L250 964 Z" fill="#7356a8"/>
+  <rect data-role="external" x="30" y="900" width="215" height="112" rx="20" fill="#ffffff" stroke="#7356a8" stroke-width="4"/>
+  <rect data-role="adapter" x="262" y="900" width="215" height="112" rx="20" fill="#d9efe8" stroke="#176b58" stroke-width="4"/>
+  <rect data-role="external" x="485" y="900" width="205" height="112" rx="20" fill="#ffffff" stroke="#237e91" stroke-width="4"/>
+  <text class="boxbody" x="137" text-anchor="middle"><tspan x="137" y="931">任意GitHub</tspan><tspan x="137" y="956">companion</tspan><tspan x="137" y="981">明示transport</tspan></text>
+  <text class="boxbody" x="369" text-anchor="middle"><tspan x="369" y="931">Receipt adapter</tspan><tspan x="369" y="956">finish欠落: reject</tspan><tspan x="369" y="981">UNKNOWNを保持</tspan></text>
+  <text class="boxbody" x="587" text-anchor="middle"><tspan x="587" y="931">独立した確認系</tspan><tspan x="587" y="956">別途構成</tspan><tspan x="587" y="981">同梱なし</tspan></text>
 
-  <text class="small" x="360" y="1016" text-anchor="middle">現在の公開版同士に自動接続はありません。</text>
-  <text class="small" x="360" y="1044" text-anchor="middle">破線部分は未実装です。</text>
-  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1070">実線 = 現在実装済み</tspan><tspan x="360" y="1091">破線 = 現在未接続</tspan><tspan x="360" y="1112">外枠 = 別途構成</tspan></text>
+  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1038">実線 = 現在実装済み</tspan><tspan x="360" y="1068">破線 = 自動接続なし</tspan><tspan x="360" y="1098">外枠 = 任意・別途構成</tspan></text>
 </svg>

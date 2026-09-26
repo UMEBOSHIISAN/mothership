@@ -3,24 +3,24 @@
 <rect width="840" height="920" rx="24" fill="#f7faf9"/>
 <g font-family="Noto Sans JP, sans-serif" fill="#17332d">
 <text x="42" y="62" font-size="32" font-weight="700">「任せた」と「できた」を分ける</text>
-<text x="42" y="100" font-size="20" fill="#55706a">現在の記録の役割 · 実行デモではありません</text>
+<text x="42" y="100" font-size="20" fill="#55706a">source main（未リリース）の記録境界</text>
 <rect x="34" y="136" width="772" height="212" rx="18" fill="white" stroke="#176b58" stroke-width="2"/>
 <text x="58" y="178" font-size="23" fill="#176b58">01</text>
 <text x="111" y="178" font-size="27" font-weight="700">権限の取り出し</text>
 <text x="58" y="220" font-size="21" fill="#176b58">Mothership</text>
 <text x="58" y="268" font-size="22">固定した操作と判断を照合。</text>
 <text x="58" y="307" font-size="22">同じ信頼された台帳履歴で一度だけ。</text>
-<rect x="34" y="372" width="772" height="212" rx="18" fill="white" stroke="#7356a8" stroke-width="2" stroke-dasharray="9 6"/>
+<rect x="34" y="372" width="772" height="212" rx="18" fill="white" stroke="#7356a8" stroke-width="2"/>
 <text x="58" y="414" font-size="23" fill="#7356a8">02</text>
 <text x="111" y="414" font-size="27" font-weight="700">実行側からの報告</text>
-<text x="58" y="456" font-size="21" fill="#7356a8">別途構成する実行系 → Receipt</text>
-<text x="58" y="504" font-size="22">「成功した」は実行側の報告。</text>
-<text x="58" y="543" font-size="22">取り出しだけでは、外部操作は起きません。</text>
+<text x="58" y="456" font-size="21" fill="#7356a8">任意のGitHub companion → adapter → Receipt</text>
+<text x="58" y="504" font-size="22">terminal pairを照合。UNKNOWNはそのまま保持。</text>
+<text x="58" y="543" font-size="22">finish欠落は拒否。変換は権限を付与しません。</text>
 <rect x="34" y="608" width="772" height="212" rx="18" fill="white" stroke="#7356a8" stroke-width="2" stroke-dasharray="9 6"/>
 <text x="58" y="650" font-size="23" fill="#7356a8">03</text>
 <text x="111" y="650" font-size="27" font-weight="700">別経路からの結果確認</text>
-<text x="58" y="692" font-size="21" fill="#7356a8">別途構成する確認系 → Verification</text>
-<text x="58" y="740" font-size="22">外部の状態を、実行報告とは別に確認。</text>
+<text x="58" y="692" font-size="21" fill="#7356a8">別途構成する独立確認系 → Verification</text>
+<text x="58" y="740" font-size="22">ReceiptのSUCCESSだけでは独立確認になりません。</text>
 <text x="58" y="779" font-size="22">Mothershipは記録の形式・対応を検証します。</text>
 <text x="42" y="883" font-size="18" fill="#55706a">3つは別の事実。自動接続や実行成功を示す図ではありません。</text>
 </g></svg>

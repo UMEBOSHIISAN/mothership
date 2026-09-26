@@ -61,49 +61,51 @@ LINE = "#c6d5d1"
 
 COPY = {
     "ja": {
-        "title": "現在のMothership Core",
-        "subtitle": "人間とAIのあいだで、現実を変える権限の範囲を明確にする",
-        "context": ("提案・証拠", "判断材料のみ", "v0.4.2では未結合"),
+        "title": "現在のMothership Coreと接続境界",
+        "subtitle": "人間の判断・実行・確認を分離して扱う",
+        "context": ("提案・証拠", "権限を与えない判断材料", "v0.4.2では未結合"),
         "parameters": ("正確な実行項目", "呼び出し側が別に用意"),
-        "core": "公開Mothership",
+        "core": "公開Mothership Core",
         "freeze": ("具体的な操作", "5項目を固定"),
         "decision": ("人間の判断", "承認 / 拒否"),
         "consume": ("ローカル台帳", "同じ履歴内で一度"),
         "consume_poster": ("ローカル台帳", "同じ履歴内で一度"),
-        "executor": ("別構成の実行系", "外部状態を変更"),
-        "verifier": ("別経路の確認系", "外部状態を読む"),
+        "executor": ("任意GitHub companion", "明示transport / retryなし"),
+        "adapter": ("純粋adapter → Receipt", "finish欠落: reject", "UNKNOWNはUNKNOWNのまま"),
+        "verifier": ("独立した確認系", "別途構成 / 同梱なし"),
         "profile": "現在の最初の参照プロファイル：github.merge_pr",
-        "explain": "仕組みの図解です。実行系・確認系や広い安全性の証拠ではありません。",
+        "explain": "仕組みの図解です。実行・認証・独立確認の証拠ではありません。",
         "scenes": (
-            ("人間とAIが仕事を分ける", "提案・証拠は判断材料です。正確な実行項目は呼び出し側が別に用意します。"),
+            ("人間とAIが仕事を分ける", "提案・証拠は権限を与えない判断材料です。正確な実行項目は呼び出し側が別に用意します。"),
             ("具体的な操作を固定", "リポジトリ・PR番号・元の変更・対象ブランチ・統合方法を固定します。"),
             ("表示された操作を人間が判断", "呼び出し側が提示した承認または拒否を、操作IDとダイジェストへ照合します。"),
             ("判断を記録し、一度だけ取り出す", "同じ信頼されたローカル台帳履歴内で二度目の取り出しを拒否します。"),
-            ("外部実行系は別途構成", "公開Mothershipは実行系、認証情報、再試行機構を同梱しません。"),
-            ("結果を別経路で確認", "実行報告と確認記録を分けます。確認記録を作る側は別途構成します。"),
+            ("companion試行 → adapter → Core Receipt", "任意companionは明示transportで最大1回のPUTを試みます。純粋adapterはfinish欠落をrejectし、terminal pairをCore Receiptへ投影します。retry / reconsumeはありません。"),
+            ("独立確認は別経路で扱う", "Receipt SUCCESSは独立確認ではありません。Verificationは別途供給し、確認不能や曖昧さはUNKNOWNのまま扱います。"),
         ),
     },
     "en": {
-        "title": "How the current Mothership Core works",
-        "subtitle": "Make the scope of consequential authority explicit between humans and AI",
-        "context": ("Proposal / evidence", "Unbound decision context", "Not bound in v0.4.2"),
+        "title": "Mothership Core + companion",
+        "subtitle": "Keep human judgment, execution, and verification separate",
+        "context": ("Proposal / evidence", "Non-authorizing context", "Not bound in v0.4.2"),
         "parameters": ("Execution fields", "Caller-supplied"),
-        "core": "Public Mothership",
+        "core": "Public Mothership Core",
         "freeze": ("Exact operation", "Freeze five fields"),
         "decision": ("Human decision", "Approve / Reject"),
         "consume": ("Local ledger", "One use per", "ledger history"),
         "consume_poster": ("Local ledger", "One use / ledger history"),
-        "executor": ("Separate executor", "Changes external state"),
-        "verifier": ("Separate verifier", "Reads external state"),
+        "executor": ("Optional GitHub companion", "Explicit transport / no retry"),
+        "adapter": ("Pure adapter → Receipt", "Missing finish: reject", "UNKNOWN stays UNKNOWN"),
+        "verifier": ("Independent verifier", "Separate producer / not bundled"),
         "profile": "First current reference profile: github.merge_pr",
-        "explain": "An explainer, not evidence for the executor, verifier, or general safety.",
+        "explain": "An explainer, not execution, authentication, or independent-verification evidence.",
         "scenes": (
-            ("Humans and AI divide the work", "Proposal and evidence inform judgment; the caller separately supplies exact execution fields."),
+            ("Humans and AI divide the work", "Proposal and evidence do not grant authority; the caller separately supplies exact execution fields."),
             ("Freeze one exact supported operation", "Repository, PR, head, base name, and merge method are fixed."),
             ("The human judges the displayed operation", "A caller-attested approve or reject is checked against its action ID and digest."),
             ("Record the decision and consume once", "A second consume is rejected within the same trusted local ledger history."),
-            ("The external executor is separate", "Public Mothership ships no executor, credentials, or retry mechanism."),
-            ("Verify through a separate path", "Receipt and Verification are distinct; the verifier producer is separately configured."),
+            ("Companion attempt → adapter → Core Receipt", "Optional companion uses explicit transport for at most one PUT. Pure adapter rejects missing finish and maps the terminal pair to Core Receipt; no retry or reconsume."),
+            ("Independent verification stays separate", "Receipt SUCCESS is not independent verification. Verification is supplied separately; unclear observations remain UNKNOWN."),
         ),
     },
 }
@@ -143,6 +145,31 @@ def centered_lines(
         x = (x0 + x1 - (text_box[2] - text_box[0])) / 2
         draw.text((x, y), value, font=current, fill=color)
         y += height + gap
+
+
+def wrap_to_pixel_width(
+    draw: ImageDraw.ImageDraw,
+    value: str,
+    size: int,
+    max_width: int,
+    *,
+    locale: str,
+) -> list[str]:
+    """Wrap copy by rendered width so bilingual panels never crop text."""
+    font = load_font(size)
+    units = list(value) if locale == "ja" else value.split()
+    lines: list[str] = []
+    current = ""
+    for unit in units:
+        candidate = unit if not current else (current + unit if locale == "ja" else f"{current} {unit}")
+        if current and draw.textbbox((0, 0), candidate, font=font)[2] > max_width:
+            lines.append(current)
+            current = unit
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines or [""]
 
 
 def solid_box(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], fill: str, outline: str, *, active: bool = False) -> None:
@@ -192,8 +219,9 @@ def draw_map(draw: ImageDraw.ImageDraw, copy: dict[str, object], scene: int | No
     freeze = (285, 155, 445, 280)
     decision = (465, 155, 625, 280)
     consume = (645, 155, 800, 280)
-    executor = (855, 115, 1165, 205)
-    verifier = (855, 225, 1165, 315)
+    companion = (855, 105, 1165, 168)
+    adapter = (855, 178, 1165, 241)
+    verifier = (855, 251, 1165, 315)
 
     dashed_box(draw, context, PAPER, BLUE, active=scene == 0)
     centered_lines(draw, context, copy["context"], 16, color=BLUE, bold=scene == 0, gap=2)
@@ -209,10 +237,12 @@ def draw_map(draw: ImageDraw.ImageDraw, copy: dict[str, object], scene: int | No
     centered_lines(draw, decision, copy["decision"], 18, color=ORANGE, bold=scene == 2)
     centered_lines(draw, consume, copy["consume"], 17, color=GREEN, bold=scene == 3)
 
-    solid_box(draw, executor, PURPLE_LIGHT, PURPLE, active=scene == 4)
+    solid_box(draw, companion, PURPLE_LIGHT, PURPLE, active=scene == 4)
+    solid_box(draw, adapter, GREEN_LIGHT, GREEN, active=scene == 4)
     solid_box(draw, verifier, CYAN_LIGHT, CYAN, active=scene == 5)
-    centered_lines(draw, executor, copy["executor"], 18, color=PURPLE, bold=scene == 4)
-    centered_lines(draw, verifier, copy["verifier"], 18, color=CYAN, bold=scene == 5)
+    centered_lines(draw, companion, copy["executor"], 15, color=PURPLE, bold=scene == 4, gap=1)
+    centered_lines(draw, adapter, copy["adapter"], 13, color=GREEN, bold=scene == 4, gap=0)
+    centered_lines(draw, verifier, copy["verifier"], 15, color=CYAN, bold=scene == 5, gap=1)
 
     dotted_segment(draw, (245, 150), (255, 150), BLUE)
     dotted_segment(draw, (255, 150), (255, 325), BLUE)
@@ -221,9 +251,8 @@ def draw_map(draw: ImageDraw.ImageDraw, copy: dict[str, object], scene: int | No
     arrow(draw, (250, 260), (280, 260), BLUE, active=scene in (0, 1))
     arrow(draw, (450, 218), (460, 218), GREEN, active=scene == 2)
     arrow(draw, (630, 218), (640, 218), ORANGE, active=scene == 3)
-    arrow(draw, (805, 185), (850, 160), GREEN, active=scene == 4)
-    draw.line((1010, 210, 1010, 220), fill=CYAN, width=6 if scene == 5 else 3)
-    draw.polygon(((1010, 225), (1002, 212), (1018, 212)), fill=CYAN)
+    arrow(draw, (805, 136), (850, 136), GREEN, active=scene == 4)
+    down_arrow(draw, 1010, 168, 176, GREEN)
 
 
 def draw_scene(locale: str, scene: int, progress: float) -> Image.Image:
@@ -238,8 +267,15 @@ def draw_scene(locale: str, scene: int, progress: float) -> Image.Image:
     draw.rounded_rectangle(panel, radius=22, fill=PAPER, outline=LINE, width=2)
     title, detail = copy["scenes"][scene]
     centered(draw, WIDTH // 2, 390, title, 34, bold=True)
-    lines = wrap(detail, width=54 if locale == "en" else 42, break_long_words=False, break_on_hyphens=False)
-    centered_lines(draw, (80, 415, 1120, 505), lines, 25, color=MUTED)
+    detail_size = 25
+    lines = wrap_to_pixel_width(draw, detail, detail_size, 980, locale=locale)
+    if len(lines) >= 3:
+        detail_size = 22
+        lines = wrap_to_pixel_width(draw, detail, detail_size, 980, locale=locale)
+    if len(lines) > 3:
+        detail_size = 19
+        lines = wrap_to_pixel_width(draw, detail, detail_size, 980, locale=locale)
+    centered_lines(draw, (80, 415, 1120, 505), lines, detail_size, color=MUTED, gap=3)
 
     start, end, y = 170, 1030, 530
     draw.line((start, y, end, y), fill=LINE, width=3)
@@ -267,7 +303,7 @@ def draw_poster(locale: str) -> Image.Image:
 
     context = (45, 120, 675, 220)
     dashed_box(draw, context, PAPER, BLUE)
-    centered_lines(draw, context, copy["context"], 22, color=BLUE, gap=3)
+    centered_lines(draw, context, copy["context"], 21, color=BLUE, gap=2)
 
     parameters = (45, 250, 675, 330)
     solid_box(draw, parameters, BLUE_LIGHT, BLUE)
@@ -288,19 +324,24 @@ def draw_poster(locale: str) -> Image.Image:
     down_arrow(draw, center_x, 485, 505, GREEN)
     down_arrow(draw, center_x, 585, 605, ORANGE)
 
-    down_arrow(draw, center_x, 690, 720, GREEN)
-    executor = (45, 730, 330, 825)
-    verifier = (390, 730, 675, 825)
-    solid_box(draw, executor, PURPLE_LIGHT, PURPLE)
+    draw.line((360, 690, 360, 715), fill=GREEN, width=4)
+    draw.line((360, 715, 190, 715), fill=GREEN, width=4)
+    down_arrow(draw, 190, 715, 728, GREEN)
+    down_arrow(draw, 190, 825, 840, GREEN)
+    companion = (45, 730, 335, 825)
+    adapter = (45, 850, 335, 945)
+    verifier = (385, 730, 675, 945)
+    solid_box(draw, companion, PURPLE_LIGHT, PURPLE)
+    solid_box(draw, adapter, GREEN_LIGHT, GREEN)
     solid_box(draw, verifier, CYAN_LIGHT, CYAN)
-    centered_lines(draw, executor, copy["executor"], 20, color=PURPLE, bold=True)
-    centered_lines(draw, verifier, copy["verifier"], 20, color=CYAN, bold=True)
-    arrow(draw, (335, 778), (385, 778), CYAN)
+    centered_lines(draw, companion, copy["executor"], 16, color=PURPLE, bold=True, gap=2)
+    centered_lines(draw, adapter, copy["adapter"], 16, color=GREEN, bold=True, gap=2)
+    centered_lines(draw, verifier, copy["verifier"], 17, color=CYAN, bold=True, gap=3)
 
-    draw.rounded_rectangle((45, 855, 675, 910), radius=12, fill=GREEN_LIGHT, outline=GREEN, width=2)
-    centered(draw, center_x, 882, str(copy["profile"]), 21, color=GREEN, bold=True)
+    draw.rounded_rectangle((45, 970, 675, 1015), radius=12, fill=GREEN_LIGHT, outline=GREEN, width=2)
+    centered(draw, center_x, 992, str(copy["profile"]), 19, color=GREEN, bold=True)
     explanation = wrap(str(copy["explain"]), width=54 if locale == "en" else 34, break_long_words=False)
-    centered_lines(draw, (45, 930, 675, 1035), explanation, 20, color=MUTED, gap=4)
+    centered_lines(draw, (45, 1020, 675, 1073), explanation, 17, color=MUTED, gap=3)
     return image
 
 

@@ -11,8 +11,8 @@
 </p>
 
 Published v0.4.2 was a docs-only release. Public source main retains its
-documentation, imagery, and Authority Core contracts, and adds the unreleased
-Option A implementation.
+Authority Core contracts, updates the documentation and imagery, and adds the
+unreleased Option A implementation.
 
 > Keep control of your work, even as the AI you use changes.
 >
@@ -57,12 +57,12 @@ Mothership binds a human decision to bounded authority for one external action.
 
 <p align="center">
   <img src="assets/readme/en/ume-stack-responsibility.svg"
-       alt="Responsibility map in which UME-HARNESS bounds local work and Mothership handles consequential authority across an unimplemented dashed bridge."
+       alt="Responsibility map separating the unimplemented Harness bridge, Mothership Core authority, optional GitHub companion, and independent verification."
        width="760">
 </p>
 
 This diagram shows a responsibility direction. The current public releases have no automatic runtime bridge. The dashed connection is not implemented.
-The external executor and verifier are separately configured too.
+The optional source-main GitHub companion provides execution and receipt conversion; transport and independent verification are configured separately.
 
 ## CURRENT: v0.4.2
 
@@ -135,12 +135,12 @@ operation, credential use, ledger consume, or independent external observation.
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/en/mothership-flow-poster.png">
     <img src="assets/readme/en/mothership-flow.gif"
-         alt="Proposal and evidence remain unbound decision context; Mothership freezes caller-supplied exact execution fields and binds a human decision to one use."
+         alt="Core freezes exact fields and binds a decision to one use; the optional GitHub companion reports execution and its adapter produces a Receipt. Independent verification remains separate."
          width="100%">
   </picture>
 </p>
 
-This is an explanatory diagram, not execution evidence.
+This is an explanatory diagram of unreleased source main, not execution evidence. It separates Core, the optional companion, receipt adapter, and independent verification.
 Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
 
 Supported parameters are frozen before a caller-attested decision is checked
@@ -151,10 +151,10 @@ consumed once within one trusted local ledger history.
 
 <p align="center">
   <img src="assets/readme/en/record-boundaries.svg"
-       alt="Three separate cards for authority consumption, executor report, and independent result check; no automatic integration is shown." width="840">
+       alt="Separate authority consumption, companion and adapter Receipt, and independent Verification; UNKNOWN is preserved and missing finishes are rejected." width="840">
 </p>
 
-Mothership validates execution reports and independent verification as separate records. The executor and verifier processes are configured separately.
+Mothership validates execution reports and independent verification as separate records. The optional adapter converts terminal attempt pairs into Receipt records while preserving UNKNOWN. Missing finishes are rejected. Receipt SUCCESS is not independent verification.
 
 ## Current reference profile
 
