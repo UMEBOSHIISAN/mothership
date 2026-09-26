@@ -1,7 +1,7 @@
 # Mothership
 
-> 案Aのローカル候補（Core 0.4.3.dev0）。公開・実運用済みではありません。
-> 公開済みv0.4.2の変更を保持し、companion分離とexecutor契約を追加します。[候補の変更と制約](docs/option-a-candidate.md)。
+> 公開source main上の未リリース候補（Core 0.4.3.dev0、optional companion 0.2.0.dev0）。
+> 公開リリースや実運用の証拠ではありません。[候補の変更と制約](docs/option-a-candidate.md)。
 
 [English](README.en.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -10,7 +10,7 @@
   <img src="assets/mothership-banner.png" alt="海流を進む版画調のMothershipクジラ" width="100%">
 </p>
 
-公開済みv0.4.2はdocs-onlyのリリースでした。この候補はその文書・画像を継承し、案Aの変更を追加しています。Authority Coreのruntime契約は保持します。
+公開済みv0.4.2はdocs-onlyのリリースでした。公開source mainはその文書・画像とAuthority Coreのruntime契約を保持し、未リリースの案A変更を追加しています。
 
 > 使うAIが変わっても、仕事の主導権は手元に。
 >
@@ -58,7 +58,7 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 
 ## CURRENT: v0.4.2
 
-現在の公開実装が提供するのは、ひとつの対応済み外部操作を固定し、
+公開済みv0.4.2（歴史的な公開ベースライン）が提供したのは、ひとつの対応済み外部操作を固定し、
 caller-attestedな人間の判断と照合し、ローカル台帳へ記録して一度だけ取り出す境界です。
 
 実装済み:
@@ -78,6 +78,35 @@ caller-attestedな人間の判断と照合し、ローカル台帳へ記録し�
 
 proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません。
 Mothershipは、対応済みの実行パラメータを別に受け取り、それを先にfreezeします。
+
+### current main: Core 0.4.3.dev0 + companion 0.2.0.dev0
+
+公開source mainには、v0.4.2の境界を保持した未リリースのCore `0.4.3.dev0`と、
+それに厳密に依存する任意導入のGitHub companion `0.2.0.dev0`が含まれます。
+
+Coreは `github.merge_pr` のexact parameterを検証して `FrozenAction`へ固定し、
+caller-attestedな判断を照合して、信頼されたlive ledgerで一度だけconsumeします。
+Coreは外部操作を実行せず、executorやindependent verifier producerも含みません。
+
+GitHub companion（opt-in）は、Core発行の `FrozenAction`、厳密な台帳path、approval event ID、
+明示transportだけを受け付けます。read-only preflight後にCoreのconsume結果を使ってattemptを記録し、
+最大1回のPUTを試みます。認識済みのclient failureは `failure`、その他のfailure・timeout・矛盾した応答は
+`reconciliation_required` として保持されます。finish欠落など不完全なpairはadapterがrejectし、retryや
+reconsumeは行いません。companionの `github-execution-attempt.v1` はCoreのReceipt/Verificationとは別です。
+
+opt-inの[receipt adapter](examples/github_receipt_adapter.md)は、検証済みterminal attempt pairを
+Coreの `external-action-receipt.v0` へ投影します。callerが渡す `action_id`、`action_sha256`、
+`consume_event_id` を正確に照合し、`github-attempt:<start event ID>` と
+`canonical_json_sha256({"started": started, "finished": finished})` を証拠参照に使います。
+validなterminal pairでは、強いsuccessは `SUCCESS`、認識済みclient failureは `FAILED`、その他のfailureと
+`reconciliation_required`は `UNKNOWN` へ投影されます。欠落・曖昧・未観測の値を `SUCCESS` に補完せず、finish欠落や
+不整合pairはrejectされます。adapterはauthorityを付与せず、記録を認証・保存せず、独立したverifier recordも生成しません。
+
+Coreとcompanionは別packageで、adapterの利用はopt-inです。自動runtime bridgeや別repo間の自動接続はありません。
+責務と接続条件は [composition guide](docs/composition.md) に整理しています。
+オフラインの合成例は、source checkoutのルートで
+`PYTHONPATH=.:packages/mothership-github python examples/github_receipt_adapter.py` を実行してください。
+出力は合成recordのbinding確認であり、GitHub操作、credential、ledger consume、独立した外部確認を示しません。
 
 ## 現在のMothership Core
 

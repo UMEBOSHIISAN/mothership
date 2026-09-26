@@ -1,7 +1,7 @@
 # Mothership
 
-> Local Option A candidate (Core 0.4.3.dev0), not a release or live-operation proof.
-> Preserves published v0.4.2 changes and adds companion separation and executor contracts. See [candidate changes and limits](docs/option-a-candidate.md).
+> Unreleased public source-main candidate (Core 0.4.3.dev0 plus optional companion 0.2.0.dev0).
+> It is not a release or live-operation proof. See [candidate changes and limits](docs/option-a-candidate.md).
 
 [日本語](README.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -10,7 +10,9 @@
   <img src="assets/mothership-banner.png" alt="Linocut-style Mothership whale swimming through ocean currents" width="100%">
 </p>
 
-Published v0.4.2 was a docs-only release. This candidate retains its documentation and imagery and adds Option A changes. Runtime Authority Core contracts are preserved.
+Published v0.4.2 was a docs-only release. Public source main retains its
+documentation, imagery, and Authority Core contracts, and adds the unreleased
+Option A implementation.
 
 > Keep control of your work, even as the AI you use changes.
 >
@@ -64,7 +66,7 @@ The external executor and verifier are separately configured too.
 
 ## CURRENT: v0.4.2
 
-The public implementation freezes one supported external operation, checks a
+Published v0.4.2, the historical public baseline, freezes one supported external operation, checks a
 caller-attested human decision, records it in a local ledger, and permits one
 consume.
 
@@ -86,6 +88,45 @@ Not shipped:
 Proposal and evidence are decision context, but they are not mechanically bound to a FrozenAction in v0.4.1.
 Mothership receives the supported execution parameters separately and freezes them first.
 Human identity is not authenticated.
+
+### Current source main: Core 0.4.3.dev0 + companion 0.2.0.dev0
+
+Public source main contains unreleased Core `0.4.3.dev0`, which preserves the
+v0.4.2 boundary, plus an optional GitHub companion `0.2.0.dev0` that requires
+that exact Core version.
+
+Core validates the exact `github.merge_pr` parameters, freezes a `FrozenAction`,
+checks a caller-attested decision, and permits one consume in a trusted live
+ledger. Core does not execute the external operation and does not ship an
+executor or independent verifier producer.
+
+The opt-in GitHub companion accepts only a Core-issued `FrozenAction`, exact
+ledger paths, an approval event ID, and an explicit transport. After a
+read-only preflight it uses Core's consume result to record an attempt and
+allows at most one PUT. Recognized client failures project to `failure`; other
+failures, timeouts, and contradictory responses remain
+`reconciliation_required`. A missing or invalid attempt pair is rejected; there
+is no retry or reconsume. Its `github-execution-attempt.v1` rows are distinct
+from Core Receipt and Verification records.
+
+The opt-in [receipt adapter](examples/github_receipt_adapter.md) projects a
+validated terminal attempt pair into Core's `external-action-receipt.v0`.
+It checks the caller-supplied `action_id`, `action_sha256`, and
+`consume_event_id` exactly, then uses `github-attempt:<start event ID>` and
+`canonical_json_sha256({"started": started, "finished": finished})` as the
+observation reference. For a valid terminal pair, strong success projects to
+`SUCCESS`, recognized client failure to `FAILED`, and other failure or
+`reconciliation_required` to `UNKNOWN`. Missing, ambiguous, or unobserved facts
+are never filled into `SUCCESS`; a missing finish or inconsistent closed pair is
+rejected. The adapter grants no authority, does not authenticate or store the
+records, and does not produce an independent verifier record.
+
+Core and companion remain separate packages; adapter use is opt-in, and there
+is no automatic cross-repository runtime bridge. See the [composition guide](docs/composition.md)
+for responsibility and connection conditions. Run the offline synthetic example from the source checkout root with
+`PYTHONPATH=.:packages/mothership-github python examples/github_receipt_adapter.py`.
+Its output demonstrates synthetic binding only; it performs no GitHub
+operation, credential use, ledger consume, or independent external observation.
 
 ## How the current Mothership Core works
 
