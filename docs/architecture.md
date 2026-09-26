@@ -127,8 +127,12 @@ The optional [GitHub companion](../packages/mothership-github/README.md) and
 [reference consumer](../examples/github_merge_reference.md) implement a bounded
 source example for the existing merge profile. Its durable
 `github-execution-attempt.v1` rows are companion-local attempt records, not the
-Core `external-action-receipt.v0` contract. It does not ship an independent
-Verifier or an automatic adapter between these record types. The
+Core `external-action-receipt.v0` contract. An explicit, pure
+[receipt adapter](../examples/github_receipt_adapter.md) converts validated
+terminal attempt pairs into that Core contract, preserving ambiguous results
+as UNKNOWN. It does not authenticate the records or prove durable consumption.
+The companion does not ship an independent Verifier or an automatic connection
+between these record types. The
 [candidate status](option-a-candidate.md) describes its release boundary.
 
 ## Responsibilities of a connecting application
