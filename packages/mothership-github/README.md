@@ -22,6 +22,11 @@ Unknown mutation facts remain null; a failure classification does not prove an
 unmerged PR. Rejection bodies are bounded and checked on both normal and
 HTTPError paths. Unreadable or contradictory responses require reconciliation.
 Receipt success is an executor observation, not independent verification.
+An opt-in [receipt adapter](../../examples/github_receipt_adapter.md) projects
+validated attempt pairs into Core's existing external-action receipt contract.
+It preserves uncertainty and does not establish durable consume or executor
+authenticity. The offline example demonstrates binding with synthetic records;
+the executor does not invoke the adapter automatically.
 The 10-minute TTL ends eligibility to consume, not necessarily the time to start
 PUT. Expected base is checked at preflight only; PUT has no atomic base condition.
 See [candidate limits](../../docs/option-a-candidate.md) before choosing a consumer.
