@@ -161,6 +161,69 @@ class ReferenceRunnerTests(unittest.TestCase):
         self.assertEqual(1, len((self.ledger_dir / "authority.jsonl").read_text().splitlines()))
         self.assertFalse((self.ledger_dir / "attempts.jsonl").exists())
 
+    def test_contradictory_executor_outcomes_require_reconciliation(self):
+        cases = (
+            ("success", 503, None, None),
+            ("success", 200, False, _MERGE_SHA),
+            ("success", 200, None, _MERGE_SHA),
+            ("success", 200, True, None),
+            ("failure", 409, True, None),
+            ("failure", 409, False, _MERGE_SHA),
+        )
+        for status, http_status, merged, sha in cases:
+            with self.subTest(status=status, http_status=http_status, merged=merged, sha=sha):
+                payload, code = reference._execution_payload(
+                    {"status": status, "http_status": http_status,
+                     "merged": merged, "merge_commit_sha": sha},
+                    self.ledger_dir,
+                )
+                self.assertEqual(1, code)
+                self.assertEqual("reconciliation_required", payload["status"])
+
+    def test_invalid_http_status_is_not_displayed_as_a_normalized_observation(self):
+        for http_status in (1, 99):
+            with self.subTest(http_status=http_status):
+                payload, code = reference._execution_payload(
+                    {"status": "reconciliation_required", "http_status": http_status,
+                     "merged": None, "merge_commit_sha": None},
+                    self.ledger_dir,
+                )
+                self.assertEqual(1, code)
+                self.assertEqual("reconciliation_required", payload["status"])
+                self.assertNotIn("http_status", payload)
+
+    def test_explicit_reconciliation_is_not_promoted_by_apparent_success_facts(self):
+        payload, code = reference._execution_payload(
+            {"status": "reconciliation_required", "http_status": 200,
+             "merged": True, "merge_commit_sha": _MERGE_SHA},
+            self.ledger_dir,
+        )
+        self.assertEqual(1, code)
+        self.assertEqual("reconciliation_required", payload["status"])
+        self.assertEqual(_MERGE_SHA, payload["merge_commit_sha"])
+
+    def test_inconsistent_executor_summary_stops_after_one_durable_attempt(self):
+        transport = FakeTransport()
+        execute = reference.executor.execute_action_merge_pr
+
+        def inconsistent_summary(*args, **kwargs):
+            result = execute(*args, **kwargs)
+            # Preserve the real consume, receipts, and PUT. Corrupt only the
+            # returned summary at the consumer boundary being checked.
+            return {**result, "http_status": 503}
+
+        with mock.patch.object(reference.executor, "execute_action_merge_pr", side_effect=inconsistent_summary):
+            code, output = self.run_runner(transport)
+
+        self.assertEqual(1, code)
+        self.assertEqual("reconciliation_required", self.rows(output)[-1]["status"])
+        self.assertEqual(1, len(transport.put_calls))
+        authority = self.rows((self.ledger_dir / "authority.jsonl").read_text())
+        attempts = self.rows((self.ledger_dir / "attempts.jsonl").read_text())
+        self.assertEqual(2, len(authority))
+        self.assertEqual(2, len(attempts))
+        self.assertEqual("success", attempts[-1]["outcome"])
+
     def test_wrong_action_bound_approval_is_rejected_without_record_or_execute(self):
         transport = FakeTransport()
         output = TTYBuffer()

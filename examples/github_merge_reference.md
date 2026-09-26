@@ -60,6 +60,13 @@ Exit status `0` means success, explicit rejection, or a deliberate approval
 stop (EOF, interrupt, or mismatch). Exit status `1` means a pre-execution
 failure, an executor failure, or `reconciliation_required`; an unresolved
 executor or receipt result is never reported as success or as an unmerged PR.
+Before displaying a returned outcome, the consumer checks the same fact
+invariants as the companion receipt rows: success requires HTTP 200, an
+explicit `merged: true`, and a valid merge commit SHA; failure cannot carry
+positive merge facts. Contradictory summaries require reconciliation. An
+explicit `reconciliation_required` result stays unresolved even if its fields
+resemble success. This check is not an independent observation of GitHub and
+does not rewrite receipts, restore authority, or retry the action.
 An execution result's `mutation_attempted` field means the executor entered its
 mutation stage; it does not prove that a request reached GitHub. Executor
 exceptions report that field as `unknown`.

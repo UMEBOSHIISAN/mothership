@@ -51,7 +51,7 @@ live end-to-end workflow. In the current source:
 | OBSERVE | source-backed or external evidence input | caller and separately owned evidence surfaces |
 | PROPOSE | one closed, non-authorizing consequence proposal | Mothership schema and pure validator |
 | APPROVE | caller-attested human decision for one exact action | Mothership binding; human ceremony is external |
-| EXECUTE | exact consumed action applied to an external system | separate future bounded executor; not shipped |
+| EXECUTE | exact consumed action applied to an external system | optional `mothership-github` source companion for `github.merge_pr`; outside Core |
 | VERIFY | independent read-only observation after execution | separate future verifier; not shipped |
 
 Supporting Source Health, Evidence Spine, Run Lineage, and Agent Decision
@@ -122,6 +122,40 @@ Actual external effects require a separately configured bounded executor. The
 Executor emits an `ExternalActionReceipt`; a separate read-only Verifier emits
 an `ExternalActionVerification`. The package ships neither producer; the v0
 contracts below only validate and bind reports from those separate planes.
+
+The optional [GitHub companion](../packages/mothership-github/README.md) and
+[reference consumer](../examples/github_merge_reference.md) implement a bounded
+source example for the existing merge profile. Its durable
+`github-execution-attempt.v1` rows are companion-local attempt records, not the
+Core `external-action-receipt.v0` contract. It does not ship an independent
+Verifier or an automatic adapter between these record types. The
+[candidate status](option-a-candidate.md) describes its release boundary.
+
+## Responsibilities of a connecting application
+
+The existing boundaries apply equally to a chat UI, a voice interface, a screen
+observer, or a delegated worker. They do not require putting those runtimes or
+their data stores into Core:
+
+| Boundary | Integration responsibility | What Mothership establishes |
+| --- | --- | --- |
+| Observation to proposal | Preserve source provenance and relevant revision; treat captured text and model output as evidence, not a human instruction. Source freshness and retention belong to the source owner. | A validated proposal remains non-authorizing. |
+| Human review to action decision | Establish the human ceremony; display the exact action and correlate the response to the live issuance. Material changes require a new reviewed action. | Bind the caller-attested decision to the supported action ID and digest; no identity authentication. |
+| Delegation or suspended execution to effect | The host owns worker identity, lease revocation, session validity, and permission ceilings. Work delegation cannot itself substitute for action authority. | One consume for the exact action in one trusted live ledger; no runtime/session governance. |
+| Attempt to outcome | Retain the actual attempt facts and stop for reconciliation when results are ambiguous. Do not infer permission to retry from a missing response. | Consume is evidence of spent authority, not proof of an external effect. |
+| Outcome to verification | Observe the resulting external state separately and bind that report to the exact action and receipt. | Specialized validators check the declared binding and evidence requirements; they do not perform or authenticate the observation. |
+
+These are responsibilities of an integration, not additional APIs or automatic
+runtime connections. Core currently supports only `github.merge_pr`; it does
+not authorize arbitrary application writes, exports, or clipboard transfers.
+For example, a local copy event alone cannot prove that another application
+saved the intended content. A local success receipt must not be presented as
+independent confirmation of that external state.
+
+Use `validate_external_action_verification()` and
+`validate_receipt_verification_binding()` for their semantic
+checks. The generic `validate_contract()` validates schema shape only; it is
+not a replacement for the specialized external-action validators.
 
 ## V0 non-executing boundary records
 

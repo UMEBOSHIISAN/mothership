@@ -249,13 +249,23 @@ def _execution_payload(result: object, ledger_dir: Path) -> tuple[dict[str, obje
     http_status = result["http_status"]
     merged = result["merged"]
     merge_commit_sha = result["merge_commit_sha"]
-    if type(http_status) is not int or not 0 <= http_status <= 599:
+    if type(http_status) is not int or (http_status != 0 and not 100 <= http_status <= 599):
         return _reconciliation_payload(ledger_dir, "unknown")
     if merged is not None and type(merged) is not bool:
         return _reconciliation_payload(ledger_dir, "unknown")
     if merge_commit_sha is not None and (
         type(merge_commit_sha) is not str or _SHA_PATTERN.fullmatch(merge_commit_sha) is None
     ):
+        return _reconciliation_payload(ledger_dir, "unknown")
+    # Keep the same outcome/fact invariants as the companion's receipt rows.
+    # A returned label alone must not turn contradictory facts into success
+    # or failure. Explicit reconciliation remains unresolved even when its
+    # observation resembles success; this consumer does not verify GitHub.
+    if status == "success" and not (
+        http_status == 200 and merged is True and merge_commit_sha is not None
+    ):
+        return _reconciliation_payload(ledger_dir, "unknown")
+    if status == "failure" and (merged is True or merge_commit_sha is not None):
         return _reconciliation_payload(ledger_dir, "unknown")
     payload = {
         "event": "execution_result",
