@@ -33,13 +33,14 @@ COPY = {
         "harness_lines": ("曖昧な日本語を整理", "確認範囲 / 承認要求", "ローカル作業のプレビュー"),
         "state_current": "現在の実装",
         "bridge": "方向性・未実装",
-        "bridge_detail": ("責務上の接続候補", "現在の公開版は未接続"),
+        "bridge_detail": ("明示adapterの境界候補", "自動runtime bridgeは未実装"),
         "mothership": "Mothership",
-        "mothership_lines": ("具体的な外部操作を固定", "人間の判断と照合", "同じ台帳履歴内で一度だけ"),
-        "executor": ("別途構成する実行系",),
-        "verifier": ("別経路の確認系",),
-        "caption": ("現在の公開版同士に自動接続はありません。", "破線部分は未実装です。"),
-        "legend": ("実線 = 現在実装済み", "破線 = 現在未接続", "外枠 = 別途構成"),
+        "mothership_lines": ("具体的な外部操作を固定", "人間の判断と照合", "台帳履歴内で一度だけ"),
+        "executor": ("任意GitHub", "companion", "明示transport"),
+        "adapter": ("Receipt adapter", "finish欠落: reject", "UNKNOWNを保持"),
+        "verifier": ("独立した確認系", "別途構成", "同梱なし"),
+        "caption": ("任意companion / adapterはCoreと自動接続しません。", "独立確認は別経路。Receipt成功は外部真実ではありません。"),
+        "legend": ("実線 = 現在実装済み", "破線 = 自動接続なし", "外枠 = 任意・別途構成"),
     },
     "en": {
         "title": "Responsibility split for humans and AI sharing work",
@@ -49,13 +50,14 @@ COPY = {
         "harness_lines": ("Organize ambiguous Japanese intent", "Visible scope / confirmation", "Local-work preview"),
         "state_current": "CURRENT",
         "bridge": "DIRECTION / NOT_SHIPPED",
-        "bridge_detail": ("Reviewed responsibility-link candidate", "Current releases are not connected"),
+        "bridge_detail": ("Explicit adapter boundary candidate", "No automatic runtime bridge"),
         "mothership": "Mothership",
-        "mothership_lines": ("Freeze one concrete external action", "Check the human decision", "Consume once in one ledger history"),
-        "executor": ("Separately configured", "executor"),
-        "verifier": ("Separate verification", "path"),
-        "caption": ("The current public releases have no automatic runtime bridge.", "The dashed connection is not implemented."),
-        "legend": ("Solid = implemented now", "Dashed = not connected", "Outline = separately configured"),
+        "mothership_lines": ("Freeze one concrete external action", "Check the human decision", "Consume once per ledger history"),
+        "executor": ("Optional GitHub", "companion", "Explicit transport"),
+        "adapter": ("Receipt adapter", "Missing finish: reject", "UNKNOWN preserved"),
+        "verifier": ("Independent verifier", "Separate producer", "Not bundled"),
+        "caption": ("Companion and adapter are opt-in; no automatic Core bridge.", "Independent verification is separate; receipt success is not external truth."),
+        "legend": ("Solid = implemented now", "Dashed = no automatic bridge", "Outline = opt-in / separately configured"),
     },
 }
 
@@ -95,6 +97,7 @@ def render(locale: str) -> str:
     .state {{ font: 700 20px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #176b58; }}
     .body {{ font: 23px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }}
     .small {{ font: 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }}
+    .boxbody {{ font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #314d47; }}
     .legend {{ font: 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #55706a; }}
   </style>
   <rect width="{WIDTH}" height="{HEIGHT}" fill="#f7faf9"/>
@@ -126,16 +129,18 @@ def render(locale: str) -> str:
   <text class="label" x="{CENTER}" y="703" text-anchor="middle">{escape(copy["mothership"])}</text>
   {line_text(copy["mothership_lines"], 750)}
 
-  <path d="M{CENTER} 855 V900" stroke="#176b58" stroke-width="5"/>
-  <path d="M350 885 L360 903 L370 885" fill="#176b58"/>
-  <rect data-role="external" x="40" y="905" width="300" height="92" rx="20" fill="#ffffff" stroke="#7356a8" stroke-width="4"/>
-  <rect data-role="external" x="380" y="905" width="300" height="92" rx="20" fill="#ffffff" stroke="#237e91" stroke-width="4"/>
-  {centered_tspans(copy["executor"], 190, 960)}
-  {centered_tspans(copy["verifier"], 530, 960)}
+  <path d="M{CENTER} 855 V875 H137 V895" fill="none" stroke="#176b58" stroke-width="5"/>
+  <path d="M137 899 L129 886 L145 886 Z" fill="#176b58"/>
+  <path d="M245 956 H262" stroke="#7356a8" stroke-width="4"/>
+  <path d="M262 956 L250 948 L250 964 Z" fill="#7356a8"/>
+  <rect data-role="external" x="30" y="900" width="215" height="112" rx="20" fill="#ffffff" stroke="#7356a8" stroke-width="4"/>
+  <rect data-role="adapter" x="262" y="900" width="215" height="112" rx="20" fill="#d9efe8" stroke="#176b58" stroke-width="4"/>
+  <rect data-role="external" x="485" y="900" width="205" height="112" rx="20" fill="#ffffff" stroke="#237e91" stroke-width="4"/>
+  {centered_tspans(copy["executor"], 137, 956, gap=25, css_class="boxbody")}
+  {centered_tspans(copy["adapter"], 369, 956, gap=25, css_class="boxbody")}
+  {centered_tspans(copy["verifier"], 587, 956, gap=25, css_class="boxbody")}
 
-  <text class="small" x="{CENTER}" y="1016" text-anchor="middle">{escape(copy["caption"][0])}</text>
-  <text class="small" x="{CENTER}" y="1044" text-anchor="middle">{escape(copy["caption"][1])}</text>
-  {centered_tspans(copy["legend"], CENTER, 1091, gap=21, css_class="legend")}
+  {centered_tspans(copy["legend"], CENTER, 1068, gap=30, css_class="legend")}
 </svg>
 '''
 
