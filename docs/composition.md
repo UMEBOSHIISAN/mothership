@@ -21,6 +21,67 @@ Mothership binds a human decision to bounded authority for one external action.
 This is a responsibility relationship, not a runtime dependency. The current
 public releases do not contain an automatic Harness-to-Mothership bridge.
 
+## Current receipt connection (source main)
+
+The optional [GitHub companion](../packages/mothership-github/README.md) now
+provides a pure [attempt-to-receipt adapter](../examples/github_receipt_adapter.md).
+The closed `github-execution-attempt.v1` terminal pair becomes an
+`external-action-receipt.v0`. Core validates that record and binds separately
+supplied Verification to its canonical digest and expected action identity.
+This is an implemented package connection, not a Harness runtime bridge.
+
+```text
+Trusted caller context: action ID + action digest + consume event ID
+                             |
+Companion start/finish ------+--> adapter --> Core Receipt
+                                                |
+Separate Verification --------------------------+--> exact binding
+```
+
+The caller takes the expected identity from trusted context, retains exactly
+`{"started": start, "finished": finish}` as the referenced evidence, and owns
+access to that evidence. The adapter does not fetch, store, or authenticate it.
+A caller-supplied consume ID is not proof of durable consumption. Use the
+existing executor for its own ledger checks; conversion alone grants nothing.
+
+The integration regression in
+[`test_pipeline.py`](../packages/mothership-github/tests/test_pipeline.py)
+executes the real local Core/companion path with fake transport, reads the
+persisted attempt rows, converts them, binds a separately supplied UNKNOWN
+verification, and attempts replay. It covers SUCCESS, FAILED and UNKNOWN,
+wrong consume identity, unchanged ledgers during conversion, and one fake PUT
+only. Even an executor SUCCESS does not promote that verification to CONFIRMED.
+This is offline integration evidence, not a live GitHub or cross-repository test.
+
+## Application and host handoff obligations
+
+These obligations identify the owner of each boundary. They are not new Core
+APIs or claims that the corresponding products enforce them today.
+
+| Requested capability | Owner | Connection condition / current limit |
+| --- | --- | --- |
+| Async continuation authority fence | Runtime host / UME-HARNESS | Recheck lease, session, actor, runtime generation and scope at the effect boundary, including after suspension. Core consume is not a continuation permit; no such host adapter ships here. |
+| Delegation permission ceiling | Runtime host / UME-HARNESS | Child scope must not exceed parent ceiling, delegated scope or current runtime scope; preserve an explicit empty set and account for parent revocation. Core does not maintain the delegation graph. |
+| Fresh observation reference | Source owner and host | Preserve source identity, revision and first-observed expiry; observed text, speaker identity and model inference are evidence, not operator instructions. Re-reading must not silently renew an expired source or authorize retry of an uncertain effect. No global two-minute TTL is imposed by Core. |
+| Portable plugin / review-first admission | UME Presence / extension owner | Prepare without package-code execution, review exact bytes, recheck fingerprint, then install disabled and separately admit. Lifecycle scripts, imports and plugin loads are not review preparation. This repo has no package admission engine. |
+| Provenance-pinned read and skill usage / CAS | MOON / knowledge lifecycle owner | Keep source content, location, digest and observation context bound; preserve lineage through candidate, usage, review and target comparison. A Core evidence ref does not resolve source ownership, freshness or target CAS. |
+| Retained accessibility tree | UME Presence sensor | Revisions and incremental refresh describe observed state; they confer no permission. Capture and privacy controls remain with the source owner. |
+| Reviewed deterministic GUI operation | Runtime host with knowledge lifecycle owner | Bind app/window, preconditions and expected result. Compilation or repeated success cannot bypass supported action authority. No generic click or storage profile is added here. |
+
+For a concrete host integration, qualify the actual effect path: suspend it,
+change or revoke the host context, resume it, and show that no effect occurs.
+Also test an empty delegated scope, stale source reference, changed action or
+evidence digest, missing finish, and uncertain outcome without automatic retry.
+A pure predicate or synthetic receipt cannot establish those host guarantees.
+Already-issued effects cannot be undone by a later revocation.
+
+Only `github.merge_pr` is currently executable through the bounded companion.
+A storage, device or other operation requires its own reviewed exact profile
+and separately configured executor. Do not relabel it as a GitHub operation,
+reconstruct a FrozenAction from JSON, or import a legacy adapter that supplies
+caller-controlled `now` into the current runtime API. Core issuance and its
+clock must remain authoritative within their documented local scope.
+
 ## Public protocol, private policy
 
 Public protocol describes what happened, what evidence exists, what exact object or action is referenced, and which

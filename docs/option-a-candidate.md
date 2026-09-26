@@ -1,6 +1,7 @@
-# Option A local candidate
+# Option A source candidate
 
-This source candidate preserves the published v0.4.2 Authority Core and its closed
+This candidate is available on source `main`; its development versions are not
+a tagged release. It preserves the published v0.4.2 Authority Core and its closed
 contracts. It is not a release, a migration of live grants, or evidence of real
 GitHub operation. Core is `0.4.3.dev0`; the optional GitHub companion is
 `0.2.0.dev0` and requires exactly this Core version. Other public, split and
@@ -79,7 +80,11 @@ A failed finish after PUT also leaves the outcome unresolved. None of these
 states retries, reconsumes, unconsumes or automatically repairs authority.
 
 Public `external-action-receipt.v0`, Verification, and their binding validator
-are unchanged. The companion does not manufacture these independent verification
+are unchanged. The optional [pure receipt adapter](../examples/github_receipt_adapter.md)
+now converts validated terminal attempt pairs with caller-supplied expected
+identities. It preserves uncertainty and grants no authority. The caller retains
+the canonical source pair; the adapter does not store or authenticate evidence.
+The companion does not manufacture these independent verification
 records or restore `reconcile_merge_state`. The legacy invocation ledger is
 also separate. One-shot protection remains per trusted, non-restored authority
 history; copying/rolling back histories can defeat it. Receipt paths are not a

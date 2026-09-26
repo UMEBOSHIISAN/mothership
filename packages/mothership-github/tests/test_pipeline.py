@@ -14,6 +14,8 @@ from orchestration.lib.action_authority import freeze_action, ActionAuthorityErr
 from orchestration.lib.action_authority_ledger import record_action_decision, consume_action, ActionAuthorityLedgerError
 from mothership_github.executor import execute_action_merge_pr
 from mothership_github import receipts
+from mothership_github.external_action import build_external_action_receipt
+from mothership.contracts import ContractError, canonical_json_sha256, validate_receipt_verification_binding
 from mothership_github.transport import GitHubRestTransport
 
 PARAMS = dict(repository='owner/repo', pull_request=7, expected_head_sha='a'*40,
@@ -61,6 +63,54 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual([dict(repository='owner/repo',pull_request=7,expected_head_sha='a'*40,merge_method='merge')],t.puts)
         with self.assertRaises(ActionAuthorityLedgerError):self.execute(t)
         self.assertEqual(1,len(t.puts));self.assertEqual(2,len(self.rows(self.attempts)))
+    def test_persisted_attempt_round_trip_into_core_preserves_uncertainty(self):
+        # Real Core/companion files, fake transport, independently read consume
+        # context. A supplied UNKNOWN verification is not an external observer.
+        for response, expected in ((GOOD, 'SUCCESS'),
+                                   (dict(http_status=409), 'FAILED'),
+                                   (dict(http_status=503), 'UNKNOWN')):
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                root.chmod(0o700)
+                authority, attempts = root/'authority.jsonl', root/'attempts.jsonl'
+                action = freeze_action('act-round-trip-' + expected.lower(), 'github.merge_pr', dict(PARAMS))
+                action_id = action.action['action_id']
+                approval = record_action_decision(authority, action, 'approve', action_id, action.action_sha256)
+                transport = Transport(response)
+                execute_action_merge_pr(authority, attempts, action, approval['event_id'], transport)
+                consume = self.rows(authority)[1]
+                start, finish = self.rows(attempts)
+                before = (authority.read_bytes(), attempts.read_bytes())
+                receipt = build_external_action_receipt(
+                    start, finish, expected_action_id=action_id,
+                    expected_action_sha256=action.action_sha256,
+                    expected_consume_event_id=consume['event_id'],
+                    executor_ref={'ref_id': 'executor:offline-pipeline', 'sha256': 'c'*64})
+                self.assertEqual(expected, receipt['status'])
+                self.assertEqual(canonical_json_sha256({'started': start, 'finished': finish}),
+                                 receipt['executor_observation_ref']['sha256'])
+                verification = dict(
+                    schema_version='external-action-verification.v0', action_id=action_id,
+                    action_sha256=action.action_sha256, verification_method='read_only_external_observation',
+                    observed_state={'summary': 'Synthetic: no external state observed.', 'state_sha256': None},
+                    evidence_refs=[], observed_at=finish['recorded_at'], status='UNKNOWN',
+                    receipt_ref={'ref_id': 'receipt:' + action_id, 'sha256': canonical_json_sha256(receipt)})
+                bound, verified = validate_receipt_verification_binding(
+                    receipt, verification, expected_action_id=action_id,
+                    expected_action_sha256=action.action_sha256)
+                self.assertEqual(expected, bound['status'])
+                self.assertEqual('UNKNOWN', verified['status'])
+                with self.assertRaises(ContractError):
+                    build_external_action_receipt(
+                        start, finish, expected_action_id=action_id,
+                        expected_action_sha256=action.action_sha256,
+                        expected_consume_event_id=approval['event_id'], executor_ref=receipt['executor_ref'])
+                self.assertEqual(before, (authority.read_bytes(), attempts.read_bytes()))
+                with self.assertRaises(ActionAuthorityLedgerError):
+                    execute_action_merge_pr(authority, attempts, action, approval['event_id'], transport)
+                self.assertEqual(1, len(transport.puts))
+                self.assertEqual(before, (authority.read_bytes(), attempts.read_bytes()))
+
     def test_empty_success_status_stays_unresolved(self):
         t=Transport(dict(http_status=200))
         result=self.execute(t)
@@ -87,6 +137,14 @@ class PipelineTests(unittest.TestCase):
         with mock.patch.object(receipts,'_fsync',side_effect=fsync):
             with self.assertRaises(Exception):self.execute(t)
         self.assertEqual(1,len(t.puts));self.assertEqual(1,len(self.rows(self.attempts)));self.assert_consumed()
+        start = self.rows(self.attempts)[0]
+        with self.assertRaises(ContractError):
+            build_external_action_receipt(
+                start, None, expected_action_id='act-pipeline',
+                expected_action_sha256=self.action.action_sha256,
+                expected_consume_event_id=self.rows(self.authority)[1]['event_id'],
+                executor_ref={'ref_id': 'executor:offline-pipeline', 'sha256': 'c'*64})
+        self.assertEqual(1, len(self.rows(self.attempts)))
     def test_preflight_callback_cannot_replace_frozen_target(self):
         changed=copy.deepcopy(PARAMS);changed['repository']='other/repo'
         def tamper():

@@ -17,6 +17,18 @@ not promise dates, adoption, publication, deployment, or automatic integration.
 - Preserved 0.2 protocol compatibility suite, schema hashes, fixtures, conformance evidence, and synthetic demo.
 - Preserved legacy invocation-evidence, routing, safety, registry, and import compatibility surfaces.
 
+## Current source additions (unreleased)
+
+- Optional GitHub companion with conservative bounded execution reporting.
+- Opt-in terminal-attempt conversion into Core Receipt, exact identity checks,
+  canonical evidence binding and UNKNOWN preservation.
+- Offline local-ledger → companion → receipt → Core binding regression with fake
+  transport; no automatic runtime or independent-verifier producer.
+
+See [composition and host obligations](composition.md) for continuation,
+delegation, observation, plugin and knowledge-lifecycle boundaries. These remain
+owned by their products; documenting a boundary does not implement it.
+
 ## Candidates
 
 - Cross-platform replication for declared Python and operating-system combinations.
