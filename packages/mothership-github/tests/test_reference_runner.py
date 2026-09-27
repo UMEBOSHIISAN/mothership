@@ -335,6 +335,57 @@ class ReferenceRunnerTests(unittest.TestCase):
                 self.assertEqual(0, code)
                 self.assertEqual((0, 0, 0, 0), (executions, verifications, len(transport.put_calls), len(requests)))
 
+    def test_approval_or_cancellation_display_failure_is_nonzero_without_side_effects(self):
+        class FailingOutput(TTYBuffer):
+            def __init__(self, event, operation):
+                super().__init__()
+                self._event = event
+                self._operation = operation
+                self._last_write = ""
+
+            def write(self, value):
+                if self._operation == "write" and f'"event":"{self._event}"' in value:
+                    raise OSError("secret-output-error")
+                self._last_write = value
+                return super().write(value)
+
+            def flush(self):
+                if self._operation == "flush" and f'"event":"{self._event}"' in self._last_write:
+                    raise OSError("secret-output-error")
+                return super().flush()
+
+        class TrackingEOFInput(TTYBuffer):
+            def __init__(self):
+                super().__init__()
+                self.read_calls = 0
+
+            def readline(self, *args, **kwargs):
+                self.read_calls += 1
+                return ""
+
+        for event, input_stream_factory in (
+            ("approval_required", lambda: TrackingEOFInput()),
+            ("stopped", lambda: TrackingEOFInput()),
+        ):
+            for operation in ("write", "flush"):
+                with self.subTest(event=event, operation=operation):
+                    transport = FakeTransport()
+                    output = FailingOutput(event, operation)
+                    input_stream = input_stream_factory()
+
+                    code, text = self.run_runner(
+                        transport,
+                        input_stream=input_stream,
+                        output=output,
+                    )
+
+                    self.assertEqual(1, code)
+                    self.assertEqual(0 if event == "approval_required" else 1, input_stream.read_calls)
+                    self.assertEqual([], transport.put_calls)
+                    self.assertFalse((self.ledger_dir / "authority.jsonl").exists())
+                    self.assertFalse((self.ledger_dir / "attempts.jsonl").exists())
+                    self.assertNotIn("secret-output-error", text)
+
     def test_verification_display_failure_does_not_repeat_effect(self):
         class FailingOutput(TTYBuffer):
             def write(self, value):

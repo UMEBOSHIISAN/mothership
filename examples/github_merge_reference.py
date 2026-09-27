@@ -42,6 +42,10 @@ class _UsageError(Exception):
     pass
 
 
+class _OutputFailure(Exception):
+    pass
+
+
 class _ArgumentParser(argparse.ArgumentParser):
     def error(self, message: str) -> None:
         del message
@@ -107,6 +111,11 @@ def _emit(output_stream: object, payload: Mapping[str, object]) -> bool:
         return True
     except BaseException:
         return False
+
+
+def _emit_or_raise(output_stream: object, payload: Mapping[str, object]) -> None:
+    if not _emit(output_stream, payload):
+        raise _OutputFailure
 
 
 def _paths(ledger_dir: Path) -> dict[str, str]:
@@ -206,7 +215,7 @@ def _approval_line(input_stream: object, output_stream: object, frozen) -> str |
     digest = frozen.action_sha256
     exact = f"approve {action_id} {digest}"
     reject = f"reject {action_id} {digest}"
-    if not _emit(
+    _emit_or_raise(
         output_stream,
         {
             "event": "approval_required",
@@ -218,31 +227,30 @@ def _approval_line(input_stream: object, output_stream: object, frozen) -> str |
             },
             "exact_input": f"{exact} OR {reject}",
         },
-    ):
-        return None
+    )
     try:
         line = input_stream.readline()
     except EOFError:
-        _emit(output_stream, {"event": "stopped", "reason": "approval_eof"})
+        _emit_or_raise(output_stream, {"event": "stopped", "reason": "approval_eof"})
         return None
     except KeyboardInterrupt:
-        _emit(output_stream, {"event": "stopped", "reason": "approval_interrupted"})
+        _emit_or_raise(output_stream, {"event": "stopped", "reason": "approval_interrupted"})
         return None
     except BaseException:
-        _emit(output_stream, {"event": "stopped", "reason": "approval_read_failed"})
+        _emit_or_raise(output_stream, {"event": "stopped", "reason": "approval_read_failed"})
         return None
     if type(line) is not str:
-        _emit(output_stream, {"event": "stopped", "reason": "approval_mismatch"})
+        _emit_or_raise(output_stream, {"event": "stopped", "reason": "approval_mismatch"})
         return None
     if line == "":
-        _emit(output_stream, {"event": "stopped", "reason": "approval_eof"})
+        _emit_or_raise(output_stream, {"event": "stopped", "reason": "approval_eof"})
         return None
     response = line.rstrip("\r\n")
     if response == exact:
         return "approve"
     if response == reject:
         return "reject"
-    _emit(output_stream, {"event": "stopped", "reason": "approval_mismatch"})
+    _emit_or_raise(output_stream, {"event": "stopped", "reason": "approval_mismatch"})
     return None
 
 
@@ -540,7 +548,10 @@ def main(
         },
     ):
         return 1
-    decision = _approval_line(input_stream, output_stream, frozen)
+    try:
+        decision = _approval_line(input_stream, output_stream, frozen)
+    except _OutputFailure:
+        return 1
     if decision is None:
         return 0
 

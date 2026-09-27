@@ -75,6 +75,10 @@ An execution result's `mutation_attempted` field means the executor entered its
 mutation stage; it does not prove that a request reached GitHub. Executor
 exceptions report that field as `unknown`.
 Exit status `2` means non-TTY input/output or invalid arguments.
+Output write or flush failure returns `1`, including failure to display the
+approval request or a cancellation event. A failed approval display stops before
+reading a response, recording a decision, or executing. A cancellation returns
+`0` only when its stop event was successfully written and flushed.
 
 The acceptance tests use a fake transport and temporary ledgers only. They do
 not contact GitHub, use a real token, install packages, or commit/push changes.
