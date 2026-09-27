@@ -244,6 +244,8 @@ def _semantic_pr(
                 return "UNKNOWN", None, "future_merged_at"
             if merged_at < receipt_started:
                 return "UNKNOWN", None, "preexisting_merge"
+            if merged_at == receipt_started:
+                return "UNKNOWN", None, "ambiguous_merge_time"
         else:
             if merged_at_value is not None:
                 return "UNKNOWN", None, "contradictory_pr_state"

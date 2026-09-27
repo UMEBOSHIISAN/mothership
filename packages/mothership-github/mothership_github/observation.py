@@ -21,7 +21,7 @@ class GitHubObservationAdapter:
         self._base_url = base_url.rstrip('/')
         self._timeout = timeout
         self._user_agent = user_agent
-        self._opener = opener or public._default_open
+        self._opener = public._default_open if opener is None else opener
 
     def fetch_pull_request(self, repository: str, pull_request: int) -> dict:
         if type(pull_request) is not int or pull_request < 1:

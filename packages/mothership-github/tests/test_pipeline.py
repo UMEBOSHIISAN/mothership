@@ -150,7 +150,11 @@ class PipelineTests(unittest.TestCase):
             executor_ref={"ref_id": "executor:pipeline", "sha256": "c" * 64},
         )
         before = (self.authority.read_bytes(), self.attempts.read_bytes())
-        merged_at = finished["recorded_at"]
+        start_dt = datetime.datetime.strptime(started["recorded_at"], "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=datetime.UTC
+        )
+        merged_at_dt = start_dt + datetime.timedelta(seconds=1)
+        merged_at = merged_at_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         opener = ReadBackOpener(
             [
                 {
@@ -176,7 +180,8 @@ class PipelineTests(unittest.TestCase):
         finish_dt = datetime.datetime.strptime(finished["recorded_at"], "%Y-%m-%dT%H:%M:%SZ").replace(
             tzinfo=datetime.UTC
         )
-        with mock.patch("mothership_github.verification._utc_now", return_value=finish_dt + datetime.timedelta(seconds=1)):
+        observed_dt = max(finish_dt, merged_at_dt) + datetime.timedelta(seconds=1)
+        with mock.patch("mothership_github.verification._utc_now", return_value=observed_dt):
             bundle = verify_merge_pr(self.action, receipt, opener=opener)
         self.assertEqual("SUCCESS", receipt["status"])
         self.assertEqual("CONFIRMED", bundle["verification"]["status"])

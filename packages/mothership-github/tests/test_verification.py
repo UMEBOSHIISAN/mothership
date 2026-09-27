@@ -350,6 +350,29 @@ class VerificationProducerTests(unittest.TestCase):
         self.assertIsNone(result["evidence"]["state"]["pull_request"])
         self.assertEqual(1, len(opener.requests))
 
+    def test_merge_time_before_equal_and_after_receipt_start_has_distinct_boundaries(self):
+        verify_merge_pr = self.import_api()
+        cases = (
+            ("before", "2026-09-27T00:00:00Z", "UNKNOWN", "preexisting_merge", 1),
+            ("equal", _RECEIPT_STARTED, "UNKNOWN", "ambiguous_merge_time", 1),
+            ("after", "2026-09-27T00:00:05Z", "CONFIRMED", "merge_confirmed", 2),
+        )
+        for name, merged_at, expected_status, expected_reason, expected_gets in cases:
+            with self.subTest(boundary=name):
+                action = _action("act-merge-time-" + name)
+                receipt = _receipt(action)
+                opener = ReadBackOpener(
+                    [_pr_payload(merged_at=merged_at), _commit_payload()]
+                )
+                with mock.patch(
+                    "mothership_github.verification._utc_now",
+                    return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+                ):
+                    result = verify_merge_pr(action, receipt, opener=opener)
+                self.assertEqual(expected_status, result["verification"]["status"])
+                self.assertEqual(expected_reason, result["evidence"]["reason"])
+                self.assertEqual(expected_gets, len(opener.requests))
+
     def test_parent_topology_mismatch_is_distinct_from_malformed_parent_data(self):
         verify_merge_pr = self.import_api()
         for parents, expected_status, expected_reason in (
@@ -723,6 +746,58 @@ class VerificationProducerTests(unittest.TestCase):
         self.assertEqual("CONFIRMED", result["verification"]["status"])
         self.assertEqual(2, len(calls))
         self.assertFalse(any(request.has_header("Authorization") for request, _ in calls))
+
+    def test_falsey_injected_opener_is_used_for_both_gets(self):
+        verify_merge_pr = self.import_api()
+        action = _action()
+        receipt = _receipt(action)
+
+        class BoolFalseOpener:
+            def __init__(self):
+                self.payloads = [_pr_payload(), _commit_payload()]
+                self.requests = []
+
+            def __bool__(self):
+                return False
+
+            def __call__(self, request, *, timeout):
+                self.requests.append((request, timeout))
+                return FakeResponse(self.payloads.pop(0), url=request.full_url)
+
+        class LenZeroOpener:
+            def __init__(self):
+                self.payloads = [_pr_payload(), _commit_payload()]
+                self.requests = []
+
+            def __len__(self):
+                return 0
+
+            def __call__(self, request, *, timeout):
+                self.requests.append((request, timeout))
+                return FakeResponse(self.payloads.pop(0), url=request.full_url)
+
+        for opener_type in (BoolFalseOpener, LenZeroOpener):
+            with self.subTest(opener=opener_type.__name__):
+                opener = opener_type()
+                default_open = mock.Mock(
+                    side_effect=AssertionError("falsey injected opener was discarded")
+                )
+                with (
+                    mock.patch(
+                        "mothership_github.public_observation._default_open",
+                        default_open,
+                    ),
+                    mock.patch(
+                        "mothership_github.verification._utc_now",
+                        return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+                    ),
+                ):
+                    result = verify_merge_pr(action, receipt, opener=opener)
+                self.assertEqual("CONFIRMED", result["verification"]["status"])
+                self.assertEqual("injected", result["evidence"]["transport"])
+                self.assertEqual(2, len(opener.requests))
+                self.assertTrue(all(request.get_method() == "GET" for request, _ in opener.requests))
+                default_open.assert_not_called()
 
     def test_timeout_and_malformed_or_duplicate_json_are_unknown_without_retry(self):
         verify_merge_pr = self.import_api()

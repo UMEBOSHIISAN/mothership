@@ -19,6 +19,13 @@ authority. The caller retains the returned bundle and decides how fresh it
 must be; the `transport` label is metadata and cannot authenticate the
 transport on its own.
 
+A merge timestamp before the receipt's start is `UNKNOWN` (`preexisting_merge`).
+A timestamp in the same second is also `UNKNOWN` (`ambiguous_merge_time`):
+second-resolution timestamps cannot exclude a merge just before the attempt.
+A later timestamp still does not establish that the executor caused the merge.
+An explicitly injected opener is always retained, even if it evaluates as false;
+only `opener=None` selects the default network transport.
+
 The returned bundle retains only the fixed read-back version, the exact Core
 action identity, the transport label, one endpoint and UTC start/finish pair
 per GET, a sanitized pull-request projection, an ordered commit-parent
