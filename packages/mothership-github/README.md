@@ -58,7 +58,7 @@ See [candidate limits](../../docs/option-a-candidate.md) before choosing a consu
 The companion distribution tests build the Core and companion wheels using the
 existing root test extra, then install the local artifacts in temporary virtual
 environments without fetching dependencies. They check package metadata and
-import locations, and rerun the existing pipeline and read-back tests outside
+import locations, and rerun the pipeline, read-back, and process-boundary tests outside
 the source checkout. The installed tests use fake transports and local ledgers;
 they do not perform a live GitHub action or establish production readiness.
 
@@ -70,3 +70,18 @@ PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s packages/mothership-git
 
 This checks the built development-version pair, not a published release. The
 ordinary companion CI discovery also runs these distribution tests.
+
+## Process interruption checks
+
+On POSIX hosts with `fork`, process tests inherit one Core-issued action and
+exercise the real executor and local ledgers with a fake transport. A child
+exits abruptly after consume, after the start record, or after a simulated
+effect but before finish. Authority must remain spent, and absent or start-only
+attempt records must not become a terminal Receipt; explicit replay probes must
+add no effect. A separate
+two-process race must produce one consume and one simulated effect.
+
+These checks cover selected process-exit boundaries within the documented
+issuance lineage. They do not restore a FrozenAction after a cold restart,
+simulate machine power loss or interrupted writes, or prove exactly-once effects
+at GitHub. No recovery, retry, or new authority mechanism is added.
