@@ -53,6 +53,14 @@ The 10-minute TTL ends eligibility to consume, not necessarily the time to start
 PUT. Expected base is checked at preflight only; PUT has no atomic base condition.
 See [candidate limits](../../docs/option-a-candidate.md) before choosing a consumer.
 
+## One-PR reference consumer
+
+From a source checkout, the [human-operated reference consumer](../../examples/github_merge_reference.md)
+accepts an exact action-bound decision and executes once. Add `--verify-result`
+to build a Receipt and perform independent public tokenless read-back in the same
+process. Execution and verification remain separate; UNKNOWN does not trigger a
+retry. The consumer is not an installed mutation CLI.
+
 ## Installed-wheel verification
 
 The companion distribution tests build the Core and companion wheels using the

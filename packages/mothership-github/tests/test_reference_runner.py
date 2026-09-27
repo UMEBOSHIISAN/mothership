@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import datetime
 import getpass
+import hashlib
 import io
 import json
 import os
@@ -23,6 +24,7 @@ from orchestration.lib import action_authority_ledger
 _HEAD = "a" * 40
 _OTHER_HEAD = "b" * 40
 _MERGE_SHA = "c" * 40
+_BASE_SHA = "d" * 40
 
 
 class TTYBuffer(io.StringIO):
@@ -83,6 +85,52 @@ class FakeTransport:
         return copy.deepcopy(self.mutation)
 
 
+class ReadBackResponse(io.BytesIO):
+    status = 200
+
+    def __init__(self, payload):
+        super().__init__(json.dumps(payload).encode("utf-8"))
+        self.headers = {}
+
+    def getcode(self):
+        return self.status
+
+
+class ReadBackOpener:
+    def __init__(self, payloads):
+        self.payloads = [copy.deepcopy(payload) for payload in payloads]
+        self.requests = []
+
+    def __call__(self, request, *, timeout):
+        self.requests.append((request, timeout))
+        return ReadBackResponse(self.payloads.pop(0))
+
+
+def readback_pr(*, merged_at, merged=True, head_sha=_HEAD, base_ref="main"):
+    return {
+        "url": "https://api.github.com/repos/UMEBOSHIISAN/mothership/pulls/7",
+        "number": 7,
+        "title": "synthetic",
+        "state": "closed" if merged else "open",
+        "updated_at": merged_at or "2026-09-27T00:00:00Z",
+        "draft": False,
+        "closed": merged,
+        "merged": merged,
+        "merged_at": merged_at if merged else None,
+        "head": {"sha": head_sha, "ref": "feature"},
+        "base": {"ref": base_ref, "repo": {"full_name": "UMEBOSHIISAN/mothership"}},
+        "merge_commit_sha": _MERGE_SHA if merged else None,
+    }
+
+
+def readback_commit():
+    return {
+        "sha": _MERGE_SHA,
+        "url": "https://api.github.com/repos/UMEBOSHIISAN/mothership/git/commits/" + _MERGE_SHA,
+        "parents": [{"sha": _BASE_SHA}, {"sha": _HEAD}],
+    }
+
+
 class ReferenceRunnerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="reference-runner-")
@@ -102,6 +150,7 @@ class ReferenceRunnerTests(unittest.TestCase):
         argv=None,
         input_stream=None,
         output=None,
+        readback_opener=None,
     ):
         output = TTYBuffer() if output is None else output
         if input_stream is None:
@@ -119,6 +168,7 @@ class ReferenceRunnerTests(unittest.TestCase):
             transport=transport,
             input_stream=input_stream,
             output_stream=output,
+            readback_opener=readback_opener,
         )
         return code, output.getvalue()
 
@@ -147,6 +197,213 @@ class ReferenceRunnerTests(unittest.TestCase):
         self.assertEqual("success", rows[-1]["status"])
         self.assertEqual(2, len((self.ledger_dir / "authority.jsonl").read_text().splitlines()))
         self.assertEqual(2, len((self.ledger_dir / "attempts.jsonl").read_text().splitlines()))
+
+    def verified_run(self, *, mode="confirmed", mutation=None, transform=None,
+                     decision="approve", output=None, input_stream=None):
+        from mothership.contracts import canonical_json_sha256, validate_receipt_verification_binding
+        from mothership_github import verification
+
+        self.ledger_dir = Path(tempfile.mkdtemp(dir=self.root)).resolve()
+        transport = FakeTransport(mutation)
+        captured = {}
+        requests = []
+        real_execute = reference.executor.execute_action_merge_pr
+        real_verify = verification.verify_merge_pr
+
+        def execute(*args, **kwargs):
+            captured["action"] = args[2]
+            captured["action_value"] = reference._json_value(args[2].action)
+            result = real_execute(*args, **kwargs)
+            captured["ledger_bytes"] = [
+                (self.ledger_dir / name).read_bytes()
+                for name in ("authority.jsonl", "attempts.jsonl")
+            ]
+            captured["result"] = copy.deepcopy(result)
+            return transform(result) if transform else result
+
+        def now():
+            finish = captured["result"]["attempt_finished"]["recorded_at"]
+            return datetime.datetime.strptime(finish, "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=datetime.UTC) + datetime.timedelta(seconds=2)
+
+        def opener(request, *, timeout):
+            requests.append(request)
+            self.assertFalse(request.has_header("Authorization"))
+            if mode == "read_failure":
+                raise OSError("secret-readback-error")
+            result = captured["result"]
+            if mode == "same_second":
+                merged_at = result["attempt_started"]["recorded_at"]
+            else:
+                merged_at = (now() - datetime.timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if "/pulls/" in request.full_url:
+                value = readback_pr(merged_at=merged_at, merged=mode != "unmerged",
+                                    head_sha=_OTHER_HEAD if mode == "mismatch" else _HEAD)
+                value["body"] = "secret-remote-prose"
+            else:
+                value = readback_commit()
+            return ReadBackResponse(value)
+
+        def verify(action, receipt, **kwargs):
+            self.assertIs(captured["action"], action)
+            before = copy.deepcopy(receipt)
+            if mode == "verifier_exception":
+                raise RuntimeError("secret-verifier-error")
+            bundle = real_verify(action, receipt, **kwargs)
+            self.assertEqual(before, receipt)
+            validate_receipt_verification_binding(
+                receipt, bundle["verification"], expected_action_id=action.action["action_id"],
+                expected_action_sha256=action.action_sha256)
+            return bundle
+
+        with mock.patch.object(reference.executor, "execute_action_merge_pr", side_effect=execute) as execution, \
+             mock.patch.object(verification, "verify_merge_pr", side_effect=verify) as verifier, \
+             mock.patch.object(verification, "_utc_now", side_effect=now):
+            code, text = self.run_runner(
+                transport, argv=["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result"],
+                decision=decision, output=output, input_stream=input_stream, readback_opener=opener)
+        rows = self.rows(text)
+        if "action" in captured:
+            self.assertEqual(captured["action_value"], reference._json_value(captured["action"].action))
+        if "ledger_bytes" in captured:
+            self.assertEqual(captured["ledger_bytes"], [
+                (self.ledger_dir / name).read_bytes() for name in ("authority.jsonl", "attempts.jsonl")])
+        if rows and rows[-1].get("receipt"):
+            receipt = rows[-1]["receipt"]
+            self.assertEqual(canonical_json_sha256(rows[-1]["source_pair"]),
+                             receipt["executor_observation_ref"]["sha256"])
+        self.assertNotIn("secret-", text)
+        return code, rows, transport, requests, execution.call_count, verifier.call_count
+
+    def test_verify_result_builds_bound_receipt_and_confirmed_readback(self):
+        code, rows, transport, requests, executions, verifications = self.verified_run()
+        self.assertEqual(0, code)
+        self.assertEqual("SUCCESS", rows[-1]["receipt"]["status"])
+        self.assertEqual("CONFIRMED", rows[-1]["status"])
+        self.assertEqual((1, 1, 1, 2), (executions, verifications, len(transport.put_calls), len(requests)))
+        self.assertEqual(hashlib.sha256(Path(reference.__file__).read_bytes()).hexdigest(),
+                         rows[-1]["receipt"]["executor_ref"]["sha256"])
+
+    def test_unknown_mismatch_and_same_second_stay_nonzero(self):
+        for mode, status in (("unmerged", "UNKNOWN"), ("read_failure", "UNKNOWN"),
+                             ("same_second", "UNKNOWN"), ("mismatch", "MISMATCH")):
+            with self.subTest(mode=mode):
+                code, rows, transport, requests, executions, verifications = self.verified_run(mode=mode)
+                self.assertEqual(3, code)
+                self.assertEqual(status, rows[-1]["status"])
+                self.assertEqual("SUCCESS", rows[-1]["receipt"]["status"])
+                self.assertEqual((1, 1, 1), (executions, verifications, len(transport.put_calls)))
+                self.assertLessEqual(len(requests), 2)
+                if mode == "same_second":
+                    self.assertEqual("ambiguous_merge_time", rows[-1]["evidence"]["reason"])
+
+    def test_failed_and_unknown_execution_are_not_promoted_by_confirmation(self):
+        for http_status, expected in ((409, "FAILED"), (503, "UNKNOWN")):
+            with self.subTest(http_status=http_status):
+                code, rows, transport, _, executions, verifications = self.verified_run(
+                    mutation={"http_status": http_status, "merged": None, "merge_commit_sha": None})
+                self.assertEqual(1, code)
+                self.assertEqual(expected, rows[-1]["receipt"]["status"])
+                self.assertEqual("CONFIRMED", rows[-1]["status"])
+                self.assertEqual((1, 1, 1), (executions, verifications, len(transport.put_calls)))
+
+    def test_missing_or_malformed_pair_is_sanitized_without_readback(self):
+        for malformed in (False, True):
+            def change(result):
+                result["attempt_finished"] = {"secret-invalid-field": "secret-value"} if malformed else None
+                return result
+            with self.subTest(malformed=malformed):
+                code, rows, transport, requests, executions, verifications = self.verified_run(transform=change)
+                self.assertEqual(3, code)
+                self.assertEqual("receipt_unavailable", rows[-1]["reason"])
+                self.assertIsNone(rows[-1]["receipt"])
+                self.assertIsNone(rows[-1]["source_pair"])
+                self.assertEqual((1, 0, 1, 0), (executions, verifications, len(transport.put_calls), len(requests)))
+
+    def test_verifier_exception_preserves_receipt_without_retry(self):
+        code, rows, transport, requests, executions, verifications = self.verified_run(mode="verifier_exception")
+        self.assertEqual(3, code)
+        self.assertEqual("verification_unavailable", rows[-1]["reason"])
+        self.assertEqual("SUCCESS", rows[-1]["receipt"]["status"])
+        self.assertEqual((1, 1, 1, 0), (executions, verifications, len(transport.put_calls), len(requests)))
+
+    def test_reject_and_cancel_do_not_execute_or_read_back_with_flag(self):
+        for decision, input_stream in (("reject", None), ("approve", TTYBuffer(""))):
+            with self.subTest(decision=decision):
+                code, _, transport, requests, executions, verifications = self.verified_run(
+                    decision=decision, input_stream=input_stream)
+                self.assertEqual(0, code)
+                self.assertEqual((0, 0, 0, 0), (executions, verifications, len(transport.put_calls), len(requests)))
+
+    def test_verification_display_failure_does_not_repeat_effect(self):
+        class FailingOutput(TTYBuffer):
+            def write(self, value):
+                if '"verification_result"' in value:
+                    raise OSError("secret-output-error")
+                return super().write(value)
+        code, _, transport, _, executions, verifications = self.verified_run(output=FailingOutput())
+        self.assertEqual(1, code)
+        self.assertEqual((1, 1, 1), (executions, verifications, len(transport.put_calls)))
+
+    def test_source_reference_is_frozen_before_effect_and_source_failure_stops(self):
+        original = reference._consumer_source_reference
+        captured = []
+        def freeze():
+            value = original()
+            captured.append(value)
+            return value
+        def mutate(result):
+            self.assertEqual(1, len(captured))
+            reference._consumer_source_reference = mock.Mock(side_effect=AssertionError("late source read"))
+            return result
+        with mock.patch.object(reference, "_consumer_source_reference", side_effect=freeze):
+            code, rows, _, _, _, _ = self.verified_run(transform=mutate)
+        self.assertEqual(0, code)
+        self.assertEqual(captured[0], rows[-1]["receipt"]["executor_ref"])
+        with mock.patch.object(reference, "_consumer_source_reference", side_effect=OSError("secret-source")):
+            code, _, transport, requests, executions, verifications = self.verified_run()
+        self.assertEqual(1, code)
+        self.assertEqual((0, 0, 0, 0), (executions, verifications, len(transport.put_calls), len(requests)))
+
+    def test_executor_exception_with_flag_has_no_readback_or_raw_error(self):
+        with mock.patch.object(reference.executor, "execute_action_merge_pr", side_effect=RuntimeError("secret-executor")), \
+             mock.patch.object(reference, "_run_verification") as verify:
+            code, text = self.run_runner(FakeTransport(), argv=[
+                "--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result"])
+        self.assertEqual(1, code)
+        verify.assert_not_called()
+        self.assertNotIn("secret-", text)
+
+    def test_success_summary_cannot_promote_failed_terminal_pair(self):
+        def change(result):
+            result.update(status="success", http_status=200, merged=True, merge_commit_sha=_MERGE_SHA)
+            return result
+        code, rows, _, _, _, _ = self.verified_run(
+            mutation={"http_status": 409, "merged": None, "merge_commit_sha": None}, transform=change)
+        self.assertEqual(1, code)
+        self.assertEqual("FAILED", rows[-1]["receipt"]["status"])
+        self.assertEqual("CONFIRMED", rows[-1]["status"])
+
+    def test_invalid_execution_status_is_not_echoed_in_verification_output(self):
+        def change(result):
+            result["status"] = "secret-invalid-status"
+            return result
+        code, rows, _, _, _, _ = self.verified_run(transform=change)
+        self.assertEqual(1, code)
+        self.assertEqual("reconciliation_required", rows[-1]["execution_status"])
+
+    def test_default_execution_path_never_imports_or_calls_verification(self):
+        import builtins
+        real_import = builtins.__import__
+        def guarded_import(name, *args, **kwargs):
+            if name in {"mothership_github.external_action", "mothership_github.verification"}:
+                raise AssertionError("unexpected opt-in import")
+            return real_import(name, *args, **kwargs)
+        with mock.patch.object(builtins, "__import__", side_effect=guarded_import), \
+             mock.patch.object(reference, "_run_verification", side_effect=AssertionError("unexpected")):
+            code, text = self.run_runner(FakeTransport())
+        self.assertEqual(0, code)
+        self.assertNotIn("verification_result", text)
 
     def test_rejection_records_decision_without_consuming_or_executing(self):
         transport = FakeTransport()
