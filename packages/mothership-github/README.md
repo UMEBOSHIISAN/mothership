@@ -52,3 +52,21 @@ cannot authenticate transport by itself.
 The 10-minute TTL ends eligibility to consume, not necessarily the time to start
 PUT. Expected base is checked at preflight only; PUT has no atomic base condition.
 See [candidate limits](../../docs/option-a-candidate.md) before choosing a consumer.
+
+## Installed-wheel verification
+
+The companion distribution tests build the Core and companion wheels using the
+existing root test extra, then install the local artifacts in temporary virtual
+environments without fetching dependencies. They check package metadata and
+import locations, and rerun the existing pipeline and read-back tests outside
+the source checkout. The installed tests use fake transports and local ledgers;
+they do not perform a live GitHub action or establish production readiness.
+
+From the source checkout, with the root `.[test]` extra already installed:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s packages/mothership-github/tests -p test_distribution.py -v
+```
+
+This checks the built development-version pair, not a published release. The
+ordinary companion CI discovery also runs these distribution tests.
