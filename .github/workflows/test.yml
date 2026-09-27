@@ -46,3 +46,58 @@ jobs:
           out="$(mothership demo)" || { echo "::error::mothership demo failed"; exit 1; }
           echo "$out"
           echo "$out" | python -c "import json,sys; d=json.load(sys.stdin); assert d['status']=='passed', d['status']; assert d['authority_effect'] is False, 'authority_effect must be false'; assert d['execution_effect'] is False, 'execution_effect must be false'; kinds=[s['kind'] for s in d['stages']]; assert kinds==['frontdoor-task','governance-handoff','router-manifest','observation-snapshot'], kinds; assert all(s['valid'] for s in d['stages']), 'every stage must be valid'; print('ok: four protocol stages composed with both effect flags false')"
+
+  companion:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[test]"
+      - name: Core suite with companion source
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONPATH: ".:packages/mothership-github"
+        run: |
+          python -c '
+          import unittest
+
+          import mothership_github
+
+          loader = unittest.TestLoader()
+          suite = loader.discover("tests")
+          if suite.countTestCases() == 0:
+              print("::error::Core suite discovered 0 tests")
+              raise SystemExit(1)
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.skipped:
+              print(f"::error::Core suite skipped {len(result.skipped)} test(s)")
+          if not result.wasSuccessful() or result.skipped:
+              raise SystemExit(1)
+          '
+      - name: Companion suite
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONPATH: ".:packages/mothership-github"
+        run: |
+          python -c '
+          import unittest
+
+          import mothership_github
+
+          loader = unittest.TestLoader()
+          suite = loader.discover("packages/mothership-github/tests")
+          if suite.countTestCases() == 0:
+              print("::error::Companion suite discovered 0 tests")
+              raise SystemExit(1)
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.skipped:
+              print(f"::error::Companion suite skipped {len(result.skipped)} test(s)")
+          if not result.wasSuccessful() or result.skipped:
+              raise SystemExit(1)
+          '

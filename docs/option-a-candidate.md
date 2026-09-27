@@ -108,8 +108,25 @@ to its original revision and operation.
 
 Run the Core tests without the companion to exercise the optional-dependency
 boundary. Observation-specific tests explicitly skip when the companion is absent.
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+```
+
 For the integration suite, put `packages/mothership-github` on `PYTHONPATH` along
-with the repository root; those same observation tests must all run and pass.
-No transport test needs live credentials or network access. A plain source archive
-has no Git index, so Git-tracked inventory tests require separate manifest checks.
+with the repository root and run the Core and companion roots in separate
+processes:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:packages/mothership-github \
+  python3 -m unittest discover -s tests -v
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:packages/mothership-github \
+  python3 -m unittest discover -s packages/mothership-github/tests -v
+```
+
+The companion CI job adds guards that fail on zero discovered tests or any
+skipped test; the Core-only job intentionally preserves its optional-companion
+skips. No transport test needs live credentials or network access. A plain
+source archive has no Git index, so Git-tracked inventory tests require
+separate manifest checks.
 Build/install tests need pre-existing build tools and must not download implicitly.
