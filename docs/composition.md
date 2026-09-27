@@ -53,6 +53,30 @@ wrong consume identity, unchanged ledgers during conversion, and one fake PUT
 only. Even an executor SUCCESS does not promote that verification to CONFIRMED.
 This is offline integration evidence, not a live GitHub or cross-repository test.
 
+## Optional GitHub read-back verification
+
+The companion also provides an explicit `verify_merge_pr()` producer for the
+same `github.merge_pr` profile. It accepts the exact Core-issued
+`FrozenAction`, a validated external-action Receipt, and an optional injected
+opener. With the default opener it performs at most two public tokenless GETs:
+one pull-request request and, only after a coherent merged PR matches the
+frozen head and base, one Git Database commit request. It never consumes
+authority, writes either ledger, calls the executor, retries, or polls.
+
+The returned bundle keeps a sanitized pull-request projection, ordered commit
+parents, UTC request boundaries, fixed reason codes, and canonical hashes for
+the observed state and complete evidence. Remote prose, authors, emails,
+headers, raw response bodies, and exception text are discarded. Malformed,
+contradictory, future, or pre-existing observations remain `UNKNOWN`; a valid
+wrong target or merge topology is `MISMATCH`. Receipt status remains separate
+from Verification status, and the receipt input remains unchanged.
+
+The [offline example](../examples/github_readback_verification.md) uses an
+explicit synthetic opener. Its result demonstrates contract binding only; it
+does not authenticate GitHub, the executor, a human, or the method used to
+create a merge. Two GETs are a bounded non-atomic snapshot, and the current
+action profile does not bind a base commit SHA.
+
 ## Application and host handoff obligations
 
 These obligations identify the owner of each boundary. They are not new Core

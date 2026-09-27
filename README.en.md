@@ -98,7 +98,7 @@ that exact Core version.
 Core validates the exact `github.merge_pr` parameters, freezes a `FrozenAction`,
 checks a caller-attested decision, and permits one consume in a trusted live
 ledger. Core does not execute the external operation and does not ship an
-executor or independent verifier producer.
+executor or independent GitHub verifier producer.
 
 The opt-in GitHub companion accepts only a Core-issued `FrozenAction`, exact
 ledger paths, an approval event ID, and an explicit transport. After a
@@ -127,6 +127,20 @@ for responsibility and connection conditions. Run the offline synthetic example 
 `PYTHONPATH=.:packages/mothership-github python examples/github_receipt_adapter.py`.
 Its output demonstrates synthetic binding only; it performs no GitHub
 operation, credential use, ledger consume, or independent external observation.
+
+The opt-in companion `verify_merge_pr()` can produce a GitHub read-back
+Verification bound to the exact Core-issued `FrozenAction` and validated
+Receipt. The default path performs at most two public tokenless GETs (the pull
+request and its Git Database merge commit) and retains only sanitized PR and
+commit projections, UTC request boundaries, fixed reason codes, and canonical
+hashes. Malformed, contradictory, or time-invalid observations remain
+`UNKNOWN`; a valid wrong head, base, or merge topology is `MISMATCH`. Receipt
+status never selects Verification status. The producer does not consume or
+write authority, call an executor, retry, or poll. Injected opener results are
+synthetic/host-attested offline evidence; they do not authenticate GitHub, an
+executor, a human, or the method used to create a merge. See the [offline
+read-back example](examples/github_readback_verification.md) and
+[composition guide](docs/composition.md).
 
 ## How the current Mothership Core works
 

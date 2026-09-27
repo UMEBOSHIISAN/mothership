@@ -82,13 +82,16 @@ states retries, reconsumes, unconsumes or automatically repairs authority.
 Public `external-action-receipt.v0`, Verification, and their binding validator
 are unchanged. The optional [pure receipt adapter](../examples/github_receipt_adapter.md)
 now converts validated terminal attempt pairs with caller-supplied expected
-identities. It preserves uncertainty and grants no authority. The caller retains
-the canonical source pair; the adapter does not store or authenticate evidence.
-The companion does not manufacture these independent verification
-records or restore `reconcile_merge_state`. The legacy invocation ledger is
-also separate. One-shot protection remains per trusted, non-restored authority
-history; copying/rolling back histories can defeat it. Receipt paths are not a
-global deduplication service.
+identities. The companion also exposes an explicit `verify_merge_pr()`
+read-back producer. It uses the exact Core-issued action and validated Receipt,
+then performs at most two public tokenless GETs and retains sanitized PR and
+Git Database commit projections. It preserves uncertainty, keeps Receipt and
+Verification status independent, and grants no authority. The caller retains
+the canonical source records; the adapters do not authenticate evidence or
+restore `reconcile_merge_state`. The legacy invocation ledger is also separate.
+One-shot protection remains per trusted, non-restored authority history;
+copying/rolling back histories can defeat it. Receipt paths are not a global
+deduplication service.
 
 ## Cutover limits
 
@@ -99,10 +102,13 @@ must identify concrete consumers and decide how to retire unused authority and
 resolve old attempts before any real cutover. This candidate has no such authority
 and makes no claim that unidentified consumers do not exist.
 
-All validation evidence for this candidate uses fake transport responses and
-local files. No live credentials, network tests, GitHub operations or publication
-are required or demonstrated. Existing public baseline evidence remains scoped
-to its original revision and operation.
+Automated repository tests and included offline examples use fake transport
+responses and local files. They do not require live credentials, mutation, or
+publication. A separate bounded tokenless public read-back may provide
+observational evidence, but it is not a live executor or canary test and does
+not publish a release. The read-back example's injected opener is synthetic
+provenance and does not authenticate an independent actor. Existing public
+baseline evidence remains scoped to its original revision and operation.
 
 ## Offline source checks
 

@@ -21,7 +21,7 @@ class GitHubObservationAdapter:
         self._base_url = base_url.rstrip('/')
         self._timeout = timeout
         self._user_agent = user_agent
-        self._opener = opener or public._default_open
+        self._opener = public._default_open if opener is None else opener
 
     def fetch_pull_request(self, repository: str, pull_request: int) -> dict:
         if type(pull_request) is not int or pull_request < 1:
@@ -52,6 +52,39 @@ class GitHubObservationAdapter:
         head_ref = data['head'].get('ref')
         if head_ref is not None:
             public._safe_text(head_ref, 'head.ref')
+        return data
+
+    def fetch_commit(self, repository: str, sha: str) -> dict:
+        """Fetch one exact public commit object without following redirects.
+
+        The requested repository and commit identifier are validated before a
+        request is constructed.  The returned object is intentionally left to
+        the caller for semantic projection because GitHub's commit response
+        contains more fields than the bounded read-back evidence retains.
+        """
+        if type(repository) is not str:
+            raise ValueError("repository must be owner/repo text")
+        repo = public.parse_github_repository("https://github.com/" + repository)
+        if type(sha) is not str or public._SHA.fullmatch(sha) is None or sha != sha.lower():
+            raise ValueError("sha must be a lowercase 40-hex commit identifier")
+        request = Request(
+            f"{self._base_url}/repos/{repo.owner}/{repo.repo}/git/commits/{sha}",
+            method="GET",
+            headers={
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": self._user_agent,
+            },
+        )
+        if self._token:
+            request.add_header("Authorization", f"Bearer {self._token}")
+
+        def open_once(req, *, timeout):
+            return self._opener(req, timeout=self._timeout)
+
+        data = public._fetch_json(request, opener=open_once)
+        if type(data) is not dict:
+            raise public.GitHubObservationError("invalid commit response")
         return data
 
     def observe_candidate_pr(self, repository: str, pull_request: int) -> dict:

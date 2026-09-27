@@ -52,7 +52,7 @@ live end-to-end workflow. In the current source:
 | PROPOSE | one closed, non-authorizing consequence proposal | Mothership schema and pure validator |
 | APPROVE | caller-attested human decision for one exact action | Mothership binding; human ceremony is external |
 | EXECUTE | exact consumed action applied to an external system | optional `mothership-github` source companion for `github.merge_pr`; outside Core |
-| VERIFY | independent read-only observation after execution | separate future verifier; not shipped |
+| VERIFY | independent read-only observation after execution | optional GitHub companion read-back producer; Core validator remains separate |
 
 Supporting Source Health, Evidence Spine, Run Lineage, and Agent Decision
 components remain separate references. Their validation, lineage, or advisory
@@ -120,8 +120,11 @@ not execute the action. Creating a new ledger file does not fsync its parent dir
 directory entry is not claimed. The default package and CLI do not contain a general production bounded executor.
 Actual external effects require a separately configured bounded executor. The
 Executor emits an `ExternalActionReceipt`; a separate read-only Verifier emits
-an `ExternalActionVerification`. The package ships neither producer; the v0
-contracts below only validate and bind reports from those separate planes.
+an `ExternalActionVerification`. The Core package ships neither producer; the
+v0 contracts below only validate and bind reports from those separate planes.
+The optional GitHub companion provides an explicit bounded read-back producer
+for its `github.merge_pr` profile; it remains outside Core and adds no
+authority or mutation.
 
 The optional [GitHub companion](../packages/mothership-github/README.md) and
 [reference consumer](../examples/github_merge_reference.md) implement a bounded
@@ -131,8 +134,8 @@ Core `external-action-receipt.v0` contract. An explicit, pure
 [receipt adapter](../examples/github_receipt_adapter.md) converts validated
 terminal attempt pairs into that Core contract, preserving ambiguous results
 as UNKNOWN. It does not authenticate the records or prove durable consumption.
-The companion does not ship an independent Verifier or an automatic connection
-between these record types. The
+The companion's read-back producer is explicit and opt-in; it does not create
+an automatic connection between these record types. The
 [candidate status](option-a-candidate.md) describes its release boundary.
 
 ## Responsibilities of a connecting application

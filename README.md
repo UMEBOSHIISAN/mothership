@@ -86,7 +86,7 @@ Mothershipは、対応済みの実行パラメータを別に受け取り、そ�
 
 Coreは `github.merge_pr` のexact parameterを検証して `FrozenAction`へ固定し、
 caller-attestedな判断を照合して、信頼されたlive ledgerで一度だけconsumeします。
-Coreは外部操作を実行せず、executorやindependent verifier producerも含みません。
+Coreは外部操作を実行せず、executorや独立したGitHub verifier producerも含みません。
 
 GitHub companion（opt-in）は、Core発行の `FrozenAction`、厳密な台帳path、approval event ID、
 明示transportだけを受け付けます。read-only preflight後にCoreのconsume結果を使ってattemptを記録し、
@@ -107,6 +107,15 @@ Coreとcompanionは別packageで、adapterの利用はopt-inです。自動runti
 オフラインの合成例は、source checkoutのルートで
 `PYTHONPATH=.:packages/mothership-github python examples/github_receipt_adapter.py` を実行してください。
 出力は合成recordのbinding確認であり、GitHub操作、credential、ledger consume、独立した外部確認を示しません。
+
+companionのopt-in `verify_merge_pr()` は、Coreが発行した正確な `FrozenAction` と検証済みReceiptへ結び付いた
+GitHub read-back Verificationを生成できます。既定経路は公開tokenless GETを最大2回（PRとGit Databaseのmerge commit）だけ行い、
+PRとcommitのサニタイズ済みprojection、UTCの取得境界、固定reason code、canonical hashだけを保持します。
+不正・矛盾・時刻不整合は `UNKNOWN`、対象head・baseまたはmerge topologyの有効な不一致は `MISMATCH` として残り、
+ReceiptのstatusはVerificationを選びません。authority/ledgerのconsumeや書込み、executor呼出し、retry、pollingは行いません。
+注入openerの結果はsynthetic/host-attestedなオフライン証拠であり、GitHub・executor・人間・merge方法の認証ではありません。
+詳しくは [offline read-back example](examples/github_readback_verification.md) と
+[composition guide](docs/composition.md) を参照してください。
 
 ## 現在のMothership Core
 

@@ -1,5 +1,6 @@
 """Offline integration of real Core ledgers and companion attempts with fake I/O."""
 import copy
+import datetime
 import json
 import io
 import urllib.error
@@ -15,6 +16,7 @@ from orchestration.lib.action_authority_ledger import record_action_decision, co
 from mothership_github.executor import execute_action_merge_pr
 from mothership_github import receipts
 from mothership_github.external_action import build_external_action_receipt
+from mothership_github.verification import verify_merge_pr
 from mothership.contracts import ContractError, canonical_json_sha256, validate_receipt_verification_binding
 from mothership_github.transport import GitHubRestTransport
 
@@ -34,6 +36,27 @@ class Transport:
         self.puts.append(kwargs)
         if isinstance(self.response, Exception): raise self.response
         return copy.deepcopy(self.response)
+
+
+class ReadBackResponse(io.BytesIO):
+    status = 200
+
+    def __init__(self, payload):
+        super().__init__(json.dumps(payload).encode())
+        self.headers = {}
+
+    def getcode(self):
+        return self.status
+
+
+class ReadBackOpener:
+    def __init__(self, payloads):
+        self.payloads = [copy.deepcopy(payload) for payload in payloads]
+        self.requests = []
+
+    def __call__(self, request, *, timeout):
+        self.requests.append((request, timeout))
+        return ReadBackResponse(self.payloads.pop(0))
 
 class PipelineTests(unittest.TestCase):
     def setUp(self):
@@ -110,6 +133,61 @@ class PipelineTests(unittest.TestCase):
                     execute_action_merge_pr(authority, attempts, action, approval['event_id'], transport)
                 self.assertEqual(1, len(transport.puts))
                 self.assertEqual(before, (authority.read_bytes(), attempts.read_bytes()))
+
+    def test_real_pipeline_receipt_readback_is_separate_and_leaves_ledgers_unchanged(self):
+        transport = Transport()
+        result = self.execute(transport)
+        authority_rows = self.rows(self.authority)
+        attempt_rows = self.rows(self.attempts)
+        consume = authority_rows[1]
+        started, finished = attempt_rows
+        receipt = build_external_action_receipt(
+            started,
+            finished,
+            expected_action_id=self.action.action["action_id"],
+            expected_action_sha256=self.action.action_sha256,
+            expected_consume_event_id=consume["event_id"],
+            executor_ref={"ref_id": "executor:pipeline", "sha256": "c" * 64},
+        )
+        before = (self.authority.read_bytes(), self.attempts.read_bytes())
+        start_dt = datetime.datetime.strptime(started["recorded_at"], "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=datetime.UTC
+        )
+        merged_at_dt = start_dt + datetime.timedelta(seconds=1)
+        merged_at = merged_at_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        opener = ReadBackOpener(
+            [
+                {
+                    "url": "https://api.github.com/repos/owner/repo/pulls/7",
+                    "number": 7,
+                    "title": "synthetic",
+                    "state": "closed",
+                    "merged": True,
+                    "merged_at": merged_at,
+                    "updated_at": merged_at,
+                    "draft": False,
+                    "head": {"sha": "a" * 40, "ref": "feature"},
+                    "base": {"ref": "main", "repo": {"full_name": "owner/repo"}},
+                    "merge_commit_sha": "b" * 40,
+                },
+                {
+                    "sha": "b" * 40,
+                    "url": "https://api.github.com/repos/owner/repo/git/commits/" + "b" * 40,
+                    "parents": [{"sha": "d" * 40}, {"sha": "a" * 40}],
+                },
+            ]
+        )
+        finish_dt = datetime.datetime.strptime(finished["recorded_at"], "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=datetime.UTC
+        )
+        observed_dt = max(finish_dt, merged_at_dt) + datetime.timedelta(seconds=1)
+        with mock.patch("mothership_github.verification._utc_now", return_value=observed_dt):
+            bundle = verify_merge_pr(self.action, receipt, opener=opener)
+        self.assertEqual("SUCCESS", receipt["status"])
+        self.assertEqual("CONFIRMED", bundle["verification"]["status"])
+        self.assertEqual(before, (self.authority.read_bytes(), self.attempts.read_bytes()))
+        self.assertEqual(2, len(opener.requests))
+        self.assertEqual(1, len(transport.puts))
 
     def test_empty_success_status_stays_unresolved(self):
         t=Transport(dict(http_status=200))
