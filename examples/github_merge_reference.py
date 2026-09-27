@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Mapping
 import getpass
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -32,6 +33,9 @@ _SHA_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 _BASE_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
 _LEDGER_NAMES = ("authority.jsonl", "attempts.jsonl")
 _STATUSES = frozenset({"success", "failure", "reconciliation_required"})
+_CONSUMER_SOURCE_REF_ID = "consumer-source:github_merge_reference.py"
+_RECEIPT_UNAVAILABLE = "receipt_unavailable"
+_VERIFICATION_UNAVAILABLE = "verification_unavailable"
 
 
 class _UsageError(Exception):
@@ -54,6 +58,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--ledger-dir", required=True)
     # Core 0.4.3.dev0 intentionally exposes only the merge method.
     parser.add_argument("--merge-method", choices=("merge",), default="merge")
+    parser.add_argument(
+        "--verify-result",
+        action="store_true",
+        help="build a Receipt and perform one independent tokenless read-back",
+    )
     return parser
 
 
@@ -295,6 +304,143 @@ def _reconciliation_payload(
     )
 
 
+def _consumer_source_reference() -> dict[str, str]:
+    """Freeze a caller-attested hash of this consumer before execution."""
+
+    try:
+        source = Path(__file__).read_bytes()
+        digest = hashlib.sha256(source).hexdigest()
+    except BaseException:
+        raise ValueError from None
+    return {"ref_id": _CONSUMER_SOURCE_REF_ID, "sha256": digest}
+
+
+def _verification_payload(
+    ledger_dir: Path,
+    execution_status: str,
+    source_pair: object,
+    receipt: object,
+    *,
+    status: str,
+    reason: str | None = None,
+    bundle: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Shape one output-only verification event without adding persistence."""
+
+    payload: dict[str, object] = {
+        "event": "verification_result",
+        "execution_status": execution_status,
+        "status": status,
+        "source_pair": source_pair,
+        "receipt": receipt,
+        "verification": None,
+        "evidence": None,
+        "paths": _paths(ledger_dir),
+    }
+    if reason is not None:
+        payload["reason"] = reason
+    if bundle is not None:
+        payload["verification"] = bundle.get("verification")
+        payload["evidence"] = bundle.get("evidence")
+    return payload
+
+
+def _run_verification(
+    frozen,
+    result: object,
+    ledger_dir: Path,
+    executor_ref: Mapping[str, str],
+    *,
+    execution_status: str,
+    readback_opener=None,
+) -> tuple[dict[str, object], object]:
+    """Build one receipt and perform one independent read-back.
+
+    Imports stay inside this opt-in path so execution-only callers never reach
+    the adapter or verifier modules.  Exceptions become fixed, non-diagnostic
+    output reasons; the original attempt records remain untouched.
+    """
+
+    started = result.get("attempt_started") if isinstance(result, Mapping) else None
+    finished = result.get("attempt_finished") if isinstance(result, Mapping) else None
+    consume_event = result.get("consume_event") if isinstance(result, Mapping) else None
+    receipt = None
+
+    try:
+        if not isinstance(consume_event, Mapping) or type(consume_event.get("event_id")) is not str:
+            raise ValueError
+        if not isinstance(started, Mapping) or not isinstance(finished, Mapping):
+            raise ValueError
+        expected_action = frozen.action
+        expected_action_id = expected_action["action_id"]
+        expected_action_sha256 = frozen.action_sha256
+        from mothership_github.external_action import build_external_action_receipt
+
+        receipt = build_external_action_receipt(
+            started,
+            finished,
+            expected_action_id=expected_action_id,
+            expected_action_sha256=expected_action_sha256,
+            expected_consume_event_id=consume_event["event_id"],
+            executor_ref=executor_ref,
+        )
+    except BaseException:
+        return (
+            _verification_payload(
+                ledger_dir,
+                execution_status,
+                None,
+                None,
+                status="unavailable",
+                reason=_RECEIPT_UNAVAILABLE,
+            ),
+            None,
+        )
+
+    source_pair = {"started": started, "finished": finished}
+
+    try:
+        from mothership_github.verification import verify_merge_pr
+
+        if readback_opener is None:
+            bundle = verify_merge_pr(frozen, receipt)
+        else:
+            bundle = verify_merge_pr(frozen, receipt, opener=readback_opener)
+        if not isinstance(bundle, Mapping):
+            raise ValueError
+        verification = bundle.get("verification")
+        evidence = bundle.get("evidence")
+        if not isinstance(verification, Mapping) or not isinstance(evidence, Mapping):
+            raise ValueError
+        status = verification.get("status")
+        if status not in {"CONFIRMED", "MISMATCH", "UNKNOWN"}:
+            raise ValueError
+    except BaseException:
+        return (
+            _verification_payload(
+                ledger_dir,
+                execution_status,
+                source_pair,
+                receipt,
+                status="unavailable",
+                reason=_VERIFICATION_UNAVAILABLE,
+            ),
+            receipt,
+        )
+
+    return (
+        _verification_payload(
+            ledger_dir,
+            execution_status,
+            source_pair,
+            receipt,
+            status=status,
+            bundle=bundle,
+        ),
+        receipt,
+    )
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -302,6 +448,7 @@ def main(
     input_stream=None,
     output_stream=None,
     token_prompt=None,
+    readback_opener=None,
 ) -> int:
     """Run one human-operated merge ceremony.
 
@@ -424,6 +571,13 @@ def main(
             return 1
         return 0
 
+    executor_ref = None
+    if arguments.verify_result:
+        try:
+            executor_ref = _consumer_source_reference()
+        except BaseException:
+            return _terminal_failure(output_stream, ledger_dir, "consumer_source_unavailable")
+
     try:
         result = executor.execute_action_merge_pr(
             ledger_dir / _LEDGER_NAMES[0],
@@ -449,7 +603,28 @@ def main(
     payload, code = _execution_payload(result, ledger_dir)
     if not _emit(output_stream, payload):
         return 1
-    return code
+    if not arguments.verify_result:
+        return code
+
+    verification_payload, receipt = _run_verification(
+        frozen,
+        result,
+        ledger_dir,
+        executor_ref,
+        execution_status=payload["status"],
+        readback_opener=readback_opener,
+    )
+    if not _emit(output_stream, verification_payload):
+        return 1
+    if code != 0:
+        return 1
+    if receipt is None:
+        return 3
+    if not isinstance(receipt, Mapping) or receipt.get("status") != "SUCCESS":
+        return 1
+    if verification_payload.get("status") == "CONFIRMED":
+        return 0
+    return 3
 
 
 if __name__ == "__main__":

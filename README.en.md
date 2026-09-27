@@ -244,6 +244,15 @@ or every installed byte.
 It is not Authority Core proof, agent execution, human approval, or evidence
 that a real task completed. It is not the current Authority Core onboarding path.
 
+### Handle one GitHub PR
+
+The source-checkout [reference consumer](examples/github_merge_reference.md)
+displays the exact action, records an explicit approval, and executes once.
+Add `--verify-result` to build the Receipt and perform independent public GitHub
+read-back in the same process. Execution success and confirmation remain separate;
+unknown results never trigger automatic retry. The operator selects the target PR,
+enters a token manually, and approves the displayed action in the terminal.
+
 ## Current limitations
 
 | Area | Implemented in v0.4.2 | Not implemented or certified |

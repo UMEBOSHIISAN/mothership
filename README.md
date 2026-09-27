@@ -217,6 +217,14 @@ mothership verify
 Authority Coreの証明でも、agent実行、人間の承認、実タスク完了の証拠でもありません。
 現在のAuthority Coreを体験する入口ではありません。
 
+### GitHubのPRを1件扱う入口
+
+source checkoutの[参照consumer](examples/github_merge_reference.md)で、対象の表示、
+exact actionへの承認、一度だけの実行まで進められます。`--verify-result`を指定すると、
+同じプロセスでReceipt生成と公開GitHubの独立read-backまで行います。
+実行成功と確認済みを分けて表示し、不明な結果を自動再実行しません。
+実行には対象PRの選択と端末での明示承認、手入力のtokenが必要です。
+
 ## 現在の制約
 
 | 項目 | v0.4.2で実装していること | 実装・認証していないこと |
