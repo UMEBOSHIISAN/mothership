@@ -11,6 +11,29 @@ python3 -m venv .venv
 python -m pip install -e ".[test]"
 ```
 
+## Source checkout test suites
+
+The Core suite can run without the optional companion:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+```
+
+From the same checkout, run the Core suite with the companion source and then
+run the companion suite in separate processes:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:packages/mothership-github \
+  python3 -m unittest discover -s tests -v
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:packages/mothership-github \
+  python3 -m unittest discover -s packages/mothership-github/tests -v
+```
+
+The companion CI job adds guards that fail when discovery finds no tests or
+when any test is skipped; the Core-only job intentionally preserves its
+optional-companion skips. These suites use local fixtures and fake transports;
+they do not use live GitHub transport or credentials.
+
 ## TDD workflow
 
 1. Add the smallest failing test that expresses the intended public contract.
