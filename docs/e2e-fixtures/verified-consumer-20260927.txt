@@ -1,0 +1,5 @@
+Mothership verified-consumer live canary
+Trial: 2026-09-27
+Consumer source: 77db3304af68754d3236eb3af7f56ad6b496984e
+Target: isolated codex/mvp-live-base-20260927 only
+This marker is a test input, not execution evidence.
