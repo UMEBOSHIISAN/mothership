@@ -241,7 +241,7 @@ print("WHEEL_IMPORT_ORIGINS_OK")
         )
         fixture = self.root / "copied-tests"
         fixture.mkdir()
-        for name in ("test_pipeline.py", "test_verification.py"):
+        for name in ("test_pipeline.py", "test_verification.py", "test_process_boundaries.py"):
             shutil.copy2(PACKAGE_ROOT / "tests" / name, fixture / name)
         suite_script = """
 import sys
@@ -262,7 +262,7 @@ print(f"SKIPPED={len(result.skipped)}")
 if not result.wasSuccessful() or result.skipped:
     raise SystemExit(1)
 """
-        for name in ("test_pipeline.py", "test_verification.py"):
+        for name in ("test_pipeline.py", "test_verification.py", "test_process_boundaries.py"):
             with self.subTest(module=name):
                 result = _run(
                     [
