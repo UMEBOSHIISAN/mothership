@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import datetime
+import errno
 import getpass
 import hashlib
 import io
@@ -199,7 +200,8 @@ class ReferenceRunnerTests(unittest.TestCase):
         self.assertEqual(2, len((self.ledger_dir / "attempts.jsonl").read_text().splitlines()))
 
     def verified_run(self, *, mode="confirmed", mutation=None, transform=None,
-                     decision="approve", output=None, input_stream=None):
+                     decision="approve", output=None, input_stream=None,
+                     save_result=False):
         from mothership.contracts import canonical_json_sha256, validate_receipt_verification_binding
         from mothership_github import verification
 
@@ -259,8 +261,11 @@ class ReferenceRunnerTests(unittest.TestCase):
         with mock.patch.object(reference.executor, "execute_action_merge_pr", side_effect=execute) as execution, \
              mock.patch.object(verification, "verify_merge_pr", side_effect=verify) as verifier, \
              mock.patch.object(verification, "_utc_now", side_effect=now):
+            argv = ["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result"]
+            if save_result:
+                argv.append("--save-result")
             code, text = self.run_runner(
-                transport, argv=["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result"],
+                transport, argv=argv,
                 decision=decision, output=output, input_stream=input_stream, readback_opener=opener)
         rows = self.rows(text)
         if "action" in captured:
@@ -283,6 +288,400 @@ class ReferenceRunnerTests(unittest.TestCase):
         self.assertEqual((1, 1, 1, 2), (executions, verifications, len(transport.put_calls), len(requests)))
         self.assertEqual(hashlib.sha256(Path(reference.__file__).read_bytes()).hexdigest(),
                          rows[-1]["receipt"]["executor_ref"]["sha256"])
+
+    def test_save_result_verified_success_matches_terminal_output_and_mode(self):
+        code, rows, _, _, _, _ = self.verified_run(save_result=True)
+
+        self.assertEqual(0, code)
+        result_path = self.ledger_dir / "result.jsonl"
+        self.assertTrue(result_path.is_file())
+        self.assertEqual(0o600, os.stat(result_path, follow_symlinks=False).st_mode & 0o777)
+        saved = [json.loads(line) for line in result_path.read_text().splitlines() if line]
+        expected = [row for row in rows if row.get("event") in {
+            "frozen_action", "execution_result", "verification_result"
+        }]
+        self.assertEqual(expected, saved)
+        self.assertEqual(
+            [json.dumps(row, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+             for row in expected],
+            result_path.read_text().splitlines(),
+        )
+
+    def test_save_result_preserves_unknown_verification(self):
+        code, rows, _, _, _, _ = self.verified_run(mode="read_failure", save_result=True)
+
+        self.assertEqual(3, code)
+        self.assertEqual("UNKNOWN", rows[-1]["status"])
+        saved = [json.loads(line) for line in (self.ledger_dir / "result.jsonl").read_text().splitlines()]
+        self.assertEqual("UNKNOWN", saved[-1]["status"])
+        self.assertEqual(
+            [row for row in rows if row.get("event") in {
+                "frozen_action", "execution_result", "verification_result"
+            }],
+            saved,
+        )
+
+    def test_each_saved_event_is_synced_before_terminal_display(self):
+        result_paths = []
+        reserved_fd = []
+        synced_sizes = []
+        observations = []
+        reserve = reference._ResultSaver.reserve
+        original_fsync = reference.os.fsync
+
+        def capture_reservation(ledger_dir):
+            saver = reserve(ledger_dir)
+            reserved_fd.append(saver._result_fd)
+            result_paths.append(ledger_dir / "result.jsonl")
+            return saver
+
+        def record_sync(fd):
+            original_fsync(fd)
+            if reserved_fd and fd == reserved_fd[0]:
+                synced_sizes.append(os.fstat(fd).st_size)
+
+        class ObservedOutput(TTYBuffer):
+            def write(self, value):
+                row = json.loads(value)
+                if row.get("event") in {"frozen_action", "execution_result", "verification_result"}:
+                    saved = result_paths[0].read_bytes()
+                    observations.append((row["event"], saved.endswith(value.encode("ascii")),
+                                         len(saved), synced_sizes[-1] if synced_sizes else None))
+                return super().write(value)
+
+        with mock.patch.object(reference._ResultSaver, "reserve", side_effect=capture_reservation), \
+             mock.patch.object(reference.os, "fsync", side_effect=record_sync):
+            code, _, _, _, _, _ = self.verified_run(save_result=True, output=ObservedOutput())
+
+        self.assertEqual(0, code)
+        self.assertEqual(["frozen_action", "execution_result", "verification_result"],
+                         [item[0] for item in observations])
+        self.assertEqual(3, len(synced_sizes))
+        for event, saved_before_display, size, synced_size in observations:
+            with self.subTest(event=event):
+                self.assertTrue(saved_before_display)
+                self.assertEqual(size, synced_size)
+
+    def test_default_path_does_not_create_result_file(self):
+        code, _ = self.run_runner(FakeTransport())
+
+        self.assertEqual(0, code)
+        self.assertFalse((self.ledger_dir / "result.jsonl").exists())
+
+    def test_save_result_requires_verify_result_before_transport_or_files(self):
+        transport = FakeTransport()
+        output = TTYBuffer()
+
+        code = reference.main(
+            ["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--save-result"],
+            transport=transport,
+            input_stream=TTYBuffer(""),
+            output_stream=output,
+        )
+
+        self.assertEqual(2, code)
+        self.assertEqual([], transport.get_calls)
+        self.assertFalse((self.ledger_dir / "result.jsonl").exists())
+        self.assertEqual("invalid_arguments", self.rows(output.getvalue())[-1]["reason"])
+
+    def test_saved_events_exclude_approval_and_sensitive_output(self):
+        code, rows, _, _, _, _ = self.verified_run(save_result=True)
+
+        self.assertEqual(0, code)
+        saved_text = (self.ledger_dir / "result.jsonl").read_text()
+        self.assertNotIn("approval_required", saved_text)
+        self.assertNotIn("token_required", saved_text)
+        self.assertNotIn("approve ", saved_text)
+        self.assertNotIn("secret-", saved_text)
+        self.assertEqual({"frozen_action", "execution_result", "verification_result"},
+                         {row["event"] for row in self.rows(saved_text)})
+
+    def test_manual_token_prompt_is_not_saved(self):
+        output = TTYBuffer()
+        token_prompt = mock.Mock(return_value="secret-token-value")
+        with mock.patch.object(reference, "GitHubRestTransport", side_effect=RuntimeError("secret-transport")):
+            code = reference.main(
+                ["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+                input_stream=TTYBuffer(""),
+                output_stream=output,
+                token_prompt=token_prompt,
+            )
+
+        self.assertEqual(1, code)
+        token_prompt.assert_called_once()
+        saved_text = (self.ledger_dir / "result.jsonl").read_text()
+        self.assertEqual("", saved_text)
+        self.assertNotIn("secret-token-value", saved_text)
+        self.assertNotIn("token_required", saved_text)
+
+    def test_existing_result_entry_blocks_without_overwrite(self):
+        result_path = self.ledger_dir / "result.jsonl"
+        result_path.write_text("sentinel\n")
+        before = result_path.read_bytes()
+        transport = FakeTransport()
+
+        code, output = self.run_runner(transport)
+
+        self.assertEqual(1, code)
+        self.assertEqual([], transport.get_calls)
+        self.assertEqual(before, result_path.read_bytes())
+        self.assertEqual("pre_execution_failure", self.rows(output)[-1]["status"])
+
+    def test_existing_result_symlink_and_directory_block_without_following(self):
+        target = self.root / "result-target"
+        target.write_text("target\n")
+        for kind in ("symlink", "directory"):
+            with self.subTest(kind=kind):
+                self.ledger_dir = self.root / f"ledger-{kind}"
+                self.ledger_dir.mkdir(mode=0o700)
+                os.chmod(self.ledger_dir, 0o700)
+                result_path = self.ledger_dir / "result.jsonl"
+                if kind == "symlink":
+                    os.symlink(target, result_path)
+                else:
+                    result_path.mkdir(mode=0o700)
+                transport = FakeTransport()
+
+                code, output = self.run_runner(transport)
+
+                self.assertEqual(1, code)
+                self.assertEqual([], transport.get_calls)
+                self.assertEqual("pre_execution_failure", self.rows(output)[-1]["status"])
+                if kind == "symlink":
+                    self.assertEqual("target\n", target.read_text())
+
+    def test_save_result_reservation_fsync_failure_stops_before_token_or_get(self):
+        token_prompt = mock.Mock(side_effect=AssertionError("token must not be read"))
+        constructor = mock.Mock(side_effect=AssertionError("transport must not be built"))
+        with mock.patch.object(reference.os, "fsync", side_effect=OSError("secret-fsync")), \
+             mock.patch.object(reference, "GitHubRestTransport", constructor):
+            code = reference.main(
+                ["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+                input_stream=TTYBuffer(""),
+                output_stream=TTYBuffer(),
+                token_prompt=token_prompt,
+            )
+
+        self.assertEqual(1, code)
+        token_prompt.assert_not_called()
+        constructor.assert_not_called()
+        result_path = self.ledger_dir / "result.jsonl"
+        self.assertTrue(result_path.exists())
+        self.assertEqual(0o600, os.stat(result_path, follow_symlinks=False).st_mode & 0o777)
+
+    def test_save_result_fails_closed_when_no_follow_is_unavailable(self):
+        transport = FakeTransport()
+        with mock.patch.object(reference.os, "O_NOFOLLOW", None):
+            code, output = self.run_runner(
+                transport,
+                argv=["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+            )
+
+        self.assertEqual(1, code)
+        self.assertEqual([], transport.get_calls)
+        self.assertFalse((self.ledger_dir / "result.jsonl").exists())
+        self.assertEqual("evidence_save_failed", self.rows(output)[-1]["reason"])
+
+    def test_save_write_failure_after_execution_does_not_repeat_executor(self):
+        transport = FakeTransport()
+        execute = reference.executor.execute_action_merge_pr
+        calls = 0
+        writes = 0
+        reserved_fd = []
+        partial_bytes = []
+
+        reserve = reference._ResultSaver.reserve
+
+        def capture_reservation(ledger_dir):
+            saver = reserve(ledger_dir)
+            reserved_fd.append(saver._result_fd)
+            return saver
+
+        def execute_once(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return execute(*args, **kwargs)
+
+        def short_after_frozen(fd, data):
+            nonlocal writes
+            if reserved_fd and fd == reserved_fd[0]:
+                writes += 1
+                if writes == 2:
+                    prefix = data[:len(data) // 2]
+                    partial_bytes.append(prefix)
+                    return original_write(fd, prefix)
+            return original_write(fd, data)
+
+        original_write = reference.os.write
+        with mock.patch.object(reference.executor, "execute_action_merge_pr", side_effect=execute_once), \
+             mock.patch.object(reference._ResultSaver, "reserve", side_effect=capture_reservation), \
+             mock.patch.object(reference.os, "write", side_effect=short_after_frozen), \
+             mock.patch.object(reference, "_run_verification", side_effect=AssertionError("unexpected readback")) as verify:
+            code, output = self.run_runner(
+                transport,
+                argv=["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+            )
+
+        self.assertEqual(1, code)
+        self.assertEqual(1, calls)
+        self.assertEqual(1, len(transport.put_calls))
+        verify.assert_not_called()
+        self.assertEqual(2, writes)
+        complete_line, partial_line = (self.ledger_dir / "result.jsonl").read_bytes().split(b"\n", 1)
+        self.assertEqual("frozen_action", json.loads(complete_line)["event"])
+        self.assertEqual(partial_bytes[0], partial_line)
+        self.assertNotIn("short write", output)
+        self.assertEqual("evidence_save_failed", self.rows(output)[-1]["reason"])
+
+    def test_save_fsync_failure_after_execution_does_not_repeat_executor(self):
+        transport = FakeTransport()
+        calls = 0
+        fsyncs = 0
+        reserved_fd = []
+        reserve = reference._ResultSaver.reserve
+
+        def capture_reservation(ledger_dir):
+            saver = reserve(ledger_dir)
+            reserved_fd.append(saver._result_fd)
+            return saver
+
+        original_fsync = reference.os.fsync
+
+        def fail_result_fsync(fd):
+            nonlocal fsyncs
+            if reserved_fd and fd == reserved_fd[0]:
+                fsyncs += 1
+                if fsyncs == 2:
+                    raise OSError("secret-fsync-after-effect")
+            return original_fsync(fd)
+
+        execute = reference.executor.execute_action_merge_pr
+
+        def execute_once(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return execute(*args, **kwargs)
+
+        with mock.patch.object(reference.executor, "execute_action_merge_pr", side_effect=execute_once), \
+             mock.patch.object(reference._ResultSaver, "reserve", side_effect=capture_reservation), \
+             mock.patch.object(reference.os, "fsync", side_effect=fail_result_fsync):
+            code, output = self.run_runner(
+                transport,
+                argv=["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+            )
+
+        self.assertEqual(1, code)
+        self.assertEqual(1, calls, (fsyncs, transport.get_calls, output))
+        self.assertEqual(1, len(transport.put_calls))
+        self.assertNotIn("secret-fsync-after-effect", output)
+        self.assertEqual("evidence_save_failed", self.rows(output)[-1]["reason"])
+
+    def test_executor_exception_after_effect_saves_unknown_execution_without_retry(self):
+        transport = FakeTransport()
+        execute = reference.executor.execute_action_merge_pr
+
+        def execute_then_raise(*args, **kwargs):
+            execute(*args, **kwargs)
+            raise RuntimeError("secret-executor-after-effect")
+
+        with mock.patch.object(reference.executor, "execute_action_merge_pr", side_effect=execute_then_raise):
+            code, output = self.run_runner(
+                transport,
+                argv=["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+            )
+
+        self.assertEqual(1, code)
+        self.assertEqual(1, len(transport.put_calls))
+        self.assertNotIn("secret-executor-after-effect", output)
+        saved = [json.loads(line) for line in (self.ledger_dir / "result.jsonl").read_text().splitlines()]
+        self.assertEqual(
+            ["frozen_action", "execution_result"], [row["event"] for row in saved]
+        )
+        self.assertEqual("reconciliation_required", saved[-1]["status"])
+
+    def test_partial_result_is_never_reused_after_save_failure(self):
+        transport = FakeTransport()
+        with mock.patch.object(reference._ResultSaver, "_write_event", side_effect=OSError("short write")):
+            code, _ = self.run_runner(
+                transport,
+                argv=["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+            )
+        self.assertEqual(1, code)
+        self.assertTrue((self.ledger_dir / "result.jsonl").exists())
+
+        second_transport = FakeTransport()
+        second_code, second_output = self.run_runner(second_transport)
+        self.assertEqual(1, second_code)
+        self.assertEqual([], second_transport.get_calls)
+        self.assertEqual("pre_execution_failure", self.rows(second_output)[-1]["status"])
+
+    def test_cancellation_leaves_only_frozen_action_in_saved_result(self):
+        output = TTYBuffer()
+        code, rows, transport, _, executions, verifications = self.verified_run(
+            save_result=True, input_stream=TTYBuffer(""), output=output)
+
+        self.assertEqual(0, code)
+        self.assertEqual((0, 0, 0), (executions, verifications, len(transport.put_calls)))
+        saved = [json.loads(line) for line in (self.ledger_dir / "result.jsonl").read_text().splitlines()]
+        self.assertEqual(["frozen_action"], [row["event"] for row in saved])
+        self.assertEqual("approval_eof", rows[-1]["reason"])
+
+    def test_terminal_output_failure_closes_saved_file(self):
+        class FailingOutput(TTYBuffer):
+            def write(self, value):
+                if '"event":"verification_result"' in value:
+                    raise OSError("display failed")
+                return super().write(value)
+
+        descriptors = []
+        reserve = reference._ResultSaver.reserve
+
+        def capture_reservation(ledger_dir):
+            saver = reserve(ledger_dir)
+            descriptors.extend((saver._result_fd, saver._directory_fd))
+            return saver
+
+        with mock.patch.object(reference._ResultSaver, "reserve", side_effect=capture_reservation):
+            code, _, _, _, _, _ = self.verified_run(save_result=True, output=FailingOutput())
+
+        self.assertEqual(1, code)
+        saved_path = self.ledger_dir / "result.jsonl"
+        self.assertTrue(saved_path.exists())
+        for descriptor in descriptors:
+            with self.assertRaises(OSError):
+                os.fstat(descriptor)
+
+    def test_result_close_failure_is_nonzero_with_fixed_reason(self):
+        descriptors = []
+        reserve = reference._ResultSaver.reserve
+        original_close = os.close
+        failed = False
+
+        def capture_reservation(ledger_dir):
+            saver = reserve(ledger_dir)
+            descriptors.extend((saver._result_fd, saver._directory_fd))
+            return saver
+
+        def close_then_fail(descriptor):
+            nonlocal failed
+            original_close(descriptor)
+            if descriptors and descriptor == descriptors[0] and not failed:
+                failed = True
+                raise OSError("secret-close")
+
+        with mock.patch.object(reference._ResultSaver, "reserve", side_effect=capture_reservation), \
+             mock.patch.object(reference.os, "close", side_effect=close_then_fail):
+            code, rows, transport, _, executions, verifications = self.verified_run(save_result=True)
+
+        self.assertEqual(1, code)
+        self.assertTrue(failed)
+        self.assertEqual((1, 1, 1), (executions, verifications, len(transport.put_calls)))
+        self.assertNotIn("secret-close", json.dumps(rows))
+        self.assertEqual("evidence_save_failed", rows[-1]["reason"])
+        for descriptor in descriptors:
+            with self.assertRaises(OSError) as raised:
+                os.fstat(descriptor)
+            self.assertEqual(errno.EBADF, raised.exception.errno)
 
     def test_unknown_mismatch_and_same_second_stay_nonzero(self):
         for mode, status in (("unmerged", "UNKNOWN"), ("read_failure", "UNKNOWN"),

@@ -50,7 +50,8 @@ output must be TTYs. There is no `--yes` option.
 
 The ledger directory must already exist, be an immediate real directory with
 mode `0700`, and be supplied as an absolute normalized path. The runner refuses
-to start when `authority.jsonl` or `attempts.jsonl` already exists, so it has no
+to start when `authority.jsonl`, `attempts.jsonl`, or `result.jsonl` already exists,
+even without `--save-result`, so it has no
 resume, replay, reissue, retry, or renewal flow. This session guard is a local
 fresh-session convenience; it does not provide global per-PR deduplication
 across directories or copied ledgers.
@@ -102,8 +103,9 @@ There is no polling, retry, renewed authority, or reconstructed action.
 
 The JSON output contains the execution result followed by a verification result
 with the exact terminal source pair, validated Receipt, and complete read-back
-bundle (Verification plus sanitized evidence). Preserve that output if you need
-to retain read-back evidence; the authority and attempt ledgers do not store it.
+bundle (Verification plus sanitized evidence). Add `--save-result` to retain
+those events in a separate evidence file, or preserve the terminal output yourself;
+the authority and attempt ledgers do not store the read-back bundle.
 The executor reference is a caller-attested hash of the consumer's source bytes,
 fixed before execution. It identifies those bytes, not an authenticated executor.
 
@@ -112,7 +114,7 @@ With the flag, interpret the result as follows:
 | Exit | Meaning |
 | --- | --- |
 | `0` | Execution succeeded and read-back is CONFIRMED; explicit rejection or approval cancellation also retains its existing `0`, identified by the output event. |
-| `1` | Execution failed/remains unresolved, or result output failed. |
+| `1` | Execution failed/remains unresolved, result output failed, or requested evidence saving failed. |
 | `2` | Invalid arguments or non-TTY input/output. |
 | `3` | Execution reported success, but read-back is UNKNOWN, MISMATCH, or unavailable. |
 
@@ -126,3 +128,33 @@ start. It deliberately remains UNKNOWN (`ambiguous_merge_time`), because the
 available timestamps cannot prove their order. Waiting or automatically reading
 again would not resolve that ambiguity. Inspect the records and external state;
 do not repeat the mutation to obtain a green result.
+
+## Save evidence from the same run
+
+Use `--verify-result --save-result` to save the existing `frozen_action`,
+`execution_result`, and `verification_result` JSON events in `result.jsonl`
+inside the dedicated ledger directory. Each line is one JSON object. The
+verification event includes the validated source pair, Receipt, Verification,
+and sanitized evidence already produced by the consumer. Their statuses and
+bindings are preserved; saving does not perform another observation or operation.
+
+`--save-result` requires `--verify-result`. Without the save flag, no evidence
+file is created. The consumer exclusively creates a regular file with mode
+`0600` before requesting a token or calling the transport. An existing file,
+directory, or symlink at that name stops the run without overwriting anything.
+It flushes saved events to disk before displaying them. Token prompts, tokens,
+approval input, headers, and raw exception text are not captured.
+
+A creation or initial persistence failure stops before external I/O. A write,
+sync, or close failure returns `1`; it cannot undo an operation that already
+occurred. The partial file remains for inspection and blocks another session
+in that directory. Never delete it to repeat an uncertain operation. Rejection,
+cancellation, or a failure may leave an empty file or only a frozen action.
+A missing or incomplete verification event is not proof of completion or proof
+that no effect occurred. Inspect the attempt ledger and external state without
+repeating the mutation.
+
+This is a local copy of consumer output, not a new authority ledger, resume
+format, authenticated audit store, or proof against alteration by the trusted
+OS user. Both terminal streams are still required; saving does not replace the
+manual approval ceremony or certify production suitability.

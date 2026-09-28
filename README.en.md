@@ -252,6 +252,10 @@ Add `--verify-result` to build the Receipt and perform independent public GitHub
 read-back in the same process. Execution success and confirmation remain separate;
 unknown results never trigger automatic retry. The operator selects the target PR,
 enters a token manually, and approves the displayed action in the terminal.
+Also add `--save-result` to retain the frozen action, execution report, and
+independent verification in `result.jsonl` inside the ledger directory. Tokens
+are excluded and existing files are never overwritten. Save failures return an
+error; partial records are not completion evidence and never trigger a retry.
 
 ## Current limitations
 
