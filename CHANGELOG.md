@@ -6,6 +6,10 @@
 - Separate optional GitHub transport into mothership-github 0.2.0.dev0, pinned to Core 0.4.3.dev0.
 - Bind one-shot execution attempts to consumed Core authority; preserve unknown external outcomes and reject contradictory failure receipts.
 - Document preflight-only base checks, consume-time TTL, and executor-observed success limits. No consumer cutover or publication is implied.
+- Add opt-in `--verify-result --save-result` evidence retention to the source-checkout
+  reference consumer. Preserve action, execution, and independent read-back events
+  in a private, exclusively created `result.jsonl`; save failures remain errors
+  without replaying the operation or promoting incomplete evidence to success.
 
 ## 0.4.2 - 2026-09-11
 

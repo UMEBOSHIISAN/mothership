@@ -32,10 +32,13 @@ _DEFAULT_REPOSITORY = "UMEBOSHIISAN/mothership"
 _SHA_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 _BASE_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
 _LEDGER_NAMES = ("authority.jsonl", "attempts.jsonl")
+_RESULT_NAME = "result.jsonl"
+_SAVED_EVENTS = frozenset({"frozen_action", "execution_result", "verification_result"})
 _STATUSES = frozenset({"success", "failure", "reconciliation_required"})
 _CONSUMER_SOURCE_REF_ID = "consumer-source:github_merge_reference.py"
 _RECEIPT_UNAVAILABLE = "receipt_unavailable"
 _VERIFICATION_UNAVAILABLE = "verification_unavailable"
+_EVIDENCE_SAVE_FAILURE = "evidence_save_failed"
 
 
 class _UsageError(Exception):
@@ -44,6 +47,93 @@ class _UsageError(Exception):
 
 class _OutputFailure(Exception):
     pass
+
+
+class _ResultSaver:
+    """Append terminal consumer events to one reserved private result file."""
+
+    def __init__(self, directory_fd: int, result_fd: int):
+        self._directory_fd = directory_fd
+        self._result_fd = result_fd
+        self._failed = False
+        self._closed = False
+
+    @classmethod
+    def reserve(cls, ledger_dir: Path) -> _ResultSaver:
+        nofollow = getattr(os, "O_NOFOLLOW", None)
+        if nofollow is None:
+            raise OSError
+        directory_fd: int | None = None
+        result_fd: int | None = None
+        try:
+            directory_fd = os.open(
+                os.fspath(ledger_dir),
+                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | nofollow | getattr(os, "O_CLOEXEC", 0),
+            )
+            directory_info = os.fstat(directory_fd)
+            if not stat.S_ISDIR(directory_info.st_mode) or stat.S_IMODE(directory_info.st_mode) != 0o700:
+                raise OSError
+            result_fd = os.open(
+                _RESULT_NAME,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow | getattr(os, "O_CLOEXEC", 0),
+                0o600,
+                dir_fd=directory_fd,
+            )
+            result_info = os.fstat(result_fd)
+            if not stat.S_ISREG(result_info.st_mode):
+                raise OSError
+            os.fchmod(result_fd, 0o600)
+            result_info = os.fstat(result_fd)
+            if stat.S_IMODE(result_info.st_mode) != 0o600:
+                raise OSError
+            os.fsync(result_fd)
+            os.fsync(directory_fd)
+            return cls(directory_fd, result_fd)
+        except BaseException:
+            for descriptor in (result_fd, directory_fd):
+                if descriptor is not None:
+                    try:
+                        os.close(descriptor)
+                    except BaseException:
+                        pass
+            raise
+
+    @property
+    def failed(self) -> bool:
+        return self._failed
+
+    def _write_event(self, line: str) -> None:
+        raw = line.encode("ascii")
+        written = os.write(self._result_fd, raw)
+        if type(written) is not int or written != len(raw):
+            raise OSError
+        os.fsync(self._result_fd)
+
+    def save_event(self, line: str) -> bool:
+        if self._failed or self._closed:
+            return False
+        try:
+            self._write_event(line)
+        except BaseException:
+            self._failed = True
+            return False
+        return True
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        close_error = False
+        for descriptor_name in ("_result_fd", "_directory_fd"):
+            descriptor = getattr(self, descriptor_name)
+            setattr(self, descriptor_name, None)
+            try:
+                os.close(descriptor)
+            except BaseException:
+                close_error = True
+        if close_error:
+            self._failed = True
+            raise OSError
 
 
 class _ArgumentParser(argparse.ArgumentParser):
@@ -66,6 +156,11 @@ def _parser() -> argparse.ArgumentParser:
         "--verify-result",
         action="store_true",
         help="build a Receipt and perform one independent tokenless read-back",
+    )
+    parser.add_argument(
+        "--save-result",
+        action="store_true",
+        help="save frozen, execution, and verification events to result.jsonl",
     )
     return parser
 
@@ -96,7 +191,12 @@ def _json_value(value: object) -> object:
     return value
 
 
-def _emit(output_stream: object, payload: Mapping[str, object]) -> bool:
+def _emit(
+    output_stream: object,
+    payload: Mapping[str, object],
+    *,
+    result_saver: _ResultSaver | None = None,
+) -> bool:
     """Write one JSON line; dynamic values are escaped by the JSON encoder."""
 
     try:
@@ -105,8 +205,14 @@ def _emit(output_stream: object, payload: Mapping[str, object]) -> bool:
             ensure_ascii=True,
             sort_keys=True,
             separators=(",", ":"),
-        )
-        output_stream.write(line + "\n")
+        ) + "\n"
+    except BaseException:
+        return False
+    if result_saver is not None and payload.get("event") in _SAVED_EVENTS:
+        if not result_saver.save_event(line):
+            return False
+    try:
+        output_stream.write(line)
         output_stream.flush()
         return True
     except BaseException:
@@ -171,7 +277,7 @@ def _validate_ledger_dir(value: object) -> Path:
     except OSError:
         raise ValueError from None
 
-    for name in _LEDGER_NAMES:
+    for name in (*_LEDGER_NAMES, _RESULT_NAME):
         if os.path.lexists(path / name):
             raise ValueError
     return path
@@ -210,7 +316,11 @@ def _manual_token_prompt(prompt: str) -> str:
     return token
 
 
-def _approval_line(input_stream: object, output_stream: object, frozen) -> str | None:
+def _approval_line(
+    input_stream: object,
+    output_stream: object,
+    frozen,
+) -> str | None:
     action_id = frozen.action["action_id"]
     digest = frozen.action_sha256
     exact = f"approve {action_id} {digest}"
@@ -449,53 +559,17 @@ def _run_verification(
     )
 
 
-def main(
-    argv: list[str] | None = None,
+def _run_session(
+    arguments,
+    ledger_dir: Path,
     *,
-    transport=None,
-    input_stream=None,
-    output_stream=None,
-    token_prompt=None,
-    readback_opener=None,
+    transport,
+    input_stream: object,
+    output_stream: object,
+    token_prompt,
+    readback_opener,
+    result_saver: _ResultSaver | None,
 ) -> int:
-    """Run one human-operated merge ceremony.
-
-    ``transport``, streams, and ``token_prompt`` are explicit test seams.  The
-    normal path uses a terminal and constructs ``GitHubRestTransport`` from
-    one manually entered token; no environment or config lookup is performed.
-    """
-
-    input_stream = sys.stdin if input_stream is None else input_stream
-    output_stream = sys.stdout if output_stream is None else output_stream
-    # This check intentionally precedes parsing, ledger inspection, prompts,
-    # and all other I/O.  Tests use terminal-shaped in-memory streams.
-    raw_arguments = list(sys.argv[1:] if argv is None else argv)
-    if "--help" in raw_arguments or "-h" in raw_arguments:
-        try:
-            _parser().print_help(file=output_stream)
-            output_stream.flush()
-        except BaseException:
-            return 1
-        return 0
-    if not _is_tty(input_stream) or not _is_output_tty(output_stream):
-        return 2
-
-    try:
-        arguments = _parser().parse_args(argv)
-    except _UsageError:
-        _emit(output_stream, {"event": "stopped", "reason": "invalid_arguments"})
-        return 2
-    except SystemExit as exc:
-        return int(exc.code) if type(exc.code) is int else 2
-
-    try:
-        ledger_dir = _validate_ledger_dir(arguments.ledger_dir)
-    except BaseException:
-        # Paths are shown only through _emit's JSON encoder; exception text is
-        # deliberately never exposed to the terminal.
-        ledger_dir = Path(arguments.ledger_dir) if type(arguments.ledger_dir) is str else Path(".")
-        return _terminal_failure(output_stream, ledger_dir, "ledger_unavailable")
-
     active_transport = transport
     if active_transport is None:
         prompt = token_prompt if token_prompt is not None else _manual_token_prompt
@@ -546,7 +620,10 @@ def main(
             "action_sha256": frozen.action_sha256,
             "expires_at": frozen.expires_at,
         },
+        result_saver=result_saver,
     ):
+        if result_saver is not None and result_saver.failed:
+            return _terminal_failure(output_stream, ledger_dir, _EVIDENCE_SAVE_FAILURE)
         return 1
     try:
         decision = _approval_line(input_stream, output_stream, frozen)
@@ -608,11 +685,26 @@ def main(
                 "mutation_attempted": "unknown",
                 "paths": _paths(ledger_dir),
             },
+            result_saver=result_saver,
         )
+        if result_saver is not None and result_saver.failed:
+            _terminal_failure(
+                output_stream,
+                ledger_dir,
+                _EVIDENCE_SAVE_FAILURE,
+                status="post_execution_failure",
+            )
         return 1
 
     payload, code = _execution_payload(result, ledger_dir)
-    if not _emit(output_stream, payload):
+    if not _emit(output_stream, payload, result_saver=result_saver):
+        if result_saver is not None and result_saver.failed:
+            return _terminal_failure(
+                output_stream,
+                ledger_dir,
+                _EVIDENCE_SAVE_FAILURE,
+                status="post_execution_failure",
+            )
         return 1
     if not arguments.verify_result:
         return code
@@ -625,7 +717,14 @@ def main(
         execution_status=payload["status"],
         readback_opener=readback_opener,
     )
-    if not _emit(output_stream, verification_payload):
+    if not _emit(output_stream, verification_payload, result_saver=result_saver):
+        if result_saver is not None and result_saver.failed:
+            return _terminal_failure(
+                output_stream,
+                ledger_dir,
+                _EVIDENCE_SAVE_FAILURE,
+                status="post_execution_failure",
+            )
         return 1
     if code != 0:
         return 1
@@ -636,6 +735,93 @@ def main(
     if verification_payload.get("status") == "CONFIRMED":
         return 0
     return 3
+
+
+def main(
+    argv: list[str] | None = None,
+    *,
+    transport=None,
+    input_stream=None,
+    output_stream=None,
+    token_prompt=None,
+    readback_opener=None,
+) -> int:
+    """Run one human-operated merge ceremony.
+
+    ``transport``, streams, and ``token_prompt`` are explicit test seams.  The
+    normal path uses a terminal and constructs ``GitHubRestTransport`` from
+    one manually entered token; no environment or config lookup is performed.
+    """
+
+    input_stream = sys.stdin if input_stream is None else input_stream
+    output_stream = sys.stdout if output_stream is None else output_stream
+    # This check intentionally precedes parsing, ledger inspection, prompts,
+    # and all other I/O.  Tests use terminal-shaped in-memory streams.
+    raw_arguments = list(sys.argv[1:] if argv is None else argv)
+    if "--help" in raw_arguments or "-h" in raw_arguments:
+        try:
+            _parser().print_help(file=output_stream)
+            output_stream.flush()
+        except BaseException:
+            return 1
+        return 0
+    if not _is_tty(input_stream) or not _is_output_tty(output_stream):
+        return 2
+
+    try:
+        arguments = _parser().parse_args(argv)
+    except _UsageError:
+        _emit(output_stream, {"event": "stopped", "reason": "invalid_arguments"})
+        return 2
+    except SystemExit as exc:
+        return int(exc.code) if type(exc.code) is int else 2
+
+    if arguments.save_result and not arguments.verify_result:
+        _emit(output_stream, {"event": "stopped", "reason": "invalid_arguments"})
+        return 2
+
+    try:
+        ledger_dir = _validate_ledger_dir(arguments.ledger_dir)
+    except BaseException:
+        # Paths are shown only through _emit's JSON encoder; exception text is
+        # deliberately never exposed to the terminal.
+        ledger_dir = Path(arguments.ledger_dir) if type(arguments.ledger_dir) is str else Path(".")
+        return _terminal_failure(output_stream, ledger_dir, "ledger_unavailable")
+
+    result_saver = None
+    if arguments.save_result:
+        try:
+            result_saver = _ResultSaver.reserve(ledger_dir)
+        except BaseException:
+            return _terminal_failure(output_stream, ledger_dir, _EVIDENCE_SAVE_FAILURE)
+
+    code = 1
+    try:
+        code = _run_session(
+            arguments,
+            ledger_dir,
+            transport=transport,
+            input_stream=input_stream,
+            output_stream=output_stream,
+            token_prompt=token_prompt,
+            readback_opener=readback_opener,
+            result_saver=result_saver,
+        )
+    except BaseException:
+        code = 1
+    finally:
+        if result_saver is not None:
+            try:
+                result_saver.close()
+            except BaseException:
+                code = 1
+                _terminal_failure(
+                    output_stream,
+                    ledger_dir,
+                    _EVIDENCE_SAVE_FAILURE,
+                    status="post_execution_failure",
+                )
+    return code
 
 
 if __name__ == "__main__":
