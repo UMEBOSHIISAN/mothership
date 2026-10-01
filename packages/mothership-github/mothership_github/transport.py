@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,6 +27,17 @@ _MAX_RESPONSE_BYTES = 1024 * 1024
 _REPO_PATTERN = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 _SHA_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 _MISSING = object()
+_PREFLIGHT_REASON_CODES = frozenset(
+    {
+        "http_error",
+        "redirect_rejected",
+        "timeout",
+        "tls_error",
+        "network_error",
+        "response_invalid",
+        "unexpected_error",
+    }
+)
 
 
 class ActionExecutionError(ActionAuthorityError):
@@ -34,6 +46,24 @@ class ActionExecutionError(ActionAuthorityError):
 
 class ActionPreflightError(ActionAuthorityError):
     """Raised when a read-only GitHub preflight cannot be accepted."""
+
+    def __init__(
+        self,
+        message: object = None,
+        *,
+        reason_code: object = "unexpected_error",
+        http_status: object = None,
+    ) -> None:
+        valid_code = type(reason_code) is str and reason_code in _PREFLIGHT_REASON_CODES
+        valid_status = http_status is None or (
+            type(http_status) is int and 100 <= http_status <= 599
+        )
+        if not valid_code or not valid_status:
+            reason_code = "unexpected_error"
+            http_status = None
+        super().__init__("GitHub preflight failed")
+        self.reason_code = reason_code
+        self.http_status = http_status
 
 
 class GitHubTransport(Protocol):
@@ -119,6 +149,26 @@ def _status_code(response: object) -> int:
         if type(value) is int and 100 <= value <= 599:
             return value
     return 0
+
+
+def _transport_reason_code(error: Exception) -> str:
+    if isinstance(error, TimeoutError):
+        return "timeout"
+    if isinstance(error, ssl.SSLError):
+        return "tls_error"
+    if isinstance(error, urllib.error.URLError):
+        try:
+            reason = error.reason
+        except Exception:
+            return "network_error"
+        if isinstance(reason, TimeoutError):
+            return "timeout"
+        if isinstance(reason, ssl.SSLError):
+            return "tls_error"
+        return "network_error"
+    if isinstance(error, OSError):
+        return "network_error"
+    return "unexpected_error"
 
 
 def _read_bounded(response: object) -> bytes:
@@ -285,10 +335,20 @@ class GitHubRestTransport:
             response = self._opener.open(request, timeout=self._timeout)
             status = _status_code(response)
             if 300 <= status <= 399:
-                raise ActionPreflightError("GitHub redirect rejected during preflight")
+                raise ActionPreflightError(
+                    reason_code="redirect_rejected", http_status=status
+                ) from None
             if status < 200 or status >= 300:
-                raise ActionPreflightError("GitHub preflight returned a non-success status")
-            data = _strict_json_object(_read_bounded(response))
+                reason_code = "http_error" if 100 <= status <= 599 else "unexpected_error"
+                raise ActionPreflightError(
+                    reason_code=reason_code, http_status=status
+                ) from None
+            try:
+                data = _strict_json_object(_read_bounded(response))
+            except _ResponseError:
+                raise ActionPreflightError(
+                    reason_code="response_invalid", http_status=status
+                ) from None
             number = data.get("number")
             state = data.get("state")
             merged = data.get("merged")
@@ -304,7 +364,9 @@ class GitHubRestTransport:
                 or type(head.get("sha")) is not str
                 or type(base.get("ref")) is not str
             ):
-                raise ActionPreflightError("GitHub preflight response was malformed")
+                raise ActionPreflightError(
+                    reason_code="response_invalid", http_status=status
+                ) from None
             return {
                 "http_status": status,
                 "state": state,
@@ -315,14 +377,23 @@ class GitHubRestTransport:
         except ActionPreflightError:
             raise
         except urllib.error.HTTPError as error:
+            response = error
             status = _status_code(error)
             if 300 <= status <= 399:
-                raise ActionPreflightError("GitHub redirect rejected during preflight") from None
-            raise ActionPreflightError("GitHub preflight request failed") from None
-        except (TimeoutError, urllib.error.URLError, _ResponseError):
-            raise ActionPreflightError("GitHub preflight could not be read") from None
+                raise ActionPreflightError(
+                    reason_code="redirect_rejected", http_status=status
+                ) from None
+            if 100 <= status <= 599:
+                raise ActionPreflightError(
+                    reason_code="http_error", http_status=status
+                ) from None
+            raise ActionPreflightError(reason_code="unexpected_error") from None
+        except (TimeoutError, ssl.SSLError, urllib.error.URLError, OSError) as error:
+            raise ActionPreflightError(
+                reason_code=_transport_reason_code(error)
+            ) from None
         except Exception:
-            raise ActionPreflightError("GitHub preflight failed") from None
+            raise ActionPreflightError(reason_code="unexpected_error") from None
         finally:
             _close(response)
 

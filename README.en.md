@@ -256,6 +256,8 @@ Also add `--save-result` to retain the frozen action, execution report, and
 independent verification in `result.jsonl` inside the ledger directory. Tokens
 are excluded and existing files are never overwritten. Save failures return an
 error; partial records are not completion evidence and never trigger a retry.
+Initial PR-fetch failures report a bounded HTTP or network/response category
+without credentials or raw exception text. See the [preflight diagnostic guide](examples/github_merge_reference.md#diagnose-an-initial-preflight-stop).
 
 ## Current limitations
 
