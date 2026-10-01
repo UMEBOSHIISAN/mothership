@@ -219,6 +219,52 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(1, len(opener.requests))
         self.assertTrue(response.closed)
 
+    def test_get_read_time_transport_failures_preserve_category_and_observed_status(self):
+        cases = (
+            (TimeoutError("secret timeout"), "timeout"),
+            (urllib.error.URLError(TimeoutError("secret timeout")), "timeout"),
+            (ssl.SSLError("secret tls"), "tls_error"),
+            (urllib.error.URLError(ssl.SSLError("secret tls")), "tls_error"),
+            (OSError("secret network"), "network_error"),
+            (urllib.error.URLError("secret network"), "network_error"),
+        )
+        for read_error, reason_code in cases:
+            with self.subTest(reason_code=reason_code, error_type=type(read_error).__name__):
+                class FailingReadResponse(FakeResponse):
+                    def read(self, size=-1):
+                        raise read_error
+
+                response = FailingReadResponse(status=200)
+                opener = FakeOpener(response)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    _transport(opener).get_pull_request("owner/repo", 1)
+                failure = raised.exception
+                self.assertEqual(reason_code, failure.reason_code)
+                self.assertEqual(200, failure.http_status)
+                self.assertEqual(("GitHub preflight failed",), failure.args)
+                self.assertEqual({"reason_code", "http_status"}, set(vars(failure)))
+                self.assertIsNone(failure.__cause__)
+                self.assertEqual(1, len(opener.requests))
+                self.assertEqual("GET", opener.requests[0][0].get_method())
+                self.assertTrue(response.closed)
+
+    def test_put_read_time_transport_failures_remain_ambiguous_without_retry(self):
+        for read_error in (TimeoutError("secret timeout"), ssl.SSLError("secret tls"),
+                           OSError("secret network"), urllib.error.URLError("secret network")):
+            with self.subTest(error_type=type(read_error).__name__):
+                class FailingReadResponse(FakeResponse):
+                    def read(self, size=-1):
+                        raise read_error
+
+                response = FailingReadResponse(status=200)
+                opener = FakeOpener(response)
+                result = _transport(opener).merge_pull_request("owner/repo", 1, _HEAD)
+                self.assertEqual({"http_status": 200, "merged": None,
+                                  "merge_commit_sha": None, "ambiguous": True}, result)
+                self.assertEqual(1, len(opener.requests))
+                self.assertEqual("PUT", opener.requests[0][0].get_method())
+                self.assertTrue(response.closed)
+
     def test_base_url_is_pinned_to_exact_github_origin(self):
         for base_url in (
             "https://api.github.com/v3",

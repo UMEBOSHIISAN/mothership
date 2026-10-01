@@ -171,7 +171,7 @@ def _transport_reason_code(error: Exception) -> str:
     return "unexpected_error"
 
 
-def _read_bounded(response: object) -> bytes:
+def _read_bounded(response: object, *, preserve_transport_errors: bool = False) -> bytes:
     headers = getattr(response, "headers", None)
     if isinstance(headers, Mapping):
         length = headers.get("Content-Length")
@@ -186,6 +186,10 @@ def _read_bounded(response: object) -> bytes:
         raise _ResponseError
     try:
         raw = reader(_MAX_RESPONSE_BYTES + 1)
+    except (TimeoutError, ssl.SSLError, urllib.error.URLError, OSError):
+        if preserve_transport_errors:
+            raise
+        raise _ResponseError from None
     except Exception:
         raise _ResponseError from None
     if isinstance(raw, str):
@@ -344,7 +348,11 @@ class GitHubRestTransport:
                     reason_code=reason_code, http_status=status
                 ) from None
             try:
-                data = _strict_json_object(_read_bounded(response))
+                data = _strict_json_object(_read_bounded(response, preserve_transport_errors=True))
+            except (TimeoutError, ssl.SSLError, urllib.error.URLError, OSError) as error:
+                raise ActionPreflightError(
+                    reason_code=_transport_reason_code(error), http_status=status
+                ) from None
             except _ResponseError:
                 raise ActionPreflightError(
                     reason_code="response_invalid", http_status=status
