@@ -12,12 +12,14 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import urllib.error
 import unittest
 from unittest import mock
 import warnings
 
 from examples import github_merge_reference as reference
 from mothership_github import receipts
+from mothership_github.transport import ActionPreflightError
 from orchestration.lib import action_authority as core_action_authority
 from orchestration.lib import action_authority_ledger
 
@@ -1214,6 +1216,121 @@ class ReferenceRunnerTests(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertEqual("pre_execution_failure", self.rows(output.getvalue())[-1]["status"])
         self.assertNotIn("should-not-be-used", output.getvalue())
+
+    def test_preflight_failure_reports_safe_category_without_approval_or_authority(self):
+        for status in (401, 403):
+            with self.subTest(status=status):
+                error = ActionPreflightError("secret-remote-message")
+                error.reason_code = "http_error"
+                error.http_status = status
+
+                class FailingTransport:
+                    def get_pull_request(self, repository, pull_request):
+                        raise error
+
+                    def merge_pull_request(self, **kwargs):
+                        raise AssertionError("preflight must not reach mutation")
+
+                input_stream = TTYBuffer("approve must-not-be-read\n")
+                code, text = self.run_runner(FailingTransport(), input_stream=input_stream)
+                row = self.rows(text)[-1]
+                self.assertEqual(1, code)
+                self.assertEqual("preflight_unavailable", row["reason"])
+                self.assertEqual({"reason_code": "http_error", "http_status": status}, row.get("diagnostic"))
+                self.assertIs(False, row["mutation_attempted"])
+                self.assertEqual(0, input_stream.tell())
+                self.assertEqual([], list(self.ledger_dir.iterdir()))
+                self.assertNotIn("approval_required", text)
+                self.assertNotIn("secret-remote-message", text)
+
+    def test_untrusted_preflight_exception_metadata_is_not_projected(self):
+        class HostileValue:
+            def __str__(self):
+                raise AssertionError("untrusted value must not be stringified")
+
+            def __eq__(self, other):
+                raise AssertionError("untrusted value must not be compared")
+
+        class UntrustedSubclass(ActionPreflightError):
+            pass
+
+        errors = [RuntimeError("secret-exception"), UntrustedSubclass("secret-subclass")]
+        for code, status in (("secret-code", 401), ("http_error", True),
+                             (HostileValue(), 403), ("http_error", HostileValue()),
+                             ("http_error", 999)):
+            error = ActionPreflightError("secret-exception")
+            error.reason_code, error.http_status = code, status
+            errors.append(error)
+        for error in errors:
+            with self.subTest(kind=type(error).__name__):
+                class FailingTransport:
+                    def get_pull_request(self, repository, pull_request):
+                        raise error
+
+                code, text = self.run_runner(FailingTransport(), input_stream=TTYBuffer(""))
+                self.assertEqual(1, code)
+                self.assertEqual({"reason_code": "unknown", "http_status": None}, self.rows(text)[-1].get("diagnostic"))
+                self.assertNotIn("secret-", text)
+                self.assertEqual([], list(self.ledger_dir.iterdir()))
+
+    def test_merged_snapshot_stop_is_distinct_from_transport_failure(self):
+        transport = FakeTransport(snapshots=[{
+            "http_status": 200, "state": "closed", "merged": True,
+            "head_sha": _HEAD, "base_ref": "main",
+        }])
+        code, text = self.run_runner(transport, input_stream=TTYBuffer(""))
+        self.assertEqual(1, code)
+        self.assertEqual({"reason_code": "snapshot_invalid", "http_status": None}, self.rows(text)[-1].get("diagnostic"))
+        self.assertEqual([], transport.put_calls)
+        self.assertEqual([], list(self.ledger_dir.iterdir()))
+
+    def test_preflight_interrupt_stops_without_exposing_exception_or_approval(self):
+        for error in (KeyboardInterrupt("secret-interrupt"), SystemExit("secret-exit")):
+            with self.subTest(kind=type(error).__name__):
+                class FailingTransport:
+                    def get_pull_request(self, repository, pull_request):
+                        raise error
+
+                code, text = self.run_runner(FailingTransport(), input_stream=TTYBuffer(""))
+                self.assertEqual(1, code)
+                self.assertEqual({"reason_code": "interrupted", "http_status": None}, self.rows(text)[-1].get("diagnostic"))
+                self.assertNotIn("secret-", text)
+                self.assertEqual([], list(self.ledger_dir.iterdir()))
+
+    def test_real_transport_failure_is_sanitized_with_result_saving_enabled(self):
+        body = io.BytesIO(b'{"message":"secret-response-body"}')
+        error = urllib.error.HTTPError(
+            "https://api.github.com/secret-url", 401, "secret-http-message", {}, body,
+        )
+
+        class FailingOpener:
+            calls = 0
+
+            def open(self, request, timeout):
+                self.calls += 1
+                if self.calls != 1 or request.get_method() != "GET":
+                    raise AssertionError("preflight must issue exactly one GET")
+                raise error
+
+        opener = FailingOpener()
+        output = TTYBuffer()
+        input_stream = TTYBuffer("approve must-not-be-read\n")
+        with mock.patch("urllib.request.build_opener", return_value=opener):
+            code = reference.main(
+                ["--pr", "7", "--ledger-dir", str(self.ledger_dir), "--verify-result", "--save-result"],
+                token_prompt=lambda prompt: "secret-manual-token",
+                input_stream=input_stream, output_stream=output,
+            )
+        text = output.getvalue()
+        row = self.rows(text)[-1]
+        self.assertEqual(1, code)
+        self.assertEqual({"reason_code": "http_error", "http_status": 401}, row.get("diagnostic"))
+        self.assertIs(False, row["mutation_attempted"])
+        self.assertEqual(0, input_stream.tell())
+        self.assertTrue(body.closed)
+        self.assertEqual(["result.jsonl"], [path.name for path in self.ledger_dir.iterdir()])
+        self.assertEqual(b"", (self.ledger_dir / "result.jsonl").read_bytes())
+        self.assertNotIn("secret-", text)
 
 
 if __name__ == "__main__":

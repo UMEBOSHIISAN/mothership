@@ -227,6 +227,8 @@ exact actionへの承認、一度だけの実行まで進められます。`--ve
 さらに `--save-result` を指定すると、操作内容・実行報告・独立確認を台帳フォルダの
 `result.jsonl` に保存します。tokenは保存せず、既存ファイルは上書きしません。
 保存失敗はエラーになり、途中までの記録を完了証拠と扱ったり、操作を自動でやり直したりしません。
+初回のPR取得に失敗した場合は、HTTP statusや通信・応答検証の分類を秘密情報なしで表示します。
+診断分類と保存範囲は[参照consumerの説明](examples/github_merge_reference.md#diagnose-an-initial-preflight-stop)を確認してください。
 
 ## 現在の制約
 

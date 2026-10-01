@@ -25,7 +25,7 @@ import warnings
 
 from mothership import action_authority
 from mothership_github import executor
-from mothership_github.transport import GitHubRestTransport
+from mothership_github.transport import ActionPreflightError, GitHubRestTransport
 
 
 _DEFAULT_REPOSITORY = "UMEBOSHIISAN/mothership"
@@ -39,6 +39,10 @@ _CONSUMER_SOURCE_REF_ID = "consumer-source:github_merge_reference.py"
 _RECEIPT_UNAVAILABLE = "receipt_unavailable"
 _VERIFICATION_UNAVAILABLE = "verification_unavailable"
 _EVIDENCE_SAVE_FAILURE = "evidence_save_failed"
+_PREFLIGHT_CODES = frozenset({
+    "http_error", "redirect_rejected", "timeout", "tls_error", "network_error",
+    "response_invalid", "unexpected_error",
+})
 
 
 class _UsageError(Exception):
@@ -237,18 +241,39 @@ def _terminal_failure(
     reason: str,
     *,
     status: str = "pre_execution_failure",
+    diagnostic: dict[str, object] | None = None,
 ) -> int:
+    payload = {
+        "event": "stopped",
+        "status": status,
+        "reason": reason,
+        "mutation_attempted": False if status == "pre_execution_failure" else "unknown",
+        "paths": _paths(ledger_dir),
+    }
+    if diagnostic is not None:
+        payload["diagnostic"] = diagnostic
     _emit(
         output_stream,
-        {
-            "event": "stopped",
-            "status": status,
-            "reason": reason,
-            "mutation_attempted": False if status == "pre_execution_failure" else "unknown",
-            "paths": _paths(ledger_dir),
-        },
+        payload,
     )
     return 1
+
+
+def _preflight_diagnostic(error: BaseException) -> dict[str, object]:
+    """Project only validated transport metadata, never exception text."""
+    unknown = {"reason_code": "unknown", "http_status": None}
+    if type(error) is not ActionPreflightError:
+        return unknown
+    try:
+        code = error.reason_code
+        status = error.http_status
+    except BaseException:
+        return unknown
+    if type(code) is not str or code not in _PREFLIGHT_CODES:
+        return unknown
+    if status is not None and (type(status) is not int or not 100 <= status <= 599):
+        return unknown
+    return {"reason_code": code, "http_status": status}
 
 
 def _validate_ledger_dir(value: object) -> Path:
@@ -590,9 +615,28 @@ def _run_session(
         return _terminal_failure(output_stream, ledger_dir, "transport_unavailable")
     try:
         snapshot = active_transport.get_pull_request(arguments.repo, arguments.pr)
+    except (KeyboardInterrupt, SystemExit):
+        return _terminal_failure(
+            output_stream, ledger_dir, "preflight_unavailable",
+            diagnostic={"reason_code": "interrupted", "http_status": None},
+        )
+    except BaseException as error:
+        return _terminal_failure(
+            output_stream, ledger_dir, "preflight_unavailable",
+            diagnostic=_preflight_diagnostic(error),
+        )
+    try:
         expected_head_sha, expected_base = _validate_snapshot(snapshot)
+    except (KeyboardInterrupt, SystemExit):
+        return _terminal_failure(
+            output_stream, ledger_dir, "preflight_unavailable",
+            diagnostic={"reason_code": "interrupted", "http_status": None},
+        )
     except BaseException:
-        return _terminal_failure(output_stream, ledger_dir, "preflight_unavailable")
+        return _terminal_failure(
+            output_stream, ledger_dir, "preflight_unavailable",
+            diagnostic={"reason_code": "snapshot_invalid", "http_status": None},
+        )
 
     action_id = f"act-reference-github-merge-pr-{arguments.pr}-{uuid.uuid4().hex}"
     try:

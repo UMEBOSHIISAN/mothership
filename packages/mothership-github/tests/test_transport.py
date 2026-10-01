@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import io
+import ssl
 import urllib.error
 import unittest
 from unittest import mock
@@ -54,7 +55,216 @@ def _transport(opener):
     return GitHubRestTransport("synthetic-token", opener=opener, timeout=3.0)
 
 
+class _HostileValue:
+    def __str__(self):
+        raise AssertionError("hostile value must not be stringified")
+
+    def __repr__(self):
+        raise AssertionError("hostile value must not be represented")
+
+    def __eq__(self, other):
+        raise AssertionError("hostile value must not be compared")
+
+    def __hash__(self):
+        raise AssertionError("hostile value must not be hashed")
+
+
 class TransportTests(unittest.TestCase):
+    def test_preflight_error_has_only_closed_safe_metadata(self):
+        error = ActionPreflightError(
+            _HostileValue(), reason_code="http_error", http_status=401
+        )
+        self.assertEqual(("GitHub preflight failed",), error.args)
+        self.assertEqual("GitHub preflight failed", str(error))
+        self.assertNotIn("secret", repr(error))
+        self.assertEqual("http_error", error.reason_code)
+        self.assertEqual(401, error.http_status)
+        self.assertEqual({"reason_code", "http_status"}, set(vars(error)))
+
+        invalid = ActionPreflightError(
+            _HostileValue(), reason_code=_HostileValue(), http_status=_HostileValue()
+        )
+        self.assertEqual("unexpected_error", invalid.reason_code)
+        self.assertIsNone(invalid.http_status)
+        self.assertEqual(("GitHub preflight failed",), invalid.args)
+
+        for reason_code in (None, "secret-code", "HTTP_ERROR", _HostileValue()):
+            for http_status in (True, 99, 600, "401", _HostileValue()):
+                with self.subTest(reason_type=type(reason_code).__name__, status_type=type(http_status).__name__):
+                    candidate = ActionPreflightError(
+                        _HostileValue(), reason_code=reason_code, http_status=http_status
+                    )
+                    self.assertEqual("unexpected_error", candidate.reason_code)
+                    self.assertIsNone(candidate.http_status)
+
+        for reason_code, http_status in (("secret-code", 401), ("http_error", True)):
+            candidate = ActionPreflightError(reason_code=reason_code, http_status=http_status)
+            self.assertEqual("unexpected_error", candidate.reason_code)
+            self.assertIsNone(candidate.http_status)
+
+    def test_get_success_mapping_and_cleanup_are_unchanged(self):
+        response = FakeResponse(
+            json.dumps(
+                {
+                    "number": 1,
+                    "state": "open",
+                    "merged": False,
+                    "head": {"sha": _HEAD},
+                    "base": {"ref": "main"},
+                }
+            )
+        )
+        opener = FakeOpener(response)
+        result = _transport(opener).get_pull_request("owner/repo", 1)
+        self.assertEqual(
+            {
+                "http_status": 200,
+                "state": "open",
+                "merged": False,
+                "head_sha": _HEAD,
+                "base_ref": "main",
+            },
+            result,
+        )
+        self.assertEqual(1, len(opener.requests))
+        self.assertEqual("GET", opener.requests[0][0].get_method())
+        self.assertTrue(response.closed)
+
+    def test_get_http_error_categories_preserve_status_without_leaking_error_data(self):
+        for status in (401, 403, 500):
+            with self.subTest(status=status):
+                body = io.BytesIO(b"secret response body")
+                error = urllib.error.HTTPError(
+                    "https://api.github.com/secret-url",
+                    status,
+                    "secret exception message",
+                    {"X-Secret": "secret header"},
+                    body,
+                )
+                opener = FakeOpener(error=error)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    _transport(opener).get_pull_request("owner/repo", 1)
+                failure = raised.exception
+                self.assertIs(type(failure), ActionPreflightError)
+                self.assertEqual("http_error", failure.reason_code)
+                self.assertEqual(status, failure.http_status)
+                self.assertEqual(1, len(opener.requests))
+                self.assertTrue(error.closed)
+                self.assertNotIn("secret", str(failure))
+                self.assertNotIn("secret", repr(failure))
+                self.assertNotIn("secret", repr(vars(failure)))
+
+    def test_get_redirect_categories_preserve_status_without_retry(self):
+        for status in (300, 301, 302, 307, 399):
+            with self.subTest(status=status):
+                response = FakeResponse(b"secret redirect body", status=status)
+                opener = FakeOpener(response)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    _transport(opener).get_pull_request("owner/repo", 1)
+                failure = raised.exception
+                self.assertIs(type(failure), ActionPreflightError)
+                self.assertEqual("redirect_rejected", failure.reason_code)
+                self.assertEqual(status, failure.http_status)
+                self.assertEqual(1, len(opener.requests))
+                self.assertTrue(response.closed)
+                self.assertNotIn("secret", str(failure))
+
+    def test_get_classifies_direct_and_wrapped_transport_errors(self):
+        cases = (
+            (TimeoutError("secret timeout"), "timeout"),
+            (urllib.error.URLError(TimeoutError("secret timeout")), "timeout"),
+            (ssl.SSLError("secret tls"), "tls_error"),
+            (urllib.error.URLError(ssl.SSLError("secret tls")), "tls_error"),
+            (OSError("secret network"), "network_error"),
+            (urllib.error.URLError("secret network"), "network_error"),
+        )
+        for transport_error, reason_code in cases:
+            with self.subTest(reason_code=reason_code, error_type=type(transport_error).__name__):
+                opener = FakeOpener(error=transport_error)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    _transport(opener).get_pull_request("owner/repo", 1)
+                failure = raised.exception
+                self.assertIs(type(failure), ActionPreflightError)
+                self.assertEqual(reason_code, failure.reason_code)
+                self.assertIsNone(failure.http_status)
+                self.assertEqual(1, len(opener.requests))
+                self.assertNotIn("secret", str(failure))
+                self.assertIsNone(failure.__cause__)
+
+    def test_get_invalid_response_body_is_response_invalid_with_observed_status(self):
+        bodies = (
+            b"",
+            b"not-json",
+            b"[]",
+            b'{"state":"open","state":"closed"}',
+        )
+        for body in bodies:
+            with self.subTest(body=body[:20]):
+                response = FakeResponse(body, status=200)
+                opener = FakeOpener(response)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    _transport(opener).get_pull_request("owner/repo", 1)
+                failure = raised.exception
+                self.assertEqual("response_invalid", failure.reason_code)
+                self.assertEqual(200, failure.http_status)
+                self.assertEqual(1, len(opener.requests))
+                self.assertTrue(response.closed)
+
+        response = FakeResponse(b"{}", status=204, headers={"Content-Length": str(1024 * 1024 + 1)})
+        opener = FakeOpener(response)
+        with self.assertRaises(ActionPreflightError) as raised:
+            _transport(opener).get_pull_request("owner/repo", 1)
+        self.assertEqual("response_invalid", raised.exception.reason_code)
+        self.assertEqual(204, raised.exception.http_status)
+        self.assertEqual(1, len(opener.requests))
+        self.assertTrue(response.closed)
+
+    def test_get_read_time_transport_failures_preserve_category_and_observed_status(self):
+        cases = (
+            (TimeoutError("secret timeout"), "timeout"),
+            (urllib.error.URLError(TimeoutError("secret timeout")), "timeout"),
+            (ssl.SSLError("secret tls"), "tls_error"),
+            (urllib.error.URLError(ssl.SSLError("secret tls")), "tls_error"),
+            (OSError("secret network"), "network_error"),
+            (urllib.error.URLError("secret network"), "network_error"),
+        )
+        for read_error, reason_code in cases:
+            with self.subTest(reason_code=reason_code, error_type=type(read_error).__name__):
+                class FailingReadResponse(FakeResponse):
+                    def read(self, size=-1):
+                        raise read_error
+
+                response = FailingReadResponse(status=200)
+                opener = FakeOpener(response)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    _transport(opener).get_pull_request("owner/repo", 1)
+                failure = raised.exception
+                self.assertEqual(reason_code, failure.reason_code)
+                self.assertEqual(200, failure.http_status)
+                self.assertEqual(("GitHub preflight failed",), failure.args)
+                self.assertEqual({"reason_code", "http_status"}, set(vars(failure)))
+                self.assertIsNone(failure.__cause__)
+                self.assertEqual(1, len(opener.requests))
+                self.assertEqual("GET", opener.requests[0][0].get_method())
+                self.assertTrue(response.closed)
+
+    def test_put_read_time_transport_failures_remain_ambiguous_without_retry(self):
+        for read_error in (TimeoutError("secret timeout"), ssl.SSLError("secret tls"),
+                           OSError("secret network"), urllib.error.URLError("secret network")):
+            with self.subTest(error_type=type(read_error).__name__):
+                class FailingReadResponse(FakeResponse):
+                    def read(self, size=-1):
+                        raise read_error
+
+                response = FailingReadResponse(status=200)
+                opener = FakeOpener(response)
+                result = _transport(opener).merge_pull_request("owner/repo", 1, _HEAD)
+                self.assertEqual({"http_status": 200, "merged": None,
+                                  "merge_commit_sha": None, "ambiguous": True}, result)
+                self.assertEqual(1, len(opener.requests))
+                self.assertEqual("PUT", opener.requests[0][0].get_method())
+                self.assertTrue(response.closed)
+
     def test_base_url_is_pinned_to_exact_github_origin(self):
         for base_url in (
             "https://api.github.com/v3",

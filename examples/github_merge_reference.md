@@ -87,6 +87,37 @@ This example is a reference consumer, not production approval or identity
 authentication, and it does not connect to Harness, MOON, Secretary, or the
 observation CLI.
 
+## Diagnose an initial preflight stop
+
+An initial GET or snapshot validation failure keeps `reason: preflight_unavailable`,
+exit `1`, and `mutation_attempted: false`. Its terminal event also includes a
+bounded `diagnostic` object, for example:
+
+```json
+{"reason_code":"http_error","http_status":401}
+```
+
+| `reason_code` | Observed failure |
+| --- | --- |
+| `http_error` | A non-success HTTP status; the observed status is retained. `403` alone cannot distinguish permissions, rate limiting, or SSO requirements. |
+| `redirect_rejected` | A redirect was rejected without a follow-up request. |
+| `timeout` | The request timed out. |
+| `tls_error` | TLS failed. |
+| `network_error` | Another network failure. |
+| `response_invalid` | The bounded response could not be parsed or lacked the required field shapes. |
+| `snapshot_invalid` | The fetched snapshot was ineligible, such as an already merged PR or an invalid head/base. |
+| `unexpected_error` / `unknown` | No more specific safe classification is available. |
+| `interrupted` | Initial fetch or snapshot validation was interrupted. |
+
+The category is an observation, not proof of the root cause. Unknown HTTP status
+is `null`; no message, response body, credential, header, or exception text is
+included. Only the exact transport exception type with validated metadata is
+projected; other exceptions retain `unknown`. Initial failure stops before
+approval, ledger events, consume, or mutation and does not trigger a retry.
+Keep this sanitized terminal event when diagnosing a stop. `--save-result` still
+saves only the three result event types below; a preflight stop leaves its
+reserved `result.jsonl` empty.
+
 ## Read back the result in the same run
 
 `--verify-result` completes the public-PR reference flow: choose one PR, inspect
