@@ -216,7 +216,9 @@ def _emit(
         if not result_saver.save_event(line):
             return False
     try:
-        output_stream.write(line)
+        written = output_stream.write(line)
+        if type(written) is not int or written != len(line):
+            return False
         output_stream.flush()
         return True
     except BaseException:
