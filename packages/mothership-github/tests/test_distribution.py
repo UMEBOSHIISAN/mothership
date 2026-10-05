@@ -168,7 +168,7 @@ class BuiltCompanionDistributionTests(unittest.TestCase):
         ]
         self.assertEqual([], core_requirements)
         self.assertEqual(
-            ["Requires-Dist: mothership-control-plane==0.4.3.dev0"],
+            ["Requires-Dist: mothership-control-plane==0.5.0.dev0"],
             companion_requirements,
         )
         for module in (

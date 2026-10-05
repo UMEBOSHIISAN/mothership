@@ -126,6 +126,22 @@ after issuance inherits a copy of the object and registry. The API does not enfo
 decision recording must remain in that issuance lineage. `consume_action()` appends and file-fsyncs one consume event
 before returning the exact action.
 
+The optional `mothership.action_review` helpers additionally correlate a
+response to a host-retained review request, including the original expiry and
+current host/session/actor/generation/scope values. These values are assertions
+from the trusted caller, not authenticated identity or permission grants. Never
+take `expected_request` or `current_host_context` from an untrusted response.
+The request hash is not a signature. It does not protect a host that substitutes
+both its expected request and context, or reuses issuance identifiers.
+
+Review validation is pure and repeatable; authority recording and consumption
+remain separate. Context is not persisted in ledger v0 by these helpers.
+Retain it separately if audit policy requires it. The unchanged companion has
+no host callback: validation before execution cannot guarantee that a later
+preflight, suspension or effect sees the same context. Runtime adapters must
+enforce that boundary and qualify it with actual suspend/revoke/resume tests.
+No Dots or OpenClaw runtime enforcement is claimed by the offline example.
+
 The ledger is an explicit normalized local file with strict owner-only modes. Its immediate parent must be a real 0700
 directory and its leaf a non-symlink regular 0600 file; higher ancestor resolution remains a caller trust boundary.
 Reads and appends occur under a lock; append, flush, file `fsync`, rollback, and quarantine paths fail closed. The

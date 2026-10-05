@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authority-action-review-response.v0.schema.json",
+  "title": "Mothership Authority Action Review Response v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "request_sha256",
+    "action_id",
+    "action_sha256",
+    "decision"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "authority-action-review-response.v0"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "action_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^act-[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "action_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "reject"
+      ]
+    }
+  }
+}

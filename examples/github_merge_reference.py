@@ -154,7 +154,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--repo", default=_DEFAULT_REPOSITORY)
     parser.add_argument("--pr", required=True, type=int)
     parser.add_argument("--ledger-dir", required=True)
-    # Core 0.4.3.dev0 intentionally exposes only the merge method.
+    # Core 0.5.0.dev0 intentionally exposes only the merge method.
     parser.add_argument("--merge-method", choices=("merge",), default="merge")
     parser.add_argument(
         "--verify-result",

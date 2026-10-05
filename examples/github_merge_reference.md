@@ -1,7 +1,7 @@
 # GitHub merge reference consumer
 
 This source example demonstrates the first consumer connection for the pinned
-Core 0.4.3.dev0 / companion 0.2.0.dev0 pair. It handles one explicitly chosen
+Core 0.5.0.dev0 / companion 0.3.0.dev0 pair. It handles one explicitly chosen
 PR in one terminal process:
 
 1. The transport performs an initial read-only PR fetch. The existing executor

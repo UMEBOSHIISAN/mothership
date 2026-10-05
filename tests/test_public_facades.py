@@ -139,10 +139,31 @@ class PublicFacadeTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIs(source, getattr(action_authority, name))
 
-    def test_facades_publish_no_implicit_extra_names(self) -> None:
-        from mothership import action_authority, adapters, approval, contracts, scope
+    def test_action_review_facade_reexports_authoritative_objects(self) -> None:
+        from mothership import action_review
+        from orchestration.lib import action_review as old_action_review
 
-        for module in (action_authority, adapters, approval, contracts, scope):
+        expected = (
+            "ActionReviewError",
+            "build_review_request",
+            "validate_review_response",
+        )
+        self.assertEqual(expected, action_review.__all__)
+        for name in expected:
+            with self.subTest(name=name):
+                self.assertIs(getattr(old_action_review, name), getattr(action_review, name))
+
+    def test_facades_publish_no_implicit_extra_names(self) -> None:
+        from mothership import (
+            action_authority,
+            action_review,
+            adapters,
+            approval,
+            contracts,
+            scope,
+        )
+
+        for module in (action_authority, action_review, adapters, approval, contracts, scope):
             with self.subTest(module=module.__name__):
                 public = tuple(sorted(name for name in vars(module) if not name.startswith("_")))
                 self.assertEqual(module.__all__, public)

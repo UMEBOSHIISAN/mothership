@@ -198,7 +198,7 @@ class ReadmeContractTests(unittest.TestCase):
             (
                 "PURPOSE",
                 "責務分担",
-                "CURRENT: v0.4.2",
+                "HISTORICAL BASELINE: v0.4.2",
                 "現在のMothership Core",
                 "現在の参照profile",
                 "公開結果の一例",
@@ -219,7 +219,7 @@ class ReadmeContractTests(unittest.TestCase):
             (
                 "PURPOSE",
                 "Responsibility split",
-                "CURRENT: v0.4.2",
+                "HISTORICAL BASELINE: v0.4.2",
                 "How the current Mothership Core works",
                 "Current reference profile",
                 "One public result",
@@ -275,7 +275,7 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertNotIn("github.merge_pr", purpose)
         self.assertNotIn("医療製品", self.text)
 
-    def test_authority_flow_and_decision_cardinality_match_v0_4_1(self) -> None:
+    def test_authority_flow_and_decision_cardinality_match_v0_4_2(self) -> None:
         english = README_EN.read_text("utf-8")
 
         for phrase in (
@@ -287,10 +287,11 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, self.text)
 
         for phrase in (
-            "The current public releases have no automatic runtime bridge. The dashed connection is not implemented.",
-            "Proposal and evidence are decision context, but they are not mechanically bound to a FrozenAction",
-            "Multiple decision events may be recorded for the same action",
-            "one consume per action ID in one trusted ledger history",
+            "The current public releases have no",
+            "automatic runtime bridge; the dashed connection is not implemented.",
+            "Proposal and evidence are decision context, but they were not mechanically bound to a FrozenAction",
+            "multiple events per action",
+            "one consume per action in one trusted ledger history",
         ):
             self.assertIn(phrase, english)
         self.assertNotIn("権限の受け渡しを具体的に閉じた", self.text)
@@ -298,7 +299,8 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("5つの実行パラメータ", self.text)
         self.assertIn("five execution parameters", english)
         self.assertIn("issue a fresh `action_id` for every freeze", english)
-        self.assertIn("correlate the response to the exact live issuance and displayed expiry", english)
+        self.assertIn("correlate", english)
+        self.assertIn("the response to the exact live issuance and displayed expiry", english)
 
     def test_public_result_and_links_are_bounded(self) -> None:
         self.assertIn(f"]({E2E_EVIDENCE_LINK})", self.text)
@@ -393,15 +395,14 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("仕組みの図解です", self.text)
         generator = (ROOT / "assets/readme/source/generate_mothership_flow.py").read_text("utf-8")
         self.assertNotIn("/System/Library/Fonts/", generator)
-        self.assertIn("First current reference profile: github.merge_pr", generator)
-        self.assertIn("Non-authorizing context", generator)
-        self.assertIn("v0.4.2では未結合", generator)
+        self.assertIn('"freeze": ("Exact operation", "github.merge_pr")', generator)
+        self.assertIn('"context": ("Host adapters: planned", "Host context", "Path stays separate")', generator)
+        self.assertIn("Mothership Core (source candidate)", generator)
         self.assertNotIn("仕事と操作案を準備", generator)
         self.assertNotIn("Prepare work and action", generator)
-        self.assertIn('"parameters": ("Execution fields", "Caller-supplied")', generator)
-        self.assertIn('"freeze": ("Exact operation", "Freeze five fields")', generator)
-        self.assertIn('"consume": ("Local ledger", "One use per", "ledger history")', generator)
-        self.assertIn('"consume_poster": ("Local ledger", "One use / ledger history")', generator)
+        self.assertIn('"parameters": ("Core-issued action", "Action + expiry")', generator)
+        self.assertIn('"consume": ("Validate → ledger", "One use per", "trusted history")', generator)
+        self.assertIn('"consume_poster": ("Validate → ledger", "One use / history")', generator)
         self.assertIn("FRAME_COUNT * 1000 != FPS * DURATION_MS", generator)
 
     def test_bilingual_positioning_assets_have_portable_generation_inputs(self) -> None:
@@ -428,8 +429,9 @@ class ReadmeContractTests(unittest.TestCase):
                 self.assertIn(">Optional GitHub</tspan>", svg)
                 self.assertIn(">companion</tspan>", svg)
                 self.assertIn("Explicit transport", svg)
-                self.assertIn("Independent verifier", svg)
-                self.assertIn("Not bundled", svg)
+                self.assertIn(">Opt-in read-back</tspan>", svg)
+                self.assertIn(">Separate Verification</tspan>", svg)
+                self.assertIn(">Companion producer</tspan>", svg)
                 self.assertNotIn(">Separately configured executor</text>", svg)
                 self.assertIn(">Solid = implemented now</tspan>", svg)
                 self.assertIn(">Dashed = no automatic bridge</tspan>", svg)
@@ -614,7 +616,7 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
             "人間が全部を抱えず、AIにも全部を明け渡さない。",
             "## PURPOSE",
             "## 責務分担",
-            "## CURRENT: v0.4.2",
+            "## HISTORICAL BASELINE: v0.4.2",
             "## 現在の参照profile",
             "## 公開結果の一例",
             f"]({E2E_EVIDENCE_LINK})",

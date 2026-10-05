@@ -38,8 +38,8 @@ COPY = {
         "mothership_lines": ("具体的な外部操作を固定", "人間の判断と照合", "台帳履歴内で一度だけ"),
         "executor": ("任意GitHub", "companion", "明示transport"),
         "adapter": ("Receipt adapter", "finish欠落: reject", "UNKNOWNを保持"),
-        "verifier": ("独立した確認系", "別途構成", "同梱なし"),
-        "caption": ("任意companion / adapterはCoreと自動接続しません。", "独立確認は別経路。Receipt成功は外部真実ではありません。"),
+        "verifier": ("opt-in read-back", "別のVerification", "companion producer"),
+        "caption": ("任意companion / adapterはCoreと自動接続しません。", "read-back producerはcompanionのopt-in機能ですが、VerificationはReceiptとは別経路です。"),
         "legend": ("実線 = 現在実装済み", "破線 = 自動接続なし", "外枠 = 任意・別途構成"),
     },
     "en": {
@@ -55,8 +55,8 @@ COPY = {
         "mothership_lines": ("Freeze one concrete external action", "Check the human decision", "Consume once per ledger history"),
         "executor": ("Optional GitHub", "companion", "Explicit transport"),
         "adapter": ("Receipt adapter", "Missing finish: reject", "UNKNOWN preserved"),
-        "verifier": ("Independent verifier", "Separate producer", "Not bundled"),
-        "caption": ("Companion and adapter are opt-in; no automatic Core bridge.", "Independent verification is separate; receipt success is not external truth."),
+        "verifier": ("Opt-in read-back", "Separate Verification", "Companion producer"),
+        "caption": ("Companion and adapter are opt-in; no automatic Core bridge.", "The read-back producer is an opt-in companion capability; Verification remains separate from Receipt."),
         "legend": ("Solid = implemented now", "Dashed = no automatic bridge", "Outline = opt-in / separately configured"),
     },
 }

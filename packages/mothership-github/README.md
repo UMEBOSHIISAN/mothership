@@ -1,6 +1,6 @@
 # Mothership GitHub companion — local candidate
 
-Version0.2.0.dev0 requires Core0.4.3.dev0 exactly. This is an isolated integration
+Version0.3.0.dev0 requires Core0.5.0.dev0 exactly. This is an isolated integration
 candidate, not a published package or live-operation proof.
 
 HTTP observation and bounded merge execution live here; Core owns the closed

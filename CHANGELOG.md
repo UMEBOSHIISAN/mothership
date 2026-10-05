@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.0.dev0 — portable action review candidate
+
+- Add pure `build_review_request()` and `validate_review_response()` APIs and
+  closed JSON schemas. Bind review responses to the live frozen action, its
+  expiry, request ID and host-supplied session/actor/generation/scope context.
+- Preserve empty scope, reject stale context and rehashed action/expiry changes,
+  and reuse the existing ledger and one-use consume boundary without changing
+  their records or public APIs.
+- Add an offline real-ledger/companion example with simulated decisions, context
+  drift rejection, replay rejection and separate Receipt/UNKNOWN Verification.
+- Document Dots, OpenClaw, Agents SDK, LangGraph, Lobster, MCP and Harness
+  integration routes; refresh bilingual explanatory diagrams, posters and GIFs.
+- Pair companion `0.3.0.dev0` with exact Core `0.5.0.dev0`. The companion change
+  is dependency metadata; it adds no executor behavior or host callback.
+- Host runtime adapters remain unimplemented/unverified. The pure helpers do
+  not prove Dots/OpenClaw suspend/resume enforcement, authenticate humans, or
+  provide an effect-time revocation fence or durable cross-process resume.
+  Production adapters must guard their actual effect boundary. No new operation
+  profile, publication, release tag or live external action is included.
+
 ## 0.4.3.dev0 — local Option A candidate
 
 - Preserve the published v0.4.2 documentation, assets and release history.

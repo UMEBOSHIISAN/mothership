@@ -1,7 +1,8 @@
 # Mothership
 
-> Unreleased public source-main candidate (Core 0.4.3.dev0 plus optional companion 0.2.0.dev0).
-> It is not a release or live-operation proof. See [candidate changes and limits](docs/option-a-candidate.md).
+> Unreleased source candidate (Core 0.5.0.dev0 plus optional companion 0.3.0.dev0).
+> This branch candidate is not published v0.4.2 or live-operation proof.
+> See [candidate changes and limits](docs/option-a-candidate.md).
 
 [日本語](README.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -10,9 +11,9 @@
   <img src="assets/mothership-banner.png" alt="Linocut-style Mothership whale swimming through ocean currents" width="100%">
 </p>
 
-Published v0.4.2 was a docs-only release. Public source main retains its
-Authority Core contracts, updates the documentation and imagery, and adds the
-unreleased Option A implementation.
+Published v0.4.2 was a docs-only release and remains the historical public
+baseline. This source candidate retains its Authority Core contracts,
+updates the documentation and imagery, and adds the unreleased portable review API.
 
 > Keep control of your work, even as the AI you use changes.
 >
@@ -33,6 +34,9 @@ It is not an AI chat app or a complete business system. Model execution, human
 identity authentication, business-system connections, and the processes that
 execute actions and verify results must be configured separately.
 It does provide explicitly invoked, read-only GitHub observation commands.
+The [portable action review API](docs/action-review.md) lets each host entry path
+bind the same action, expiry, and host context; the [integration catalog](docs/integrations.md)
+records the qualification work required for proposed connections.
 
 ## PURPOSE
 
@@ -57,14 +61,17 @@ Mothership binds a human decision to bounded authority for one external action.
 
 <p align="center">
   <img src="assets/readme/en/ume-stack-responsibility.svg"
-       alt="Responsibility map separating the unimplemented Harness bridge, Mothership Core authority, optional GitHub companion, and independent verification."
+       alt="Responsibility map for Harness, Mothership Core, optional companion, and read-back Verification."
        width="760">
 </p>
 
-This diagram shows a responsibility direction. The current public releases have no automatic runtime bridge. The dashed connection is not implemented.
-The optional source-main GitHub companion provides execution and receipt conversion; transport and independent verification are configured separately.
+This diagram shows a responsibility direction. The current public releases have no
+automatic runtime bridge; the dashed connection is not implemented.
+The optional GitHub companion provides execution, receipt conversion,
+and an opt-in read-back Verification producer. Transport and the actual effect
+boundary remain separately configured; Verification remains a record separate from Receipt.
 
-## CURRENT: v0.4.2
+## HISTORICAL BASELINE: v0.4.2
 
 Published v0.4.2, the historical public baseline, freezes one supported external operation, checks a
 caller-attested human decision, records it in a local ledger, and permits one
@@ -78,27 +85,30 @@ Implemented:
 - one consume in the same trusted local ledger history
 - closed contracts that separate an executor Receipt from Verification
 
-Not shipped:
+Not shipped in v0.4.2:
 
 - an automatic UME-HARNESS runtime bridge
 - a general executor, verifier producer, credential manager, retry, or daemon
 - human identity authentication
 - arbitrary operation profiles or autonomous execution
 
-Proposal and evidence are decision context, but they are not mechanically bound to a FrozenAction in v0.4.1.
+Proposal and evidence are decision context, but they were not mechanically bound to a FrozenAction in v0.4.2.
 Mothership receives the supported execution parameters separately and freezes them first.
 Human identity is not authenticated.
 
-### Current source main: Core 0.4.3.dev0 + companion 0.2.0.dev0
+### Current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0
 
-Public source main contains unreleased Core `0.4.3.dev0`, which preserves the
-v0.4.2 boundary, plus an optional GitHub companion `0.2.0.dev0` that requires
-that exact Core version.
+This source candidate contains unreleased Core `0.5.0.dev0`, which
+preserves the v0.4.2 boundary and adds the portable review API, plus an optional
+GitHub companion `0.3.0.dev0` that requires that exact Core version. This pairing
+is a source candidate; it does not update the published v0.4.2 wheel or release tag.
 
 Core validates the exact `github.merge_pr` parameters, freezes a `FrozenAction`,
 checks a caller-attested decision, and permits one consume in a trusted live
-ledger. Core does not execute the external operation and does not ship an
-executor or independent GitHub verifier producer.
+ledger. The additive `mothership.action_review` API supplies pure request/response
+validation that binds a live `FrozenAction`, expiry, and host context. It does not
+write a ledger, consume authority, use a network or credential, call an executor,
+or enforce a host lease or revocation at runtime.
 
 The opt-in GitHub companion accepts only a Core-issued `FrozenAction`, exact
 ledger paths, an approval event ID, and an explicit transport. After a
@@ -121,9 +131,11 @@ are never filled into `SUCCESS`; a missing finish or inconsistent closed pair is
 rejected. The adapter grants no authority, does not authenticate or store the
 records, and does not produce an independent verifier record.
 
-Core and companion remain separate packages; adapter use is opt-in, and there
-is no automatic cross-repository runtime bridge. See the [composition guide](docs/composition.md)
-for responsibility and connection conditions. Run the offline synthetic example from the source checkout root with
+Core and companion remain separate packages; adapter and read-back producer use
+are opt-in, and there is no automatic cross-repository runtime bridge. See the
+[action review guide](docs/action-review.md), [composition guide](docs/composition.md),
+and [integration catalog](docs/integrations.md) for the API, responsibility,
+connection, and qualification conditions. Run the offline synthetic example from the source checkout root with
 `PYTHONPATH=.:packages/mothership-github python examples/github_receipt_adapter.py`.
 Its output demonstrates synthetic binding only; it performs no GitHub
 operation, credential use, ledger consume, or independent external observation.
@@ -138,9 +150,10 @@ hashes. Malformed, contradictory, or time-invalid observations remain
 status never selects Verification status. The producer does not consume or
 write authority, call an executor, retry, or poll. Injected opener results are
 synthetic/host-attested offline evidence; they do not authenticate GitHub, an
-executor, a human, or the method used to create a merge. See the [offline
-read-back example](examples/github_readback_verification.md) and
-[composition guide](docs/composition.md).
+executor, a human, or the method used to create a merge. The read-back producer
+is included as an opt-in companion capability, while its Verification record
+remains separate from Receipt. See the [offline read-back example](examples/github_readback_verification.md)
+and [composition guide](docs/composition.md).
 
 ## How the current Mothership Core works
 
@@ -149,12 +162,14 @@ read-back example](examples/github_readback_verification.md) and
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/en/mothership-flow-poster.png">
     <img src="assets/readme/en/mothership-flow.gif"
-         alt="Core freezes exact fields and binds a decision to one use; the optional GitHub companion reports execution and its adapter produces a Receipt. Independent verification remains separate."
+         alt="Core one-use decision binding, companion Receipt, and separate Verification."
          width="100%">
   </picture>
 </p>
 
-This is an explanatory diagram of unreleased source main, not execution evidence. It separates Core, the optional companion, receipt adapter, and independent verification.
+This explanatory diagram shows the unreleased source candidate, not execution evidence.
+It separates the shared review request from host entry paths, Core, the optional
+companion, receipt adapter, and independent verification.
 Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
 
 Supported parameters are frozen before a caller-attested decision is checked
@@ -165,10 +180,13 @@ consumed once within one trusted local ledger history.
 
 <p align="center">
   <img src="assets/readme/en/record-boundaries.svg"
-       alt="Separate authority consumption, companion and adapter Receipt, and independent Verification; UNKNOWN is preserved and missing finishes are rejected." width="840">
+       alt="Separate authority, Receipt, and Verification; UNKNOWN and missing finishes remain visible." width="840">
 </p>
 
-Mothership validates execution reports and independent verification as separate records. The optional adapter converts terminal attempt pairs into Receipt records while preserving UNKNOWN. Missing finishes are rejected. Receipt SUCCESS is not independent verification.
+Mothership validates execution reports and independent verification as separate records.
+The optional adapter converts terminal attempt pairs into Receipt records, and the
+companion's opt-in read-back producer creates a separate Verification. UNKNOWN is
+preserved. Missing finishes are rejected. Receipt SUCCESS is not independent verification.
 
 ## Current reference profile
 
@@ -185,9 +203,12 @@ The current profile fixes:
 - expected base branch name
 - merge method
 
-The base commit SHA is not bound. `expires_at` is not included in the action digest.
-Integrations must issue a fresh `action_id` for every freeze. They must correlate the response to the exact live issuance and displayed expiry,
-and reject delayed or reused responses.
+The base commit SHA is not bound. `expires_at` is not included in the action digest,
+but it is included in the portable review request digest with host context. That
+request digest is correlation, not a signature.
+Integrations must issue a fresh `action_id` for every freeze. They must correlate
+the response to the exact live issuance and displayed expiry, and reject delayed
+or reused responses.
 
 ## One public result
 
@@ -197,14 +218,14 @@ read-back shows the target head SHA, merge commit, parents, and bounded diff siz
 
 <p align="center">
   <img src="assets/readme/en/pr18-public-result.svg"
-       alt="Public result for merging PR 18 into an isolated canary branch, showing the source commit, merge commit, one file with five added lines, and that public main was not targeted."
+       alt="PR #18 result with source and merge commits, one-file diff, and public main excluded."
        width="720">
 </p>
 
 This is one public result for PR #18. It does not claim that the private
 lifecycle is reproducible from public material, generic safety, or production suitability.
 
-**Changes in v0.4.2**
+**Changes in v0.4.2 (historical public baseline)**
 
 The README image-generation dependency changes from Pillow 11.3.0 to 12.3.0.
 The Japanese and English GIFs and static posters are regenerated, with matching
@@ -213,6 +234,14 @@ boundaries are unchanged. Pillow is needed only for image generation and is not
 added as a Mothership runtime dependency. An offline Authority Core walkthrough
 (below) is added. Runtime Authority Core behavior, approval-acceptance
 conditions, and the supported operation profile are unchanged from v0.4.1.
+
+**Additions in the 0.5.0.dev0 source candidate**
+
+`build_review_request()` and `validate_review_response()` provide a pure portable
+review seam. The response is checked against the host-retained original request
+and live `FrozenAction`; expiry or host-context drift stops before approval or
+rejection is accepted. This is not an effect-time revocation fence, durable
+resume mechanism, host adapter, or human identity authentication.
 
 ## Quick start
 
@@ -232,8 +261,9 @@ mothership verify
 ```
 <!-- quickstart:end -->
 
-`python examples/authority_core_walkthrough.py` runs without network access or credentials. It shows exact action freeze,
-derived display, a synthetic approval fixture, one consume, and rejection of a second consume. It is not a human approval
+`python examples/authority_core_walkthrough.py` runs without network access or credentials.
+It shows exact action freeze, derived display, a synthetic approval fixture, one consume,
+and rejection of a second consume. It is not a human approval
 ceremony or identity-authentication flow; it does not change GitHub or start an executor or verifier.
 
 `mothership verify` checks bundled resource inventory, schemas, registry,
@@ -257,19 +287,21 @@ independent verification in `result.jsonl` inside the ledger directory. Tokens
 are excluded and existing files are never overwritten. Save failures return an
 error; partial records are not completion evidence and never trigger a retry.
 Initial PR-fetch failures report a bounded HTTP or network/response category
-without credentials or raw exception text. See the [preflight diagnostic guide](examples/github_merge_reference.md#diagnose-an-initial-preflight-stop).
+without credentials or raw exception text. See the
+[preflight diagnostic guide](examples/github_merge_reference.md#diagnose-an-initial-preflight-stop).
 
 ## Current limitations
 
-| Area | Implemented in v0.4.2 | Not implemented or certified |
+| Area | Implemented in the source candidate | Not implemented or certified |
 | --- | --- | --- |
 | identity | caller-attested decisions | human identity authentication |
-| decision events | Multiple decision events may be recorded for the same action | one terminal decision, supersession, or revocation |
-| consume | one consume per action ID in one trusted ledger history | global replay prevention across copied or restored ledgers |
+| decision events | multiple events per action | one terminal decision, supersession, or revocation |
+| consume | one consume per action in one trusted ledger history | no global replay prevention across copied ledgers |
 | action scope | five exact `github.merge_pr` parameters | base-commit binding or arbitrary operations |
-| expiry | a short TTL that is shown and checked | binding `expires_at` into the action digest |
-| execution | data returned for a separate executor | a live executor, credentials, retries, or a daemon |
-| verification | shape and binding checks for Receipt and Verification | verifier-producer identity or read-only behavior |
+| expiry | Core TTL and portable request expiry binding | `expires_at` in action digest or host revocation fence |
+| portable review | canonical action/expiry/host-context binding | effect enforcement, lease/revocation, durable resume |
+| execution | separate-executor data plus opt-in Receipt adapter | no Core executor, credentials, retry, daemon, or callback |
+| verification | Receipt/Verification binding plus opt-in read-back | no verifier/human identity, external truth, or read-only authentication |
 | package check | bundled inventory and digest checks | host, all installed code, or external safety |
 | public result | one bounded PR #18 result | generic safety, production readiness, or private-trace reproducibility |
 
@@ -281,7 +313,8 @@ ledger history.
 
 ### Code tour
 
-- [`orchestration/lib/action_authority.py`](orchestration/lib/action_authority.py) — action freeze and decision transport
+- [`orchestration/lib/action_authority.py`](orchestration/lib/action_authority.py) — action freeze and
+  decision transport
 - [ledger implementation](orchestration/lib/action_authority_ledger.py) — append and one-shot consume
 - [external-action contracts](orchestration/lib/external_action.py) — Receipt and Verification records
 - [`tests/test_action_authority.py`](tests/test_action_authority.py) — Authority Core boundary tests
@@ -304,6 +337,8 @@ compatibility and history. They are not the current Authority Core path.
 - [Protocols](docs/protocols.md)
 - [Security model](docs/security.md)
 - [Composition guide](docs/composition.md)
+- [Portable action review API](docs/action-review.md)
+- [Integration catalog](docs/integrations.md)
 - [0.2 compatibility history](docs/legacy/compatibility-0.2.md)
 - [日本語README](README.md)
 

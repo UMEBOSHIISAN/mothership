@@ -8,6 +8,53 @@ below are historical provenance, not current adoption dependencies. A
 Mothership snapshot records compatibility; it does not take ownership of
 companion semantics or enter the current Action Authority path.
 
+## Portable action review schemas
+
+The `0.5.0.dev0` source candidate adds two closed contract kinds for the pure
+`mothership.action_review` API. The optional companion is paired at
+`0.3.0.dev0`; published `v0.4.2` remains the historical release. These schemas
+standardize review transport between a host UI or workflow and the existing
+Core action. They do not describe a new executor or a host runtime adapter.
+
+| Contract kind | Schema version | Exact top-level fields | API role |
+| --- | --- | --- | --- |
+| `authority-action-review-request` | `authority-action-review-request.v0` | `schema_version`, `request_id`, `action`, `action_sha256`, `expires_at`, `host_context`, `request_sha256` | Detached data derived from a retained live `FrozenAction` |
+| `authority-action-review-response` | `authority-action-review-response.v0` | `schema_version`, `request_id`, `request_sha256`, `action_id`, `action_sha256`, `decision` | Host response with `approve` or `reject` |
+
+The request's `host_context` has exactly `host_id`, `session_id`, `actor_id`,
+`runtime_generation`, and ordered `scope`. IDs and scope entries use the closed
+ASCII patterns and lengths defined by the schemas. Scope may be empty; it is a
+host-computed review scope, not a credential, human-authentication result,
+delegation proof, or target-specific authorization.
+
+Generic `validate_contract` checks the closed shape, field types, versions,
+lengths, patterns, and unknown-field rejection. `build_review_request()` and
+`validate_review_response()` add the live binding: action and expiry come from
+the original Core-issued action, the request digest covers all request fields
+except itself, the expected request is retained by the host, and every response
+correlation field must match. Approve also requires the frozen operation to be
+in scope; unchanged empty-scope reject is valid.
+
+An action or expiry changed and rehashed is still rejected because the API
+rebuilds the request from the live action and compares canonical JSON bytes with
+the retained expected request. Hashes are correlation values, not signatures.
+Expired actions propagate the existing Core expiry error. Host-context drift
+rejects both decisions before the caller records or consumes authority.
+
+The helper is pure and repeatable. It performs no ledger write, consume,
+network call, credential read, executor callback, identity authentication,
+lease/revocation enforcement, or durable cross-process resume. The trusted live
+ledger remains the one-use boundary, and the host owns the effect-time check.
+See [Portable action review](action-review.md) for the API example and
+[Integration catalog](integrations.md) for the unimplemented host paths and
+their measurable completion criteria.
+
+The schema files are packaged under
+`evidence/contracts/authority-action-review-request.v0.schema.json` and
+`evidence/contracts/authority-action-review-response.v0.schema.json`. Use the
+existing contract validator for shape checks; do not treat a schema-valid
+response as proof of human identity, runtime interception, or external effect.
+
 ## Ordered registry
 
 | Order | Kind | Version | Owner | Upstream source |

@@ -3,7 +3,7 @@
 <rect width="840" height="920" rx="24" fill="#f7faf9"/>
 <g font-family="Noto Sans JP, sans-serif" fill="#17332d">
 <text x="42" y="62" font-size="32" font-weight="700">「任せた」と「できた」を分ける</text>
-<text x="42" y="100" font-size="20" fill="#55706a">source main（未リリース）の記録境界</text>
+<text x="42" y="100" font-size="20" fill="#55706a">ソース候補（未リリース）の記録境界</text>
 <rect x="34" y="136" width="772" height="212" rx="18" fill="white" stroke="#176b58" stroke-width="2"/>
 <text x="58" y="178" font-size="23" fill="#176b58">01</text>
 <text x="111" y="178" font-size="27" font-weight="700">権限の取り出し</text>
@@ -19,8 +19,8 @@
 <rect x="34" y="608" width="772" height="212" rx="18" fill="white" stroke="#7356a8" stroke-width="2" stroke-dasharray="9 6"/>
 <text x="58" y="650" font-size="23" fill="#7356a8">03</text>
 <text x="111" y="650" font-size="27" font-weight="700">別経路からの結果確認</text>
-<text x="58" y="692" font-size="21" fill="#7356a8">別途構成する独立確認系 → Verification</text>
+<text x="58" y="692" font-size="21" fill="#7356a8">companion opt-in read-back → Verification</text>
 <text x="58" y="740" font-size="22">ReceiptのSUCCESSだけでは独立確認になりません。</text>
-<text x="58" y="779" font-size="22">Mothershipは記録の形式・対応を検証します。</text>
+<text x="58" y="779" font-size="22">read-backはReceiptとは別記録。形式と対応を検証します。</text>
 <text x="42" y="883" font-size="18" fill="#55706a">3つは別の事実。自動接続や実行成功を示す図ではありません。</text>
 </g></svg>

@@ -105,7 +105,7 @@ def approval_event_contract() -> dict[str, object]:
 
 class ContractTestCase(unittest.TestCase):
     def test_version_and_fixed_function_signatures_are_exact(self) -> None:
-        self.assertEqual(b"0.4.3.dev0\n", (ROOT / "VERSION").read_bytes())
+        self.assertEqual(b"0.5.0.dev0\n", (ROOT / "VERSION").read_bytes())
         expected_parameters = (
             (loads_strict, ("raw",)),
             (load_strict, ("path",)),
@@ -376,6 +376,8 @@ class ContractTestCase(unittest.TestCase):
             "evidence/contracts/approval-event.schema.json",
             "evidence/contracts/authority-action-approval.v0.schema.json",
             "evidence/contracts/authority-action-consume.v0.schema.json",
+            "evidence/contracts/authority-action-review-request.v0.schema.json",
+            "evidence/contracts/authority-action-review-response.v0.schema.json",
             "frontdoor/contracts/decision.schema.json",
             "frontdoor/contracts/task.schema.json",
             "orchestration/contracts/executor-registry.schema.json",
