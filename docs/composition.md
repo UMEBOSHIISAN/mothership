@@ -1,6 +1,9 @@
 # Composition guide
 
-**Current status: public product boundaries and protocols; historical 0.2 provenance.**
+**Current status: Core `0.5.0.dev0`, optional companion `0.3.0.dev0`, and
+optional adapters `0.1.0.dev0` source candidate; historical `v0.4.2` and 0.2
+provenance remain separate.** The candidate pairing is not a published release
+or host-runtime integration.
 
 Mothership is the Consequential Authority Plane in a three-product UME Stack:
 
@@ -10,8 +13,10 @@ Mothership is the Consequential Authority Plane in a three-product UME Stack:
 | UME-HARNESS | local work governance and exact local execution leases | no external consequential authority |
 | Mothership | evidence, human decisions, and exact one-use action authority | no model, worker, or generic executor |
 
-There is no automatic runtime dependency between these products. The table is a responsibility map, not an
-implemented end-to-end pipeline.
+There is no automatic runtime dependency between these products. The table is a
+responsibility map, not an implemented end-to-end pipeline. The bounded host
+routes around this source candidate are cataloged separately; local adapter
+checks do not certify a live host or external effect.
 
 ## UME Stack responsibility map
 
@@ -21,7 +26,7 @@ Mothership binds a human decision to bounded authority for one external action.
 This is a responsibility relationship, not a runtime dependency. The current
 public releases do not contain an automatic Harness-to-Mothership bridge.
 
-## Current receipt connection (source main)
+## Current receipt connection (source candidate)
 
 The optional [GitHub companion](../packages/mothership-github/README.md) now
 provides a pure [attempt-to-receipt adapter](../examples/github_receipt_adapter.md).
@@ -56,7 +61,9 @@ This is offline integration evidence, not a live GitHub or cross-repository test
 ## Optional GitHub read-back verification
 
 The companion also provides an explicit `verify_merge_pr()` producer for the
-same `github.merge_pr` profile. It accepts the exact Core-issued
+same `github.merge_pr` profile. This producer is included as an opt-in
+companion capability; it is separate from the Receipt adapter and does not make
+Verification part of Core's execution path. It accepts the exact Core-issued
 `FrozenAction`, a validated external-action Receipt, and an optional injected
 opener. With the default opener it performs at most two public tokenless GETs:
 one pull-request request and, only after a coherent merged PR matches the
@@ -77,6 +84,27 @@ does not authenticate GitHub, the executor, a human, or the method used to
 create a merge. Two GETs are a bounded non-atomic snapshot, and the current
 action profile does not bind a base commit SHA.
 
+## Portable action review seam
+
+The source candidate adds the pure
+[`mothership.action_review`](action-review.md) API. A host builds one detached
+request from its retained live `FrozenAction`, a fresh request ID, and its
+host-owned context. After its own review UI or workflow responds, the host
+validates that response against the retained request and the same live action.
+The request digest covers the action, expiry, and host context, but it is a
+correlation value rather than a signature.
+
+The helper performs no ledger write, consume, network call, credential read,
+executor callback, or durable resume. It does not authenticate a human or
+enforce a lease, revocation, delegation, or runtime-generation rule at the
+effect boundary. The optional adapters recheck caller-provided context after
+suspension and immediately before transport; these observations are not atomic fences. The unchanged companion executor
+has no host callback. Host-specific entry paths and completion evidence are
+listed in the [integration catalog](integrations.md) and the practical [host
+adapter guide](host-adapters.md). The source candidate has eight bounded routes
+with recorded local checks. Their qualification is route-specific; no row claims full gateway coverage,
+credentials, a live GitHub effect, or an automatic runtime bridge.
+
 ## Application and host handoff obligations
 
 These obligations identify the owner of each boundary. They are not new Core
@@ -84,7 +112,7 @@ APIs or claims that the corresponding products enforce them today.
 
 | Requested capability | Owner | Connection condition / current limit |
 | --- | --- | --- |
-| Async continuation authority fence | Runtime host / UME-HARNESS | Recheck lease, session, actor, runtime generation and scope at the effect boundary, including after suspension. Core consume is not a continuation permit; no such host adapter ships here. |
+| Async continuation authority fence | Runtime host / UME-HARNESS | Recheck lease, session, actor, runtime generation and scope at the effect boundary, including after suspension. Core consume is not a continuation permit; the optional supplemental bridge observes leases but provides no atomic continuation fence. |
 | Delegation permission ceiling | Runtime host / UME-HARNESS | Child scope must not exceed parent ceiling, delegated scope or current runtime scope; preserve an explicit empty set and account for parent revocation. Core does not maintain the delegation graph. |
 | Fresh observation reference | Source owner and host | Preserve source identity, revision and first-observed expiry; observed text, speaker identity and model inference are evidence, not operator instructions. Re-reading must not silently renew an expired source or authorize retry of an uncertain effect. No global two-minute TTL is imposed by Core. |
 | Portable plugin / review-first admission | UME Presence / extension owner | Prepare without package-code execution, review exact bytes, recheck fingerprint, then install disabled and separately admit. Lifecycle scripts, imports and plugin loads are not review preparation. This repo has no package admission engine. |
@@ -114,6 +142,8 @@ schema version and stable digest apply. Mothership currently publishes the contr
 - Decision Card and Decision Approval for non-authorizing human review evidence;
 - Authority-Action Approval and Authority-Action Consume for one exact supported consequential action;
 - `FrozenAction`, exact parameter binding, and trusted-live-ledger one-use consumption;
+- `authority-action-review-request.v0` and `authority-action-review-response.v0`
+  for the pure portable action review seam;
 - the legacy 0.2 compatibility schemas documented below.
 
 These public contracts are descriptive and verifiable. They do not select a model or worker, choose a retry policy,
@@ -192,5 +222,6 @@ A schema change is coordinated, not inferred:
 5. every affected repository runs its conformance suite;
 6. publication remains a separate explicit action.
 
-See [Protocol reference](protocols.md) and the [0.2 compatibility history](legacy/compatibility-0.2.md)
-for the exact snapshot and its historical provenance.
+See [Protocol reference](protocols.md), [Portable action review](action-review.md),
+[Integration catalog](integrations.md), and the [0.2 compatibility history](legacy/compatibility-0.2.md)
+for the exact snapshot, current candidate seam, and historical provenance.

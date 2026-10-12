@@ -100,7 +100,9 @@ The current `FrozenAction` parameter set is exactly `repository`,
 serialization, restart, or transfer into a fresh interpreter. On POSIX, however, a child forked after issuance inherits
 a copy of both the object and the issuance registry; the API therefore does not provide process-identity isolation.
 Freeze, human response handling, and `record_action_decision()` must remain in that issuing interpreter lineage and
-complete before the fixed TTL. Remote approval transport and distributed multi-process authority are not supported.
+complete before the fixed TTL. No remote approval transport implementation or
+distributed multi-process authority is provided. The portable review payload
+described below can cross a host's transport; the live FrozenAction cannot.
 
 `validate_decision_transport()` accepts only `approve` or `reject` bound to the exact `action_id` and action digest.
 `record_action_decision()` writes a caller-supplied, action-bound decision to the dedicated authority-action ledger.
@@ -109,6 +111,25 @@ recording the decision. The action digest excludes `expires_at`; re-freezing the
 expiry reproduces the digest, so the library does not bind a response to one unique issuance. The integration must use
 a fresh action_id for every freeze and correlate each response to the exact live issuance, including the displayed
 expiry, before recording it. Delayed or reused responses must be rejected outside this API.
+
+The additive [portable review API](action-review.md) supplies that structured
+correlation step. `build_review_request()` binds the action, displayed expiry,
+request ID and host context under a separate request digest.
+`validate_review_response()` compares the original expected request against the
+live action and fresh host context before delegating to the scalar decision
+validator. It returns decision data and never records, consumes or executes.
+The host retains its expected request and original object; an untrusted returned
+request cannot be used as the expected value. Fresh IDs remain required: equal
+bytes cannot prove which object was originally displayed. The existing action
+digest and ledger v0 records are unchanged.
+
+These pure helpers are not host runtime adapters. The unmodified companion
+has no host-context callback, and context can change after validation. A host
+must guard the actual effect boundary using its own lifecycle controls.
+The optional retained-session adapters wrap transport with fresh-context checks;
+these are best-effort observations, not atomic revocation fences. See the
+[integration catalog](integrations.md) for implemented seams, local qualification
+and remaining live-host limits.
 
 `consume_action()` atomically permits one use in one trusted, non-rollbackable live ledger history, then rejects
 approval replay and action replay there. The API has no global or monotonic ledger anchor: copied, forked, rolled-back,

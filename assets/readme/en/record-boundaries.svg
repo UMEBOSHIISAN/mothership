@@ -3,7 +3,7 @@
 <rect width="840" height="920" rx="24" fill="#f7faf9"/>
 <g font-family="Noto Sans JP, sans-serif" fill="#17332d">
 <text x="42" y="62" font-size="32" font-weight="700">Entrusted does not mean completed</text>
-<text x="42" y="100" font-size="20" fill="#55706a">Record boundaries in unreleased source main</text>
+<text x="42" y="100" font-size="20" fill="#55706a">Record boundaries in the unreleased source candidate</text>
 <rect x="34" y="136" width="772" height="212" rx="18" fill="white" stroke="#176b58" stroke-width="2"/>
 <text x="58" y="178" font-size="23" fill="#176b58">01</text>
 <text x="111" y="178" font-size="27" font-weight="700">Authority consumption</text>
@@ -19,8 +19,8 @@
 <rect x="34" y="608" width="772" height="212" rx="18" fill="white" stroke="#7356a8" stroke-width="2" stroke-dasharray="9 6"/>
 <text x="58" y="650" font-size="23" fill="#7356a8">03</text>
 <text x="111" y="650" font-size="27" font-weight="700">Independent result check</text>
-<text x="58" y="692" font-size="21" fill="#7356a8">Separate verifier → Verification</text>
+<text x="58" y="692" font-size="21" fill="#7356a8">Opt-in companion read-back → Verification</text>
 <text x="58" y="740" font-size="22">Receipt SUCCESS is not independent verification.</text>
-<text x="58" y="779" font-size="22">Mothership validates record shape and binding.</text>
+<text x="58" y="779" font-size="22">Read-back stays separate from Receipt; Mothership checks binding.</text>
 <text x="42" y="883" font-size="18" fill="#55706a">Distinct facts. This diagram does not show automatic integration or success.</text>
 </g></svg>

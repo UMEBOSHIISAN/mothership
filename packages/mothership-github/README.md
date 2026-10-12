@@ -1,7 +1,13 @@
 # Mothership GitHub companion — local candidate
 
-Version0.2.0.dev0 requires Core0.4.3.dev0 exactly. This is an isolated integration
+Version0.3.0.dev0 requires Core0.5.0.dev0 exactly. This is an isolated integration
 candidate, not a published package or live-operation proof.
+
+To try this pair, use the [pinned candidate installation](../../docs/action-review.md#install-the-source-candidate).
+It installs both local projects together, checks their exact dependency pairing,
+and runs the source-only portable review example against installed packages.
+Installing Core alone does not install this optional companion; a default main
+clone also does not select an unmerged candidate.
 
 HTTP observation and bounded merge execution live here; Core owns the closed
 FrozenAction and authority ledger. All credentials are explicit constructor

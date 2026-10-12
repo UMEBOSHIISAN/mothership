@@ -11,7 +11,13 @@ edit settings, credentials, schedulers, startup configuration, or companion repo
 Use this path to inspect the current main source before installing. It includes
 the v0.4.2 documentation and offline walkthrough added after v0.4.1; the
 walkthrough is a source-checkout example and is not part of either the v0.4.1
-or v0.4.2 release tag or wheel:
+or v0.4.2 release tag or wheel.
+
+This selects the remote default branch, which may differ from an unmerged
+source candidate. To try the portable review API described in this candidate,
+use the [pinned candidate installation](action-review.md#install-the-source-candidate)
+instead; it installs the matching Core and optional companion from one reviewed
+checkout and runs the existing offline example with installed-package imports.
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git
@@ -34,7 +40,7 @@ After obtaining a reviewed wheel and its SHA-256 through a trusted channel:
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --no-deps mothership_control_plane-0.4.3.dev0-py3-none-any.whl
+python -m pip install --no-deps mothership_control_plane-0.5.0.dev0-py3-none-any.whl
 mothership verify
 ```
 

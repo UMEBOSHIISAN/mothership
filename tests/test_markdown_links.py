@@ -17,6 +17,17 @@ HTML_IMAGE = re.compile(
 )
 ALLOWED_EXTERNAL_HOSTS = {"github.com", "img.shields.io"}
 ALLOWED_GITHUB_OWNER = "UMEBOSHIISAN"
+# The integration catalog cites these reviewed primary sources. Keep the
+# exceptions exact and local to that document rather than allowing whole hosts.
+INTEGRATION_REFERENCE_URLS = {
+    "https://learn.chatgpt.com/docs/dots/computers-and-apps",
+    "https://developers.openai.com/api/docs/guides/agents/guardrails-approvals",
+    "https://raw.githubusercontent.com/openclaw/openclaw/main/src/agents/agent-tool-definition-adapter.ts#L315-L417",
+    "https://raw.githubusercontent.com/openclaw/openclaw/main/src/agents/agent-tools.before-tool-call.wrapper.ts#L386-L505",
+    "https://raw.githubusercontent.com/openclaw/openclaw/main/docs/tools/lobster.md#L8-L29",
+    "https://docs.langchain.com/oss/python/langgraph/interrupts",
+    "https://modelcontextprotocol.io/specification/2026-07-28/server/tools",
+}
 
 
 def _tracked_markdown() -> tuple[Path, ...]:
@@ -118,7 +129,13 @@ class MarkdownLinkTests(unittest.TestCase):
                 parsed = urlsplit(target)
                 if not parsed.scheme and not parsed.netloc:
                     continue
-                if parsed.scheme != "https" or parsed.hostname not in ALLOWED_EXTERNAL_HOSTS:
+                reviewed_reference = (
+                    document.relative_to(ROOT).as_posix() == "docs/integrations.md"
+                    and target in INTEGRATION_REFERENCE_URLS
+                )
+                if parsed.scheme != "https" or (
+                    parsed.hostname not in ALLOWED_EXTERNAL_HOSTS and not reviewed_reference
+                ):
                     failures.append(f"{document.relative_to(ROOT)}: disallowed URL {target}")
                     continue
                 if parsed.hostname == "github.com":

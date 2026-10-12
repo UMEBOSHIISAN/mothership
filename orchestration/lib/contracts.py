@@ -28,6 +28,12 @@ _SCHEMAS = {
     "authority-action-consume": (
         _ROOT / "evidence/contracts/authority-action-consume.v0.schema.json"
     ),
+    "authority-action-review-request": (
+        _ROOT / "evidence/contracts/authority-action-review-request.v0.schema.json"
+    ),
+    "authority-action-review-response": (
+        _ROOT / "evidence/contracts/authority-action-review-response.v0.schema.json"
+    ),
     "decision-card": _ROOT / "evidence/contracts/decision-card.v0.schema.json",
     "decision-approval": _ROOT / "evidence/contracts/decision-approval.v0.schema.json",
     "assessment": _ROOT / "safety/contracts/assessment.schema.json",

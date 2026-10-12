@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
   <title id="title">Responsibility split for humans and AI sharing work</title>
-  <desc id="desc">Companion and adapter are opt-in; no automatic Core bridge. Independent verification is separate; receipt success is not external truth.</desc>
+  <desc id="desc">The supplemental bridge passes local lease observations only; no automatic Core bridge. The read-back producer is an opt-in companion capability; Verification remains separate from Receipt.</desc>
   <style>
     .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
@@ -31,9 +31,9 @@
     <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>
     <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
     <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
-    <text class="state" x="360" y="542" text-anchor="middle">DIRECTION / NOT_SHIPPED</text>
-    <text class="small" x="360" y="574" text-anchor="middle">Explicit adapter boundary candidate</text>
-    <text class="small" x="360" y="602" text-anchor="middle">No automatic runtime bridge</text>
+    <text class="state" x="360" y="542" text-anchor="middle">SUPPLEMENTAL BRIDGE / SEPARATE</text>
+    <text class="small" x="360" y="574" text-anchor="middle">Pass local lease observations into Core context</text>
+    <text class="small" x="360" y="602" text-anchor="middle">No external permission conversion or auto bridge</text>
   </g>
 
   <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>
@@ -52,7 +52,7 @@
   <rect data-role="external" x="485" y="900" width="205" height="112" rx="20" fill="#ffffff" stroke="#237e91" stroke-width="4"/>
   <text class="boxbody" x="137" text-anchor="middle"><tspan x="137" y="931">Optional GitHub</tspan><tspan x="137" y="956">companion</tspan><tspan x="137" y="981">Explicit transport</tspan></text>
   <text class="boxbody" x="369" text-anchor="middle"><tspan x="369" y="931">Receipt adapter</tspan><tspan x="369" y="956">Missing finish: reject</tspan><tspan x="369" y="981">UNKNOWN preserved</tspan></text>
-  <text class="boxbody" x="587" text-anchor="middle"><tspan x="587" y="931">Independent verifier</tspan><tspan x="587" y="956">Separate producer</tspan><tspan x="587" y="981">Not bundled</tspan></text>
+  <text class="boxbody" x="587" text-anchor="middle"><tspan x="587" y="931">Opt-in read-back</tspan><tspan x="587" y="956">Separate Verification</tspan><tspan x="587" y="981">Companion producer</tspan></text>
 
   <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1038">Solid = implemented now</tspan><tspan x="360" y="1068">Dashed = no automatic bridge</tspan><tspan x="360" y="1098">Outline = opt-in / separately configured</tspan></text>
 </svg>

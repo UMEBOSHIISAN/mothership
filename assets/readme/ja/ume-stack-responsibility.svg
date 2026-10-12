@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
   <title id="title">人間とAIが仕事を分け合うための責務分担</title>
-  <desc id="desc">任意companion / adapterはCoreと自動接続しません。 独立確認は別経路。Receipt成功は外部真実ではありません。</desc>
+  <desc id="desc">補助bridgeはlocal lease観測を渡すだけで、Coreと自動接続しません。 read-back producerはcompanionのopt-in機能ですが、VerificationはReceiptとは別経路です。</desc>
   <style>
     .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
@@ -31,9 +31,9 @@
     <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>
     <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
     <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
-    <text class="state" x="360" y="542" text-anchor="middle">方向性・未実装</text>
-    <text class="small" x="360" y="574" text-anchor="middle">明示adapterの境界候補</text>
-    <text class="small" x="360" y="602" text-anchor="middle">自動runtime bridgeは未実装</text>
+    <text class="state" x="360" y="542" text-anchor="middle">補助bridge / 別途構成</text>
+    <text class="small" x="360" y="574" text-anchor="middle">local lease観測をCore contextへ渡す</text>
+    <text class="small" x="360" y="602" text-anchor="middle">外部権限への変換・自動接続はなし</text>
   </g>
 
   <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>
@@ -52,7 +52,7 @@
   <rect data-role="external" x="485" y="900" width="205" height="112" rx="20" fill="#ffffff" stroke="#237e91" stroke-width="4"/>
   <text class="boxbody" x="137" text-anchor="middle"><tspan x="137" y="931">任意GitHub</tspan><tspan x="137" y="956">companion</tspan><tspan x="137" y="981">明示transport</tspan></text>
   <text class="boxbody" x="369" text-anchor="middle"><tspan x="369" y="931">Receipt adapter</tspan><tspan x="369" y="956">finish欠落: reject</tspan><tspan x="369" y="981">UNKNOWNを保持</tspan></text>
-  <text class="boxbody" x="587" text-anchor="middle"><tspan x="587" y="931">独立した確認系</tspan><tspan x="587" y="956">別途構成</tspan><tspan x="587" y="981">同梱なし</tspan></text>
+  <text class="boxbody" x="587" text-anchor="middle"><tspan x="587" y="931">opt-in read-back</tspan><tspan x="587" y="956">別のVerification</tspan><tspan x="587" y="981">companion producer</tspan></text>
 
   <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1038">実線 = 現在実装済み</tspan><tspan x="360" y="1068">破線 = 自動接続なし</tspan><tspan x="360" y="1098">外枠 = 任意・別途構成</tspan></text>
 </svg>

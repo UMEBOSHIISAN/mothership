@@ -1,11 +1,21 @@
 # Option A source candidate
 
-This candidate is available on source `main`; its development versions are not
-a tagged release. It preserves the published v0.4.2 Authority Core and its closed
-contracts. It is not a release, a migration of live grants, or evidence of real
-GitHub operation. Core is `0.4.3.dev0`; the optional GitHub companion is
-`0.2.0.dev0` and requires exactly this Core version. Other public, split and
+This source candidate extends the earlier Option A changes on `main`; its
+development versions are not a tagged release. It preserves the published
+v0.4.2 Authority Core contracts and adds a separate portable review contract.
+It is not a release, a migration of live grants, or evidence of real GitHub
+operation. Core is `0.5.0.dev0`; the optional GitHub companion is
+`0.3.0.dev0` and requires exactly this Core version. Other public, split and
 consolidation version pairs are not supported by this metadata.
+
+The [portable review API](action-review.md) binds a host's review response to
+the original live action, expiry and current host context. It performs no
+ledger writes or effects. The companion version change only updates its exact
+Core dependency; its executor has no host callback. Optional `mothership-adapters`
+`0.1.0.dev0` wraps the retained action and transport with best-effort fresh-context
+checks. Eight bounded routes and their local tests are recorded in the
+[integration catalog](integrations.md) and [host adapter guide](host-adapters.md).
+This is not an atomic revocation fence, full-host qualification or live effect.
 
 ## What changes
 

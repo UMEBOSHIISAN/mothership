@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mothership-adapters"
+version = "0.1.0.dev0"
+description = "Optional retained-session host adapters and non-authorizing evidence inspection"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["mothership-control-plane==0.5.0.dev0", "mothership-github==0.3.0.dev0"]
+
+[project.optional-dependencies]
+agents = ["openai-agents==0.23.1"]
+langgraph = ["langgraph==1.2.12"]
+mcp = ["mcp==2.3.0"]
+
+[project.scripts]
+mothership-evidence = "mothership_adapters.cli:main"
+mothership-evidence-mcp = "mothership_adapters.mcp_server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mothership_adapters*"]
