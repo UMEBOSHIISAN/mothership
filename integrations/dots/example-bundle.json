@@ -1,0 +1,152 @@
+{
+  "schema_version": "host-evidence-bundle.v0",
+  "request": {
+    "schema_version": "authority-action-review-request.v0",
+    "request_id": "request-evidence-test",
+    "action": {
+      "action_id": "act-evidence-test",
+      "operation": "github.merge_pr",
+      "execution_parameters": {
+        "repository": "UMEBOSHIISAN/mothership",
+        "pull_request": 5,
+        "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
+        "expected_base": "main",
+        "merge_method": "merge"
+      },
+      "display": {
+        "target": "PR #5 -> main",
+        "scope": "repository=UMEBOSHIISAN/mothership; expected_head_sha=e2161c0c27af68221ad507a05583a5fbdaecefe1; expected_base=main; merge_method=merge",
+        "excluded_operations": [
+          "squash",
+          "rebase",
+          "force_push",
+          "branch_delete"
+        ],
+        "consequence_if_approved": "PR #5 changes will be integrated into main."
+      }
+    },
+    "action_sha256": "83d66b60044781741e559a9b8df99744fba8d284cbda1e6182fa688292946a3c",
+    "expires_at": "2026-10-12T04:46:16Z",
+    "host_context": {
+      "host_id": "host-test",
+      "session_id": "session-test",
+      "actor_id": "actor-test",
+      "runtime_generation": "generation-test",
+      "scope": [
+        "github.merge_pr"
+      ]
+    },
+    "request_sha256": "6ff2f4a376d94e522e878853caf4993701d409473ecd4a8685184f1ff3f68eff"
+  },
+  "response": {
+    "schema_version": "authority-action-review-response.v0",
+    "request_id": "request-evidence-test",
+    "request_sha256": "6ff2f4a376d94e522e878853caf4993701d409473ecd4a8685184f1ff3f68eff",
+    "action_id": "act-evidence-test",
+    "action_sha256": "83d66b60044781741e559a9b8df99744fba8d284cbda1e6182fa688292946a3c",
+    "decision": "approve"
+  },
+  "decision": {
+    "schema_version": "authority-action-approval.v0",
+    "event_type": "authority_action_approval",
+    "event_id": "event-16d4f267e9994769ac97c991096d1834",
+    "decision": "approve",
+    "approver_class": "human",
+    "action": {
+      "action_id": "act-evidence-test",
+      "operation": "github.merge_pr",
+      "execution_parameters": {
+        "repository": "UMEBOSHIISAN/mothership",
+        "pull_request": 5,
+        "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
+        "expected_base": "main",
+        "merge_method": "merge"
+      },
+      "display": {
+        "target": "PR #5 -> main",
+        "scope": "repository=UMEBOSHIISAN/mothership; expected_head_sha=e2161c0c27af68221ad507a05583a5fbdaecefe1; expected_base=main; merge_method=merge",
+        "excluded_operations": [
+          "squash",
+          "rebase",
+          "force_push",
+          "branch_delete"
+        ],
+        "consequence_if_approved": "PR #5 changes will be integrated into main."
+      }
+    },
+    "action_sha256": "83d66b60044781741e559a9b8df99744fba8d284cbda1e6182fa688292946a3c",
+    "recorded_at": "2026-10-12T04:36:16Z",
+    "expires_at": "2026-10-12T04:46:16Z",
+    "max_uses": 1
+  },
+  "consume": {
+    "schema_version": "authority-action-consume.v0",
+    "event_type": "authority_action_consume",
+    "event_id": "event-492a4795d5bb440fbb8022345116ad3d",
+    "approval_event_id": "event-16d4f267e9994769ac97c991096d1834",
+    "action_id": "act-evidence-test",
+    "action_sha256": "83d66b60044781741e559a9b8df99744fba8d284cbda1e6182fa688292946a3c",
+    "consumed_at": "2026-10-12T04:36:16Z",
+    "expires_at": "2026-10-12T04:46:16Z"
+  },
+  "started": {
+    "schema_version": "github-execution-attempt.v1",
+    "event_type": "attempt_started",
+    "event_id": "event-d0e8daa0648546bc8e2ccb7982b38f55",
+    "action_id": "act-evidence-test",
+    "action_sha256": "83d66b60044781741e559a9b8df99744fba8d284cbda1e6182fa688292946a3c",
+    "consume_event_id": "event-492a4795d5bb440fbb8022345116ad3d",
+    "recorded_at": "2026-10-12T04:36:16Z"
+  },
+  "finished": {
+    "schema_version": "github-execution-attempt.v1",
+    "event_type": "attempt_finished",
+    "event_id": "event-b6aad09f78c649b7ac9b9a521bd92dff",
+    "attempt_started_event_id": "event-d0e8daa0648546bc8e2ccb7982b38f55",
+    "action_id": "act-evidence-test",
+    "action_sha256": "83d66b60044781741e559a9b8df99744fba8d284cbda1e6182fa688292946a3c",
+    "consume_event_id": "event-492a4795d5bb440fbb8022345116ad3d",
+    "outcome": "success",
+    "observation": {
+      "http_status": 200,
+      "merged": true,
+      "merge_commit_sha": "cccccccccccccccccccccccccccccccccccccccc"
+    },
+    "recorded_at": "2026-10-12T04:36:16Z"
+  },
+  "executor_ref": {
+    "ref_id": "executor:synthetic",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "receipt": {
+    "schema_version": "external-action-receipt.v0",
+    "action_id": "act-evidence-test",
+    "action_sha256": "83d66b60044781741e559a9b8df99744fba8d284cbda1e6182fa688292946a3c",
+    "executor_ref": {
+      "ref_id": "executor:synthetic",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "started_at": "2026-10-12T04:36:16Z",
+    "finished_at": "2026-10-12T04:36:16Z",
+    "status": "SUCCESS",
+    "executor_observation_ref": {
+      "ref_id": "github-attempt:event-d0e8daa0648546bc8e2ccb7982b38f55",
+      "sha256": "1e93aef71144b34ec23d1a5d176a71faf47a9b6adb341d1d54323d50f997f3b9"
+    }
+  },
+  "verification": null,
+  "source_sha256": {
+    "request": "5b7b75a2f714a1bf93595091da4236310b071841dda934b9b1b033b0a4a52f53",
+    "response": "dbdcab21370846011bc8490a242c392b1b82cb998c9c9a7ebe65cdbf653c512f",
+    "decision": "d95920305d137a17b003980632a512c261220437ecee6a76dd2bef95da040e23",
+    "consume": "df515297e2c56d44747b55d287125d06055268406ec4c973bd6a401077eb4d82",
+    "started": "dea64cb8267517e07cf557c6f62537afbc6ad98356e715b279ca90604034ebbd",
+    "finished": "15676e071790d98ffe1d0a70e80fa13a6ef2569af23c625ea9c49f502e8d822e",
+    "executor_ref": "5eda014a63b77768a435bc13a7ffb0b6d84b3d0c3c867406aa1a7b61f9d6540b",
+    "verification": null
+  },
+  "missing": [
+    "verification"
+  ],
+  "bundle_sha256": "291b4234736b283b627974d173ebeb0a6d7f16d8a93cb068b60f3fac0820d642"
+}

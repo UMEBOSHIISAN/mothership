@@ -1,6 +1,7 @@
 # Mothership
 
-> Unreleased source candidate (Core 0.5.0.dev0 plus optional companion 0.3.0.dev0).
+> Unreleased source candidate (Core 0.5.0.dev0 plus optional companion 0.3.0.dev0
+> and optional adapters 0.1.0.dev0).
 > This branch candidate is not published v0.4.2 or live-operation proof.
 > See [candidate changes and limits](docs/option-a-candidate.md).
 
@@ -36,7 +37,9 @@ execute actions and verify results must be configured separately.
 It does provide explicitly invoked, read-only GitHub observation commands.
 The [portable action review API](docs/action-review.md) lets each host entry path
 bind the same action, expiry, and host context; the [integration catalog](docs/integrations.md)
-records the qualification work required for proposed connections.
+records the implementation, local checks, and qualification limits for eight
+bounded routes. The [host adapter guide](docs/host-adapters.md) shows the
+same-checkout setup and exact method seams.
 
 ## PURPOSE
 
@@ -61,12 +64,13 @@ Mothership binds a human decision to bounded authority for one external action.
 
 <p align="center">
   <img src="assets/readme/en/ume-stack-responsibility.svg"
-       alt="Responsibility map for Harness, Mothership Core, optional companion, and read-back Verification."
+       alt="Responsibility map for Harness, Mothership Core, supplemental bridge, eight adapter and evidence routes, and read-back Verification."
        width="760">
 </p>
 
-This diagram shows a responsibility direction. The current public releases have no
-automatic runtime bridge; the dashed connection is not implemented.
+This diagram shows a responsibility direction. The supplemental bridge passes
+local lease observations into Core context; the current public releases have no
+automatic runtime bridge.
 The optional GitHub companion provides execution, receipt conversion,
 and an opt-in read-back Verification producer. Transport and the actual effect
 boundary remain separately configured; Verification remains a record separate from Receipt.
@@ -96,12 +100,13 @@ Proposal and evidence are decision context, but they were not mechanically bound
 Mothership receives the supported execution parameters separately and freezes them first.
 Human identity is not authenticated.
 
-### Current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0
+### Current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
 
 This source candidate contains unreleased Core `0.5.0.dev0`, which
 preserves the v0.4.2 boundary and adds the portable review API, plus an optional
-GitHub companion `0.3.0.dev0` that requires that exact Core version. This pairing
-is a source candidate; it does not update the published v0.4.2 wheel or release tag.
+GitHub companion `0.3.0.dev0` that requires that exact Core version, plus the
+optional same-checkout adapters package `0.1.0.dev0`. This pairing is a source
+candidate; it does not update the published v0.4.2 wheel or release tag.
 
 Core validates the exact `github.merge_pr` parameters, freezes a `FrozenAction`,
 checks a caller-attested decision, and permits one consume in a trusted live
@@ -134,8 +139,8 @@ records, and does not produce an independent verifier record.
 Core and companion remain separate packages; adapter and read-back producer use
 are opt-in, and there is no automatic cross-repository runtime bridge. See the
 [action review guide](docs/action-review.md), [composition guide](docs/composition.md),
-and [integration catalog](docs/integrations.md) for the API, responsibility,
-connection, and qualification conditions. Run the offline synthetic example from the source checkout root with
+[integration catalog](docs/integrations.md), and [host adapter guide](docs/host-adapters.md)
+for the API, responsibility, connection, and qualification conditions. Run the offline synthetic example from the source checkout root with
 `PYTHONPATH=.:packages/mothership-github python examples/github_receipt_adapter.py`.
 Its output demonstrates synthetic binding only; it performs no GitHub
 operation, credential use, ledger consume, or independent external observation.
@@ -162,13 +167,13 @@ and [composition guide](docs/composition.md).
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/en/mothership-flow-poster.png">
     <img src="assets/readme/en/mothership-flow.gif"
-         alt="Core one-use decision binding, companion Receipt, and separate Verification."
+         alt="Eight bounded host and evidence routes feed Core one-use decision binding, companion Receipt, and separate Verification."
          width="100%">
   </picture>
 </p>
 
 This explanatory diagram shows the unreleased source candidate, not execution evidence.
-It separates the shared review request from host entry paths, Core, the optional
+It separates the shared review request from eight host and evidence entry paths, Core, the optional
 companion, receipt adapter, and independent verification.
 Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
 
@@ -343,6 +348,7 @@ compatibility and history. They are not the current Authority Core path.
 - [Composition guide](docs/composition.md)
 - [Portable action review API](docs/action-review.md)
 - [Integration catalog](docs/integrations.md)
+- [Host adapter guide](docs/host-adapters.md)
 - [0.2 compatibility history](docs/legacy/compatibility-0.2.md)
 - [日本語README](README.md)
 

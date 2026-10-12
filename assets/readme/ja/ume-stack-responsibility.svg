@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
   <title id="title">人間とAIが仕事を分け合うための責務分担</title>
-  <desc id="desc">任意companion / adapterはCoreと自動接続しません。 read-back producerはcompanionのopt-in機能ですが、VerificationはReceiptとは別経路です。</desc>
+  <desc id="desc">補助bridgeはlocal lease観測を渡すだけで、Coreと自動接続しません。 read-back producerはcompanionのopt-in機能ですが、VerificationはReceiptとは別経路です。</desc>
   <style>
     .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
@@ -31,9 +31,9 @@
     <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>
     <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
     <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
-    <text class="state" x="360" y="542" text-anchor="middle">方向性・未実装</text>
-    <text class="small" x="360" y="574" text-anchor="middle">明示adapterの境界候補</text>
-    <text class="small" x="360" y="602" text-anchor="middle">自動runtime bridgeは未実装</text>
+    <text class="state" x="360" y="542" text-anchor="middle">補助bridge / 別途構成</text>
+    <text class="small" x="360" y="574" text-anchor="middle">local lease観測をCore contextへ渡す</text>
+    <text class="small" x="360" y="602" text-anchor="middle">外部権限への変換・自動接続はなし</text>
   </g>
 
   <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>

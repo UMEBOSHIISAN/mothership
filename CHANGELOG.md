@@ -14,11 +14,15 @@
   integration routes; refresh bilingual explanatory diagrams, posters and GIFs.
 - Pair companion `0.3.0.dev0` with exact Core `0.5.0.dev0`. The companion change
   is dependency metadata; it adds no executor behavior or host callback.
-- Host runtime adapters remain unimplemented/unverified. The pure helpers do
-  not prove Dots/OpenClaw suspend/resume enforcement, authenticate humans, or
-  provide an effect-time revocation fence or durable cross-process resume.
-  Production adapters must guard their actual effect boundary. No new operation
-  profile, publication, release tag or live external action is included.
+- Add optional `mothership-adapters 0.1.0.dev0`: retained Session, Agents SDK,
+  LangGraph, supplemental Harness lease observation, bounded evidence CLI/MCP,
+  selected OpenClaw and embedded Lobster wrappers, and a repository-local Dots
+  inspection skill. Reuse Core decision/consume and companion attempt ledgers.
+- Qualify pinned public SDK/local fixture/subprocess seams with synthetic
+  transport. Preserve no retry, terminal UNKNOWN and separate Verification;
+  no full gateway, Dots runtime, credential or live-effect qualification follows.
+  Context checks are best-effort observations, not atomic revocation fences or
+  durable cross-process resume. No new operation profile or release is included.
 
 ## 0.4.3.dev0 — local Option A candidate
 

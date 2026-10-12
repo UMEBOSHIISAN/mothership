@@ -11,9 +11,11 @@ consolidation version pairs are not supported by this metadata.
 The [portable review API](action-review.md) binds a host's review response to
 the original live action, expiry and current host context. It performs no
 ledger writes or effects. The companion version change only updates its exact
-Core dependency; its executor has no host callback. Host runtime adapters and
-actual effect-boundary enforcement remain unimplemented/unverified. See the
-[integration catalog](integrations.md) for proposed connections and tests.
+Core dependency; its executor has no host callback. Optional `mothership-adapters`
+`0.1.0.dev0` wraps the retained action and transport with best-effort fresh-context
+checks. Eight bounded routes and their local tests are recorded in the
+[integration catalog](integrations.md) and [host adapter guide](host-adapters.md).
+This is not an atomic revocation fence, full-host qualification or live effect.
 
 ## What changes
 

@@ -1,6 +1,7 @@
 # Mothership
 
-> 未リリースのソース候補（Core 0.5.0.dev0、optional companion 0.3.0.dev0）。
+> 未リリースのソース候補（Core 0.5.0.dev0、optional companion 0.3.0.dev0、
+> optional adapters 0.1.0.dev0）。
 > これはこのソース候補であり、公開済みv0.4.2や実運用の証拠ではありません。
 > [候補の変更と制約](docs/option-a-candidate.md)。
 
@@ -29,8 +30,10 @@ AIチャットアプリや完成済みの業務システムではありません
 モデル実行、本人認証、業務システムへの接続、実行・結果確認の処理は別途構成します。
 明示的に呼び出す読み取り専用のGitHub観測CLIは提供します。
 各host entry pathが同じ操作・期限・host contextを照合する
-[portable action review API](docs/action-review.md) と、候補の接続条件を測定可能な形で整理した
-[integration catalog](docs/integrations.md) を追加しています。
+[portable action review API](docs/action-review.md) と、8つのbounded routeの
+実装・local checks・qualification limitを整理した
+[integration catalog](docs/integrations.md)、実装方法をまとめた
+[host adapter guide](docs/host-adapters.md) を追加しています。
 
 ## PURPOSE
 
@@ -54,11 +57,12 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 
 <p align="center">
   <img src="assets/readme/ja/ume-stack-responsibility.svg"
-       alt="UME-HARNESS、Mothership Core、任意GitHub companion、read-back Verificationの責務図。"
+       alt="UME-HARNESS、Mothership Core、補助bridge、8つのadapter/evidence route、read-back Verificationの責務図。"
        width="760">
 </p>
 
-これは責務分担の方向を示す図です。現在の公開版同士に自動接続はありません。破線部分は未実装です。
+これは責務分担の方向を示す図です。補助bridgeはlocal lease観測をCore contextへ渡すだけで、
+現在の公開版同士に自動接続はありません。
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。
 transportと実際のeffect境界は別途構成し、VerificationはReceiptとは別の記録として扱います。
 
@@ -85,11 +89,12 @@ v0.4.2当時に含まなかったもの:
 proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません。
 Mothershipは、対応済みの実行パラメータを別に受け取り、それを先にfreezeします。
 
-### current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0
+### current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
 
 このソース候補には、v0.4.2の境界を保持してportable review APIを加えた
-未リリースのCore `0.5.0.dev0`と、それに厳密に依存する任意導入のGitHub companion
-`0.3.0.dev0`が含まれます。この組み合わせは候補の対応関係であり、公開済みv0.4.2の
+未リリースのCore `0.5.0.dev0`、それに厳密に依存する任意導入のGitHub companion
+`0.3.0.dev0`、および同じcheckoutで利用する任意導入のadapters
+`0.1.0.dev0`が含まれます。この組み合わせは候補の対応関係であり、公開済みv0.4.2の
 wheelやrelease tagを更新したものではありません。
 
 Coreは `github.merge_pr` のexact parameterを検証して `FrozenAction`へ固定し、
@@ -114,8 +119,8 @@ validなterminal pairでは、強いsuccessは `SUCCESS`、認識済みclient fa
 
 Coreとcompanionは別packageで、adapterとread-back producerの利用はopt-inです。自動runtime bridgeや
 別repo間の自動接続はありません。portable review APIの使い方は [action review guide](docs/action-review.md)、
-責務と接続条件は [composition guide](docs/composition.md)、host別の候補と完了条件は
-[integration catalog](docs/integrations.md) に整理しています。
+責務と接続条件は [composition guide](docs/composition.md)、8つのhost/evidence routeは
+[integration catalog](docs/integrations.md) と [host adapter guide](docs/host-adapters.md) に整理しています。
 オフラインの合成例は、source checkoutのルートで
 `PYTHONPATH=.:packages/mothership-github python examples/github_receipt_adapter.py` を実行してください。
 出力は合成recordのbinding確認であり、GitHub操作、credential、ledger consume、独立した外部確認を示しません。
@@ -137,13 +142,13 @@ ReceiptのstatusはVerificationを選びません。authority/ledgerのconsume�
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <img src="assets/readme/ja/mothership-flow.gif"
-         alt="Coreが正確な操作を固定し判断を一度の使用へ結び付け、任意GitHub companionの実行報告をadapterでReceiptへ変換する。独立確認は別経路。"
+         alt="8つのbounded routeがCoreの正確な操作を判断の一度の使用へ結び付け、GitHub companionの実行報告をReceiptへ変換する。独立確認は別経路。"
          width="100%">
   </picture>
 </p>
 
-これは未リリースのソース候補の仕組みの図解です。複数のhost entry pathから共有するreview request、Core、
-任意companion、receipt adapter、別経路の独立確認を区別しています。GIFそのものは実行証拠ではありません。
+これは未リリースのソース候補の仕組みの図解です。8つのhost/evidence routeから共有するreview request、Core、
+任意companion、receipt adapter、別経路の独立確認を区別しています。local checksの説明であり、GIFそのものは実行証拠ではありません。
 動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
 
 対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
@@ -301,6 +306,7 @@ Frontdoor、WGM、Router、Secretaryのprotocolはlegacy 0.2互換と履歴の�
 - [Composition guide](docs/composition.md)
 - [Portable action review API](docs/action-review.md)
 - [Integration catalog](docs/integrations.md)
+- [Host adapter guide](docs/host-adapters.md)
 - [0.2互換protocolの履歴](docs/legacy/compatibility-0.2.md)
 - [English README](README.en.md)
 

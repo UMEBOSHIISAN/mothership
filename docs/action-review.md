@@ -1,8 +1,10 @@
 # Portable action review API
 
-**Status: source-candidate API for Core `0.5.0.dev0`; host runtime adapters are
-unimplemented and unverified.** The optional GitHub companion is paired at
-`0.3.0.dev0`. Published `v0.4.2` remains the historical public release.
+**Status: source-candidate API for Core `0.5.0.dev0`.** The optional GitHub
+companion is paired at `0.3.0.dev0`; optional adapters are `0.1.0.dev0`.
+Their bounded local qualification is recorded in the [integration catalog](integrations.md),
+with setup in the [host adapter guide](host-adapters.md). Published `v0.4.2`
+remains the historical public release.
 
 This page describes the additive `mothership.action_review` seam. It lets an
 application keep its existing review UI, tool loop, or workflow checkpoint

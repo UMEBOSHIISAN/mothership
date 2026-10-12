@@ -126,8 +126,10 @@ digest and ledger v0 records are unchanged.
 These pure helpers are not host runtime adapters. The unmodified companion
 has no host-context callback, and context can change after validation. A host
 must guard the actual effect boundary using its own lifecycle controls.
-See the [integration catalog](integrations.md) for unimplemented routes and
-their required qualification tests.
+The optional retained-session adapters wrap transport with fresh-context checks;
+these are best-effort observations, not atomic revocation fences. See the
+[integration catalog](integrations.md) for implemented seams, local qualification
+and remaining live-host limits.
 
 `consume_action()` atomically permits one use in one trusted, non-rollbackable live ledger history, then rejects
 approval replay and action replay there. The API has no global or monotonic ledger anchor: copied, forked, rolled-back,
