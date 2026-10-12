@@ -247,7 +247,11 @@ resume mechanism, host adapter, or human identity authentication.
 
 Use Python 3.12 or newer and a source checkout of this repository.
 Follow the [clone instructions](docs/installation.md#clone-first-install), then run
-these commands from the repository root. The walkthrough was added after v0.4.1;
+these commands from the repository root. To try the unmerged portable review
+candidate, first use the [pinned candidate installation](docs/action-review.md#install-the-source-candidate).
+A main clone alone does not select an unmerged candidate. That guide installs
+Core and companion from the same checkout and runs the existing offline example
+using the installed packages. The walkthrough was added after v0.4.1;
 it is not included in the v0.4.1 tag or wheel, and it is not included in the
 v0.4.2 wheel either (it is a source-checkout-only example).
 

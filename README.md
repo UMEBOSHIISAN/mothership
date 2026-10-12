@@ -215,6 +215,9 @@ approve / rejectの前に停止します。これは実行時の失効fence、�
 
 Python 3.12以上と、このリポジトリのソースcheckoutが必要です。
 まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
+未マージのportable review候補を試す場合は、先に[候補コミットの取得と導入](docs/action-review.md#install-the-source-candidate)を
+使ってください。mainのcloneだけでは未マージ候補は選ばれません。候補の手順はCoreとcompanionを同じcheckoutから導入し、
+インストールしたpackageで既存のオフライン例を実行します。
 下記のwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
 v0.4.2のwheelにも含まれません（source checkout専用の実行例です）。
 

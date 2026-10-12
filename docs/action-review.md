@@ -89,6 +89,49 @@ authentication result, delegation proof, or target-specific authorization. An
 `approve` response also requires the frozen operation name to be present in
 scope. A `reject` response with an unchanged empty scope remains valid.
 
+## Install the source candidate
+
+A default-branch clone does not select an unmerged candidate. The commands
+below select the reviewed runtime revision of [PR #43](https://github.com/UMEBOSHIISAN/mothership/pull/43),
+`4dd76f3208bdfa052dd553e8ff1946450611e25e`, then install Core `0.5.0.dev0`
+and companion `0.3.0.dev0` together from that same checkout. This is a pinned
+source example, not a published release or a command to follow a moving PR head.
+Review a later revision separately before substituting it.
+
+Use Python 3.12 or newer and run this in a new directory:
+
+```sh
+git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-portable-review
+cd mothership-portable-review
+git fetch origin 4dd76f3208bdfa052dd553e8ff1946450611e25e
+git switch --detach 4dd76f3208bdfa052dd553e8ff1946450611e25e
+python3 -m venv .venv-portable
+. .venv-portable/bin/activate
+python -m pip install . ./packages/mothership-github
+python -m pip check
+python -I -B examples/portable_action_review.py
+mothership verify
+```
+
+Git downloads the source; pip may obtain build tooling. Both installs stay in
+the selected virtual environment. Core has no runtime dependencies; companion
+requires this exact Core version. Neither package installs a host SDK or
+activates a plugin. The final example and `verify` run offline.
+`pip check` checks declared dependencies; `mothership verify` checks Core's
+bundled resources and does not check the companion or qualify a host adapter.
+
+The example is a source file, not an installed command. `-I` excludes source
+import paths so its Core and companion imports come from the installed pair.
+It uses a temporary ledger and synthetic transport, then removes the ledger.
+Expected output includes `fake_puts: 1`, `replay: "blocked"`,
+`receipt_status: "SUCCESS"`, and `verification_status: "UNKNOWN"`.
+All five host-context fields appear in `context_drift_blocked`. These are
+simulated observations, not a GitHub merge or a qualified host adapter.
+
+For the Core-only lifecycle and wheel installation, see
+[installation](installation.md). For an existing source environment that
+already exposes both packages, the `PYTHONPATH` invocation below remains valid.
+
 ## Minimal offline call
 
 The following is the shape a host application uses after it has obtained an
