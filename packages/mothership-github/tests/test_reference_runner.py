@@ -53,6 +53,54 @@ class ApprovalInput(TTYBuffer):
         )
 
 
+class PartialWriteOutput(TTYBuffer):
+    def __init__(self, event, reported_count=1, *, partial=True):
+        super().__init__()
+        self.event = event
+        self.reported_count = reported_count
+        self.partial = partial
+        self.attempted_rows = []
+        self.attempted_values = []
+        self.incomplete_writes = 0
+
+    def write(self, value):
+        row = json.loads(value)
+        self.attempted_rows.append(row)
+        self.attempted_values.append(value)
+        if row.get("event") == self.event:
+            if self.partial:
+                self.incomplete_writes += 1
+            super().write(value[:1] if self.partial else value)
+            if self.reported_count == "len-1":
+                return len(value) - 1
+            if self.reported_count == "len+1":
+                return len(value) + 1
+            if self.reported_count == "float-full":
+                return float(len(value))
+            if self.reported_count == "full":
+                return len(value)
+            return self.reported_count
+        return super().write(value)
+
+
+class ExactSyntheticInput(TTYBuffer):
+    """Fixture-only approval for fake HTTP; never a human approval mechanism."""
+
+    def __init__(self, output, *, eof=False):
+        super().__init__()
+        self.output = output
+        self.eof = eof
+        self.read_calls = 0
+
+    def readline(self, *args, **kwargs):
+        self.read_calls += 1
+        if self.eof:
+            return ""
+        frozen = next(row for row in self.output.attempted_rows
+                      if row.get("event") == "frozen_action")
+        return f"approve {frozen['action']['action_id']} {frozen['action_sha256']}\n"
+
+
 class FakeTransport:
     def __init__(self, mutation=None, *, snapshots=None):
         self.snapshots = snapshots or [
@@ -203,7 +251,7 @@ class ReferenceRunnerTests(unittest.TestCase):
 
     def verified_run(self, *, mode="confirmed", mutation=None, transform=None,
                      decision="approve", output=None, input_stream=None,
-                     save_result=False):
+                     save_result=False, allow_incomplete_output=False):
         from mothership.contracts import canonical_json_sha256, validate_receipt_verification_binding
         from mothership_github import verification
 
@@ -269,7 +317,7 @@ class ReferenceRunnerTests(unittest.TestCase):
             code, text = self.run_runner(
                 transport, argv=argv,
                 decision=decision, output=output, input_stream=input_stream, readback_opener=opener)
-        rows = self.rows(text)
+        rows = self.complete_rows(text) if allow_incomplete_output else self.rows(text)
         if "action" in captured:
             self.assertEqual(captured["action_value"], reference._json_value(captured["action"].action))
         if "ledger_bytes" in captured:
@@ -282,6 +330,23 @@ class ReferenceRunnerTests(unittest.TestCase):
         self.assertNotIn("secret-", text)
         return code, rows, transport, requests, execution.call_count, verifier.call_count
 
+    @staticmethod
+    def complete_rows(text: str) -> list[dict[str, object]]:
+        return [json.loads(line) for line in text.splitlines()
+                if line.startswith("{") and line.endswith("}")]
+
+    def fresh_ledger(self, name):
+        self.ledger_dir = self.root / name
+        self.ledger_dir.mkdir(mode=0o700)
+        os.chmod(self.ledger_dir, 0o700)
+
+    def assert_partial_display(self, output, event):
+        rendered = output.getvalue().splitlines()[-1]
+        attempted = output.attempted_values[-1]
+        self.assertEqual(event, output.attempted_rows[-1]["event"])
+        self.assertEqual(attempted[:1], rendered)
+        self.assertLess(len(rendered), len(attempted))
+
     def test_verify_result_builds_bound_receipt_and_confirmed_readback(self):
         code, rows, transport, requests, executions, verifications = self.verified_run()
         self.assertEqual(0, code)
@@ -290,6 +355,114 @@ class ReferenceRunnerTests(unittest.TestCase):
         self.assertEqual((1, 1, 1, 2), (executions, verifications, len(transport.put_calls), len(requests)))
         self.assertEqual(hashlib.sha256(Path(reference.__file__).read_bytes()).hexdigest(),
                          rows[-1]["receipt"]["executor_ref"]["sha256"])
+
+    def test_partial_approval_display_stops_before_read_or_effect(self):
+        output = PartialWriteOutput("approval_required")
+        input_stream = ExactSyntheticInput(output)
+        transport = FakeTransport()
+
+        code, _ = self.run_runner(
+            transport, output=output, input_stream=input_stream)
+
+        self.assertEqual(1, code)
+        self.assert_partial_display(output, "approval_required")
+        self.assertEqual(1, output.incomplete_writes)
+        self.assertEqual(0, input_stream.read_calls)
+        self.assertEqual([], transport.put_calls)
+        self.assertFalse((self.ledger_dir / "authority.jsonl").exists())
+        self.assertFalse((self.ledger_dir / "attempts.jsonl").exists())
+
+    def test_invalid_display_counts_stop_before_approval(self):
+        counts = (
+            ("none", None),
+            ("true", True),
+            ("false", False),
+            ("zero", 0),
+            ("negative", -1),
+            ("short", "len-1"),
+            ("long", "len+1"),
+            ("float-short", 1.0),
+            ("string", "not-an-int"),
+            ("float-full", "float-full"),
+        )
+        for index, (label, count) in enumerate(counts):
+            with self.subTest(count=label):
+                self.fresh_ledger(f"invalid-count-{index}")
+                output = PartialWriteOutput("approval_required", count)
+                input_stream = ExactSyntheticInput(output)
+                transport = FakeTransport()
+
+                code, _ = self.run_runner(
+                    transport, output=output, input_stream=input_stream)
+
+                self.assertEqual(1, code)
+                self.assert_partial_display(output, "approval_required")
+                self.assertEqual(0, input_stream.read_calls)
+                self.assertEqual([], transport.put_calls)
+                self.assertFalse((self.ledger_dir / "authority.jsonl").exists())
+                self.assertFalse((self.ledger_dir / "attempts.jsonl").exists())
+
+    def test_full_display_count_preserves_existing_acceptance(self):
+        output = PartialWriteOutput("approval_required", "full", partial=False)
+        input_stream = ExactSyntheticInput(output)
+        transport = FakeTransport()
+
+        code, text = self.run_runner(
+            transport, output=output, input_stream=input_stream)
+
+        self.assertEqual(0, code)
+        self.assertEqual(0, output.incomplete_writes)
+        self.assertEqual(1, len(transport.put_calls))
+        self.assertEqual(1, input_stream.read_calls)
+        self.assertEqual("success", self.rows(text)[-1]["status"])
+
+    def test_partial_cancellation_display_is_not_success(self):
+        output = PartialWriteOutput("stopped")
+        input_stream = ExactSyntheticInput(output, eof=True)
+        transport = FakeTransport()
+
+        code, _ = self.run_runner(
+            transport, output=output, input_stream=input_stream)
+
+        self.assertEqual(1, code)
+        self.assert_partial_display(output, "stopped")
+        self.assertEqual(1, output.incomplete_writes)
+        self.assertEqual(1, input_stream.read_calls)
+        self.assertEqual([], transport.put_calls)
+        self.assertFalse((self.ledger_dir / "authority.jsonl").exists())
+        self.assertFalse((self.ledger_dir / "attempts.jsonl").exists())
+
+    def test_partial_execution_result_exits_nonzero_without_repeat(self):
+        output = PartialWriteOutput("execution_result")
+        input_stream = ExactSyntheticInput(output)
+        transport = FakeTransport()
+
+        code, _ = self.run_runner(
+            transport, output=output, input_stream=input_stream)
+
+        self.assertEqual(1, code)
+        self.assert_partial_display(output, "execution_result")
+        self.assertEqual(1, output.incomplete_writes)
+        self.assertEqual(1, len(transport.put_calls))
+        self.assertTrue((self.ledger_dir / "authority.jsonl").exists())
+        self.assertTrue((self.ledger_dir / "attempts.jsonl").exists())
+
+    def test_saved_result_survives_partial_verification_display(self):
+        output = PartialWriteOutput("verification_result")
+
+        code, rows, transport, requests, executions, verifications = self.verified_run(
+            output=output, save_result=True, allow_incomplete_output=True)
+
+        self.assertEqual(1, code)
+        self.assertEqual((1, 1, 1, 2),
+                         (executions, verifications, len(transport.put_calls), len(requests)))
+        self.assert_partial_display(output, "verification_result")
+        self.assertEqual(1, output.incomplete_writes)
+        saved = [json.loads(line) for line in
+                 (self.ledger_dir / "result.jsonl").read_text().splitlines()]
+        self.assertEqual(["frozen_action", "execution_result", "verification_result"],
+                         [row["event"] for row in saved])
+        self.assertEqual(output.attempted_rows[-1], saved[-1])
 
     def test_save_result_verified_success_matches_terminal_output_and_mode(self):
         code, rows, _, _, _, _ = self.verified_run(save_result=True)

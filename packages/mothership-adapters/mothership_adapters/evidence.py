@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 import re
+import unicodedata as _unicodedata
 from collections.abc import Iterable
 
 from mothership.contracts import (
@@ -68,6 +69,7 @@ _ACTION_ID = re.compile(r"^act-[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
 _EVENT_ID = re.compile(r"^event-[0-9a-f]{32}\Z")
 _REF_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
 _UTC = "%Y-%m-%dT%H:%M:%SZ"
+_MAX_DISPLAY_SUMMARY_CHARS = 256
 
 
 class EvidenceError(ContractError):
@@ -650,6 +652,138 @@ def inspect_evidence(bundle: object) -> dict[str, object]:
                 None if verification is None else verification["status"]
             ),
         }
+    except EvidenceError:
+        raise
+    except (ContractError, TypeError, ValueError, RecursionError, OverflowError):
+        raise _invalid() from None
+
+
+def _escape_display_summary(value: object) -> str:
+    """Return bounded, single-line text for caller-supplied evidence context."""
+
+    if type(value) is not str or not value:
+        return "unavailable"
+    pieces: list[str] = []
+    for char in value[:_MAX_DISPLAY_SUMMARY_CHARS]:
+        code = ord(char)
+        if char == "\\":
+            pieces.append("\\\\")
+        elif char == "\n":
+            pieces.append("\\n")
+        elif char == "\r":
+            pieces.append("\\r")
+        elif char == "\t":
+            pieces.append("\\t")
+        elif code < 0x20 or 0x7F <= code <= 0x9F:
+            pieces.append(f"\\x{code:02x}")
+        elif _unicodedata.category(char).startswith("C") or _unicodedata.category(char) in {
+            "Zl",
+            "Zp",
+        }:
+            if code <= 0xFFFF:
+                pieces.append(f"\\u{code:04x}")
+            else:
+                pieces.append(f"\\U{code:08x}")
+        else:
+            pieces.append(char)
+    return "".join(pieces) or "unavailable"
+
+
+def summarize_evidence(bundle: object) -> str:
+    """Render one validated bundle as bounded human-facing Terminal text.
+
+    This is a display-only view over the existing detached bundle.  It does
+    not add fields to the JSON inspection/MCP contracts and does not read a
+    ledger, authenticate a source, or initiate recovery.
+    """
+
+    try:
+        checked = _validate_bundle_shape(bundle)
+        # Reuse the existing full projection check so human text has exactly
+        # the same validation boundary as the default JSON/MCP inspection.
+        inspect_evidence(checked)
+        decision = checked["decision"]
+        consume = checked["consume"]
+        receipt = checked["receipt"]
+        verification = checked["verification"]
+        missing = checked["missing"]
+
+        if decision is None:
+            approval_text = "missing"
+        elif decision["decision"] == "approve":
+            approval_text = "recorded (approve)"
+        else:
+            approval_text = "rejected (decision recorded)"
+        authority_text = "recorded" if consume is not None else "missing"
+        receipt_status = "missing" if receipt is None else str(receipt["status"])
+        verification_status = (
+            "missing" if verification is None else str(verification["status"])
+        )
+
+        if verification is None and receipt is not None and receipt["status"] == "SUCCESS":
+            conclusion = "executor-reported success only"
+        elif verification is None:
+            conclusion = "evidence incomplete"
+        elif verification["status"] == "MISMATCH":
+            conclusion = "independent verification mismatch"
+        elif verification["status"] == "UNKNOWN":
+            conclusion = "independent verification unknown"
+        else:
+            conclusion = "independent verification recorded"
+
+        # The closed bundle carries only observed_state.summary.  The
+        # structured reason code lives in verify_merge_pr's sibling evidence
+        # object and is intentionally unavailable on this stdin-only route.
+        reason = "unavailable"
+        action = checked["request"]["action"]
+        parameters = action["execution_parameters"]
+        target_text = (
+            f"target: action_id={action['action_id']}; operation={action['operation']}; "
+            f"repository={parameters['repository']}; pull_request={parameters['pull_request']}; "
+            f"expected_head_sha={parameters['expected_head_sha']}; "
+            f"expected_base={parameters['expected_base']}; merge_method={parameters['merge_method']}"
+        )
+
+        if verification is None:
+            next_check = (
+                "inspect an existing independent Verification record for this action, "
+                "if one exists"
+            )
+        else:
+            next_check = (
+                "inspect the referenced read-back evidence for the recorded reason code"
+            )
+
+        missing_text = "none" if not missing else ", ".join(str(item) for item in missing)
+        lines = [
+            f"bundle: {checked['bundle_sha256']}",
+            target_text,
+            f"approval: {approval_text}",
+            f"authority use: {authority_text}",
+            f"receipt: {receipt_status}",
+            f"verification: {verification_status}",
+            f"missing: {missing_text}",
+            f"conclusion: {conclusion}",
+            f"reason: {reason}",
+            *(
+                [
+                    "reported observation summary: "
+                    + _escape_display_summary(verification["observed_state"]["summary"])
+                ]
+                if verification is not None
+                else []
+            ),
+            "provenance: caller-attested",
+            "source: source-unverified",
+            "authority: false",
+            "source authenticated: false",
+            "external effect verified: false",
+            "record basis: status and conclusion are caller-reported records; source authentication unavailable",
+            "absence claim: missing decision, authority-use, or Verification records do not prove that those events were absent",
+            f"next read-only check: {next_check}",
+            "recovery: no re-execution; no reconsume",
+        ]
+        return "\n".join(lines) + "\n"
     except EvidenceError:
         raise
     except (ContractError, TypeError, ValueError, RecursionError, OverflowError):

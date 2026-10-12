@@ -299,6 +299,22 @@ Initial PR-fetch failures report a bounded HTTP or network/response category
 without credentials or raw exception text. See the
 [preflight diagnostic guide](examples/github_merge_reference.md#diagnose-an-initial-preflight-stop).
 
+### Read the result of a task
+
+With the optional adapters installed from the same checkout, pass an existing
+evidence bundle on stdin to `mothership-evidence inspect --human`. It separates
+recorded approval, recorded authority use, the execution report, independent
+Verification, and missing evidence. A SUCCESS Receipt without a Verification
+record is not presented as independently confirmed. UNKNOWN separates the
+supplied observation summary from unavailable reason information and names the
+next read-only check, without suggesting re-execution. The current bundle does
+not carry the read-back evidence's detailed reason code; the formatter does not
+infer it from prose and points to the referenced observation record instead.
+An absent record does not prove that an operation or verification never occurred.
+Sources remain caller-attested / source-unverified. This local reading path does
+not qualify a Dots runtime or authenticate an external effect.
+See the [installation and synthetic bundle example](docs/host-adapters.md#read-only-evidence-routes).
+
 ## Current limitations
 
 | Area | Implemented in the source candidate | Not implemented or certified |

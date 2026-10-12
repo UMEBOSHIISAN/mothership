@@ -101,3 +101,153 @@ jobs:
           if not result.wasSuccessful() or result.skipped:
               raise SystemExit(1)
           '
+
+  adapters-common:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[test]" -e packages/mothership-github -e packages/mothership-adapters
+      - name: Common adapter suite
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONPATH: ".:packages/mothership-github:packages/mothership-adapters"
+        run: |
+          python -c '
+          import unittest
+
+          loader = unittest.TestLoader()
+          suite = unittest.TestSuite()
+          for pattern in (
+              "test_cli.py",
+              "test_evidence.py",
+              "test_owner.py",
+              "test_session.py",
+          ):
+              suite.addTests(loader.discover("packages/mothership-adapters/tests", pattern=pattern))
+          if suite.countTestCases() == 0:
+              print("::error::Common adapter suite discovered 0 tests")
+              raise SystemExit(1)
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.skipped:
+              print(f"::error::Common adapter suite skipped {len(result.skipped)} test(s)")
+          if not result.wasSuccessful() or result.skipped:
+              raise SystemExit(1)
+          '
+
+  adapters-optional:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: agents
+            extra: agents
+            test_file: test_agents_sdk.py
+          - name: langgraph
+            extra: langgraph
+            test_file: test_langgraph_adapter.py
+          - name: mcp
+            extra: mcp
+            test_file: test_mcp_server.py
+    name: adapters-optional (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[test]" -e packages/mothership-github -e "packages/mothership-adapters[${{ matrix.extra }}]"
+      - name: Optional adapter suite
+        env:
+          ADAPTER_TEST_FILE: ${{ matrix.test_file }}
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONPATH: ".:packages/mothership-github:packages/mothership-adapters"
+        run: |
+          python -c '
+          import os
+          import unittest
+
+          loader = unittest.TestLoader()
+          suite = loader.discover(
+              "packages/mothership-adapters/tests",
+              pattern=os.environ["ADAPTER_TEST_FILE"],
+          )
+          if suite.countTestCases() == 0:
+              print("::error::Optional adapter suite discovered 0 tests")
+              raise SystemExit(1)
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.skipped:
+              print(f"::error::Optional adapter suite skipped {len(result.skipped)} test(s)")
+          if not result.wasSuccessful() or result.skipped:
+              raise SystemExit(1)
+          '
+
+  node-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[test]" -e packages/mothership-github -e packages/mothership-adapters
+      - name: Fetch and build pinned Lobster runtime
+        env:
+          LOBSTER_COMMIT: 74db2679fe34c6b04b067eebea943eaabd8b789f
+        run: |
+          set -euo pipefail
+          lobster="$RUNNER_TEMP/lobster"
+          git init "$lobster"
+          git -C "$lobster" remote add origin https://github.com/openclaw/lobster.git
+          git -C "$lobster" fetch --depth=1 origin "$LOBSTER_COMMIT"
+          git -C "$lobster" checkout --detach "$LOBSTER_COMMIT"
+          test "$(git -C "$lobster" rev-parse HEAD)" = "$LOBSTER_COMMIT"
+          cd "$lobster"
+          corepack enable
+          corepack pnpm install --frozen-lockfile
+          corepack pnpm run build
+          test -f "$lobster/dist/src/core/index.js"
+      - name: Node host adapter suite
+        env:
+          LOBSTER_CORE_MODULE: ${{ runner.temp }}/lobster/dist/src/core/index.js
+          PYTHON_EXECUTABLE: python
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/packages/mothership-adapters:${{ github.workspace }}/packages/mothership-github
+        run: |
+          set -euo pipefail
+          report="$RUNNER_TEMP/node-host-tests.txt"
+          if ! node --test --test-reporter=tap \
+            integrations/openclaw/owner-client.test.mjs \
+            integrations/openclaw/adapter.test.mjs \
+            integrations/lobster/adapter.test.mjs >"$report" 2>&1; then
+            cat "$report"
+            echo "::error::Node host adapter tests failed"
+            exit 1
+          fi
+          cat "$report"
+          tests="$(sed -nE 's/^# tests ([0-9]+)$/\1/p' "$report" | tail -n 1)"
+          skipped="$(sed -nE 's/^# skipped ([0-9]+)$/\1/p' "$report" | tail -n 1)"
+          failures="$(sed -nE 's/^# fail ([0-9]+)$/\1/p' "$report" | tail -n 1)"
+          case "$tests" in
+            ''|*[!0-9]*)
+              echo "::error::Node host adapter test summary is missing"
+              exit 1
+              ;;
+          esac
+          if [ "$tests" -le 0 ]; then
+            echo "::error::Node host adapter suite discovered 0 tests"
+            exit 1
+          fi
+          if [ "$skipped" != "0" ]; then
+            echo "::error::Node host adapter suite skipped ${skipped:-unknown} test(s)"
+            exit 1
+          fi
+          if [ "$failures" != "0" ]; then
+            echo "::error::Node host adapter suite reported ${failures:-unknown} failure(s)"
+            exit 1
+          fi

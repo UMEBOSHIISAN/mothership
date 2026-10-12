@@ -219,7 +219,23 @@ interface, for example the repository-local Dots fixture:
 
 ```sh
 mothership-evidence inspect < integrations/dots/example-bundle.json
+mothership-evidence inspect --human < integrations/dots/example-bundle.json
 ```
+
+The default command retains its JSON inspection contract. `--human` selects a
+bounded text explanation for the local Terminal: recorded approval, recorded
+authority use, Receipt, independent Verification, missing records, the supplied
+observation summary, unavailable reason information, and a next read-only check. A missing
+Verification record means independent confirmation has not been established by
+this bundle; it does not prove verification never occurred. Missing decision or
+consume records do not prove cancellation or absence of an effect. The current
+bundle's closed Verification contract carries `observed_state.summary` but not
+the read-back producer's separate `evidence.reason`. The formatter states that
+the reason is unavailable and points to referenced read-back evidence; it never
+infers a reason code from prose. The supplied summary is escaped display data,
+not a trusted diagnosis or instruction.
+The explanation keeps source-unverified visible and never suggests re-execution
+or reconsume as recovery. It performs no read-back or other network request.
 
 `mothership-evidence export` accepts a bounded request/envelope on stdin and
 produces a deterministic `host-evidence-bundle.v0`. Both CLI and MCP routes

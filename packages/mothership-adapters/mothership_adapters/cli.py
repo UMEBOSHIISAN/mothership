@@ -13,6 +13,7 @@ from .evidence import (
     decode_json,
     export_evidence,
     inspect_evidence,
+    summarize_evidence,
 )
 
 
@@ -79,7 +80,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("export", help="export a bundle from a bounded stdin envelope")
-    subparsers.add_parser("inspect", help="inspect a bounded bundle from stdin")
+    inspect_parser = subparsers.add_parser("inspect", help="inspect a bounded bundle from stdin")
+    inspect_parser.add_argument(
+        "--human",
+        action="store_true",
+        help="render bounded human-facing text instead of the default JSON projection",
+    )
     return parser
 
 
@@ -93,6 +99,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "export":
             result = _export_from_envelope(payload)
         elif args.command == "inspect":
+            if args.human:
+                human_text = summarize_evidence(payload)
+                written = sys.stdout.write(human_text)
+                if type(written) is not int or written != len(human_text):
+                    raise OSError("incomplete human display")
+                sys.stdout.flush()
+                return 0
             result = inspect_evidence(payload)
         else:
             raise _invalid()

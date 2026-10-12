@@ -24,7 +24,7 @@ from Verification; missing or uncertain completion stays visible as UNKNOWN.
 | **MCP read-only evidence** — inherited stdio server | `mothership_adapters.mcp_server`; MCP `2.3.0`; exactly `receipt_validate`, `receipt_verification_validate`, and `evidence_inspect` | 3 local in-process/stdio checks, including the ToolError boundary fix | Independent error-fix review passed; no mutation tool, identity proof, credential access, gateway permission, or external effect is exposed |
 | **Dots local evidence** — repository-local skill | `integrations/dots/SKILL.md` and its example bundle, inspected through `mothership-evidence inspect` | Repository-local SKILL/example bundle and synthetic CLI inspection recorded | Dots local/cloud runtime, installation, activation, connected-computer permissions, and effects remain unperformed |
 | **UME-HARNESS supplemental bridge** — local lease observation | `mothership_adapters.harness.HarnessMergeBridge` | 19 checks with the pinned real `LeaseStateStore` fixture (`v0.1.7`, commit `d7640a03b4b823d960f6e382607ad04aa8678c84`) plus synthetic transport | A lease observation is not external permission. No automatic runtime bridge or `begin_operation` for GitHub is provided |
-| **Evidence export and inspection** — detached bounded bundle | `mothership_adapters.evidence` and `mothership-evidence` CLI | 10 deterministic evidence checks and 2 offline CLI checks recorded | Bundles are caller-attested and source-unverified; export never authenticates a source, grants authority, reads a ledger, or proves an effect |
+| **Evidence export and inspection** — detached bounded bundle | `mothership_adapters.evidence` and `mothership-evidence` CLI, including `inspect --human` | Deterministic evidence and offline CLI checks cover status separation, missing records, bounded display, and incomplete output | Bundles are caller-attested and source-unverified; export never authenticates a source, grants authority, reads a ledger, or proves an effect |
 
 The eight rows share the same exact operation: `github.merge_pr` with
 `repository`, `pull_request`, `expected_head_sha`, `expected_base`, and
@@ -59,6 +59,15 @@ evidence route validates detached lineage and status relationships but leaves
 source ownership and retention with the caller.
 
 ## Qualification record
+
+The test workflow includes common adapters, separate pinned Agents SDK,
+LangGraph and MCP jobs, and the selected Node owner/OpenClaw/Lobster tests.
+Each added suite rejects zero discovered tests, skipped tests, and failures.
+Workflow source and local qualification do not establish a successful hosted
+run. The Harness fixture remains a separate local qualification: its recorded
+immutable source is unavailable through the known unauthenticated public URLs,
+so a hosted Harness job has not been added. No credential or conditional-skip
+fallback is provided.
 
 For any future host path or exact-operation profile, record:
 

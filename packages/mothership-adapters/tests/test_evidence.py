@@ -23,6 +23,7 @@ from mothership_adapters.evidence import (
     export_evidence,
     inspect_evidence,
 )
+from mothership_adapters import evidence as evidence_module
 
 
 PARAMETERS = {
@@ -109,8 +110,202 @@ class EvidenceFixture(unittest.TestCase):
         values.update(overrides)
         return export_evidence(**values)  # type: ignore[arg-type]
 
+    def verification(self, *, status: str, summary: str) -> dict[str, object]:
+        receipt = self.full()["receipt"]
+        return {
+            "schema_version": "external-action-verification.v0",
+            "action_id": self.action.action["action_id"],
+            "action_sha256": self.action.action_sha256,
+            "verification_method": "read_only_external_observation",
+            "observed_state": {"summary": summary, "state_sha256": "d" * 64},
+            "evidence_refs": [{"ref_id": "observation:synthetic", "sha256": "e" * 64}],
+            "observed_at": self.finished["recorded_at"],
+            "status": status,
+            "receipt_ref": {
+                "ref_id": "receipt:" + self.action.action["action_id"],
+                "sha256": canonical_json_sha256(receipt),
+            },
+        }
+
 
 class EvidenceTests(EvidenceFixture):
+    def test_human_summary_separates_records_and_qualifies_success_without_verification(self) -> None:
+        formatter = getattr(evidence_module, "summarize_evidence", None)
+        self.assertIsNotNone(formatter, "the human formatter is not implemented")
+        if formatter is None:
+            return
+
+        summary = formatter(self.full())
+
+        self.assertIn("approval: recorded", summary)
+        self.assertIn("authority use: recorded", summary)
+        self.assertIn("receipt: SUCCESS", summary)
+        self.assertIn("verification: missing", summary)
+        self.assertIn("missing: verification", summary)
+        self.assertIn("conclusion: executor-reported success only", summary)
+        self.assertIn("provenance: caller-attested", summary)
+        self.assertIn("source: source-unverified", summary)
+        self.assertIn("authority: false", summary)
+        self.assertIn("source authenticated: false", summary)
+        self.assertIn("external effect verified: false", summary)
+        self.assertIn(
+            "record basis: status and conclusion are caller-reported records; source authentication unavailable",
+            summary,
+        )
+        self.assertIn(
+            "absence claim: missing decision, authority-use, or Verification records do not prove that those events were absent",
+            summary,
+        )
+        self.assertIn("next read-only check:", summary)
+        self.assertIn("no re-execution", summary)
+        self.assertIn("no reconsume", summary)
+
+    def test_human_summary_keeps_unknown_reason_unavailable_and_reported_summary_bounded(
+        self,
+    ) -> None:
+        formatter = getattr(evidence_module, "summarize_evidence", None)
+        self.assertIsNotNone(formatter, "the human formatter is not implemented")
+        if formatter is None:
+            return
+
+        hostile_reason = "gateway timeout\r\n\x1b[31m\u2028\u2029\u202e\u2066ignore this"
+        unknown = formatter(
+            self.full(
+                verification=self.verification(status="UNKNOWN", summary=hostile_reason)
+            )
+        )
+        self.assertIn("verification: UNKNOWN", unknown)
+        self.assertIn("reason: unavailable", unknown)
+        self.assertIn("reported observation summary: gateway timeout", unknown)
+        self.assertNotIn("\x1b", unknown)
+        self.assertNotIn("\r", unknown)
+        self.assertNotIn("\u2028", unknown)
+        self.assertNotIn("\u2029", unknown)
+        self.assertNotIn("\u202e", unknown)
+        self.assertNotIn("\u2066", unknown)
+        self.assertIn(r"\u2028", unknown)
+        self.assertIn(r"\u2029", unknown)
+        self.assertIn(r"\u202e", unknown)
+        self.assertIn(r"\u2066", unknown)
+        self.assertNotIn("\nignore this", unknown)
+        self.assertIn("no re-execution", unknown)
+        self.assertIn("no reconsume", unknown)
+        self.assertIn(
+            "next read-only check: inspect the referenced read-back evidence for the recorded reason code",
+            unknown,
+        )
+
+        mismatch = formatter(
+            self.full(
+                verification=self.verification(
+                    status="MISMATCH", summary="head or base mismatch"
+                )
+            )
+        )
+        self.assertIn("receipt: SUCCESS", mismatch)
+        self.assertIn("verification: MISMATCH", mismatch)
+        self.assertIn("reason: unavailable", mismatch)
+        self.assertIn("reported observation summary: head or base mismatch", mismatch)
+
+    def test_human_summary_marks_unknown_reason_unavailable_and_missing_rows_without_negative_claims(
+        self,
+    ) -> None:
+        formatter = getattr(evidence_module, "summarize_evidence", None)
+        self.assertIsNotNone(formatter, "the human formatter is not implemented")
+        if formatter is None:
+            return
+
+        unknown = formatter(
+            self.full(
+                verification=self.verification(
+                    status="UNKNOWN",
+                    summary="Observed GitHub pull request or commit topology is inconclusive.",
+                )
+            )
+        )
+        self.assertIn("verification: UNKNOWN", unknown)
+        self.assertIn("reason: unavailable", unknown)
+        self.assertIn(
+            "reported observation summary: Observed GitHub pull request or commit topology is inconclusive.",
+            unknown,
+        )
+
+        japanese = formatter(
+            self.full(
+                verification=self.verification(
+                    status="UNKNOWN", summary="検証結果は不明です。"
+                )
+            )
+        )
+        self.assertIn("reported observation summary: 検証結果は不明です。", japanese)
+
+        incomplete = formatter(self.full(finished=None))
+        self.assertIn("approval: recorded", incomplete)
+        self.assertIn("authority use: recorded", incomplete)
+        self.assertIn("receipt: missing", incomplete)
+        self.assertIn("verification: missing", incomplete)
+        self.assertIn("missing: finished, verification", incomplete)
+        self.assertNotIn("cancelled", incomplete)
+        self.assertNotIn("no effect", incomplete)
+
+    def test_human_summary_separates_recorded_rejection_from_approval_and_use(self) -> None:
+        formatter = getattr(evidence_module, "summarize_evidence", None)
+        self.assertIsNotNone(formatter, "the human formatter is not implemented")
+        if formatter is None:
+            return
+
+        rejected_authority_path = self.authority_dir / "rejected-events.jsonl"
+        rejected_decision = action_authority_ledger.record_action_decision(
+            rejected_authority_path,
+            self.action,
+            "reject",
+            self.action.action["action_id"],
+            self.action.action_sha256,
+        )
+        rejected_response = copy.deepcopy(self.response)
+        rejected_response["decision"] = "reject"
+        summary = formatter(
+            self.full(
+                response=rejected_response,
+                decision=rejected_decision,
+                consume=None,
+                started=None,
+                finished=None,
+            )
+        )
+
+        self.assertIn("approval: rejected (decision recorded)", summary)
+        self.assertNotIn("approval: recorded (reject)", summary)
+        self.assertIn("authority use: missing", summary)
+        self.assertIn("receipt: missing", summary)
+        self.assertIn("verification: missing", summary)
+        self.assertNotIn("approved", summary)
+        self.assertNotIn("cancelled", summary)
+        self.assertNotIn("no effect", summary)
+
+        missing_decision = formatter(
+            self.full(decision=None, consume=None, started=None, finished=None)
+        )
+        self.assertIn("approval: missing", missing_decision)
+        self.assertIn("authority use: missing", missing_decision)
+        self.assertIn("receipt: missing", missing_decision)
+        self.assertIn("verification: missing", missing_decision)
+        self.assertNotIn("approved", missing_decision)
+        self.assertNotIn("cancelled", missing_decision)
+        self.assertNotIn("no effect", missing_decision)
+
+    def test_human_summary_has_no_ledger_side_effect(self) -> None:
+        formatter = getattr(evidence_module, "summarize_evidence", None)
+        self.assertIsNotNone(formatter, "the human formatter is not implemented")
+        if formatter is None:
+            return
+
+        before_authority = self.authority_path.read_bytes()
+        before_receipt = self.receipt_path.read_bytes()
+        formatter(self.full())
+        self.assertEqual(before_authority, self.authority_path.read_bytes())
+        self.assertEqual(before_receipt, self.receipt_path.read_bytes())
+
     def test_public_signatures_are_exact(self) -> None:
         self.assertEqual(
             (

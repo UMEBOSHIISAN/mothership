@@ -260,6 +260,20 @@ exact actionへの承認、一度だけの実行まで進められます。`--ve
 初回のPR取得に失敗した場合は、HTTP statusや通信・応答検証の分類を秘密情報なしで表示します。
 診断分類と保存範囲は[参照consumerの説明](examples/github_merge_reference.md#diagnose-an-initial-preflight-stop)を確認してください。
 
+### 作業の結果を読み取る
+
+任意のadaptersを同じcheckoutから導入した場合は、手元にあるevidence bundleを
+`mothership-evidence inspect --human`の標準入力へ渡すと、承認の記録、権限使用の記録、
+実行報告、独立確認、欠けている証拠を分けて読めます。
+ReceiptがSUCCESSでも独立確認の記録がなければ、確認済みとは表示しません。
+UNKNOWNでは、供給された観測要約と不足している理由情報を区別し、次の読み取り確認を示します。
+操作の再実行は勧めません。現行bundleにはread-backの詳細reason codeが含まれないため、
+要約文から理由を推測せず、参照先の観測記録を確認するよう案内します。
+記録がないことは、操作や確認が行われなかった証明ではありません。
+出所は引き続きcaller-attested / source-unverifiedです。これはローカルな読み取り経路で、
+Dotsの実機受入や外部操作の実在を証明するものではありません。
+[導入・合成bundleの例](docs/host-adapters.md#read-only-evidence-routes)。
+
 ## 現在の制約
 
 | 項目 | source candidateで実装していること | 実装・認証していないこと |
