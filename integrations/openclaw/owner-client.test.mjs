@@ -14,6 +14,7 @@ process.env.PYTHONPATH = [
   resolve(ROOT, "packages/mothership-adapters"),
   resolve(ROOT, "packages/mothership-github"),
 ].join(delimiter);
+process.env.PYTHONDONTWRITEBYTECODE = "1";
 
 const PARAMETERS = {
   repository: "example/repo",
@@ -205,6 +206,62 @@ test("child loss during execution rejects as terminal uncertainty and leaves no 
     assert.equal(client.exited, true);
     assert.equal(client.cleanedUp, true);
   } finally {
+    await client.close();
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("asynchronous stdin EPIPE rejects execution and leaves no live child", async () => {
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-owner-node-"));
+  let getCalls = 0;
+  let mergeCalls = 0;
+  const client = await makeClient(temp, {
+    getPullRequest: async () => {
+      getCalls += 1;
+      return {
+        http_status: 200,
+        state: "open",
+        merged: false,
+        head_sha: PARAMETERS.expected_head_sha,
+        base_ref: PARAMETERS.expected_base,
+      };
+    },
+    mergePullRequest: async () => {
+      mergeCalls += 1;
+      return { http_status: 200, merged: true, merge_commit_sha: "b".repeat(40) };
+    },
+  });
+  const stdin = client._child.stdin;
+  const originalWrite = stdin._write;
+  try {
+    const request = await client.prepare(PARAMETERS, EXECUTOR_REF);
+    await client.review({
+      schema_version: "authority-action-review-response.v0",
+      decision: "approve",
+      request_id: request.request_id,
+      request_sha256: request.request_sha256,
+      action_id: request.action.action_id,
+      action_sha256: request.action_sha256,
+    });
+    stdin._write = (_chunk, _encoding, callback) => {
+      setImmediate(() => {
+        const error = new Error("synthetic EPIPE");
+        error.code = "EPIPE";
+        callback(error);
+      });
+    };
+    await assertRejectsWithoutStall(client.execute(PARAMETERS), ["eof"]);
+    await client._cleanupPromise;
+    assert.equal(client.phase, "unresolved");
+    assert.equal(client.exited, true);
+    assert.equal(client.cleanedUp, true);
+    assert.equal(getCalls, 0);
+    assert.equal(mergeCalls, 0);
+    await assert.rejects(() => client.execute(PARAMETERS), (error) => (
+      error instanceof OwnerClientError && error.code === "phase"
+    ));
+  } finally {
+    stdin._write = originalWrite;
     await client.close();
     await rm(temp, { recursive: true, force: true });
   }

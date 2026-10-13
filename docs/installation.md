@@ -14,11 +14,12 @@ walkthrough is a source-checkout example and is not part of either the v0.4.1
 or v0.4.2 release tag or wheel.
 
 The published v0.4.2 release remains the historical baseline. The remote default
-branch includes the portable review API merged through PR #43, and this main
-checkout is unreleased source. For a pinned Core and companion runtime, use the
+branch includes the portable review API merged through PR #43 and readback /
+inspect-sidecar functionality merged through PR #45. This main checkout remains
+unreleased source. For a pinned Core and companion runtime, use the
 [portable review installation](action-review.md#install-the-source-candidate).
-For the newer readback and inspect-sidecar functionality in the unreleased PR
-#45 candidate, use the [pinned PR #45 setup](host-adapters.md#install-the-source-candidate-in-one-checkout).
+To reproduce the reviewed readback and inspect-sidecar runtime, use the
+[pinned PR #45 setup](host-adapters.md#install-the-source-candidate-in-one-checkout).
 That setup installs all three packages from one checkout; optional SDK extras
 remain opt-in.
 

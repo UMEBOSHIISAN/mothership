@@ -271,15 +271,16 @@ resume mechanism, host adapter, or human identity authentication.
 Use Python 3.12 or newer and a source checkout of this repository.
 Follow the [clone instructions](docs/installation.md#clone-first-install), then run
 these commands from the repository root. Published v0.4.2 remains the historical
-public baseline, while a current main clone includes the portable review API
-merged through PR #43 and is unreleased source. To pin the Core and companion
+public baseline. A current main clone includes the portable review API merged
+through PR #43 and the readback / inspect-sidecar functionality merged through
+PR #45; main remains unreleased source. To pin the Core and companion
 runtime and run the existing offline example, use the
 [portable review installation](docs/action-review.md#install-the-source-candidate).
-For the newer readback and inspect-sidecar functionality in the unreleased PR #45
-candidate, use the
+To reproduce the reviewed readback and inspect-sidecar runtime, use the
 [pinned host adapter setup](docs/host-adapters.md#install-the-source-candidate-in-one-checkout).
 That setup keeps the three packages in one checkout and leaves optional SDK
-extras opt-in. Documentation-only revisions may follow the PR #45 runtime pin.
+extras opt-in. Record the pinned runtime revision and your current checkout
+revision separately.
 The walkthrough was added after v0.4.1;
 it is not included in the v0.4.1 tag or wheel, and it is not included in the
 v0.4.2 wheel either (it is a source-checkout-only example).
@@ -343,6 +344,8 @@ reason, observation time and next read-only check:
 
 Command: `mothership-evidence inspect --human --readback-evidence readback-evidence.json < verified.json`
 
+This example requires an already retained `verified.json` and
+`readback-evidence.json`. Inspection reads them offline and makes no network request.
 The sidecar must be a bounded regular file. Invalid or mismatched input stops
 with exit status 2 and no explanation. Matching records establish internal
 consistency, not source authentication, causation or current remote state.

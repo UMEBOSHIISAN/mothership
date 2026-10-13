@@ -13,11 +13,12 @@ route is documented separately below.
 
 ## Install the source candidate in one checkout
 
-The current readback and inspect-sidecar candidate is [PR #45](https://github.com/UMEBOSHIISAN/mothership/pull/45),
-published but unreleased, at runtime revision
+The readback and inspect-sidecar functionality from [PR #45](https://github.com/UMEBOSHIISAN/mothership/pull/45)
+is merged into main and remains unreleased. To reproduce that PR's reviewed
+runtime, pin revision
 `91f474ed9ba96f5c00925d44f3dd84739d41cdc7`. Review the source and current
 target before using it, record both revisions, and keep the checkout detached.
-This pins runtime code only; documentation-only revisions may follow separately.
+This reproduces the recorded runtime; later main changes are not included in the pin.
 This is a documentation recipe and does not claim that the packages are
 installed or that a live host has been qualified. Start in a new directory:
 
@@ -312,8 +313,9 @@ matches the sidecar's canonical SHA-256 to the single `github-readback:` evidenc
 reference, its action ID/digest to the bundle, and its state hash to Verification.
 It then displays the structured reason as **caller-reported**, with the recorded
 observation time and conservative guidance. `clock_rollback` remains readable as
-`UNKNOWN`: timestamp syntax is checked, but ordering and external semantics are
-not re-evaluated. Unknown well-formed reason codes receive generic guidance.
+`UNKNOWN`: timestamps must use the zero-padded, uppercase UTC form
+`YYYY-MM-DDTHH:MM:SSZ`, but ordering and external semantics are not re-evaluated.
+Unknown well-formed reason codes receive generic guidance.
 
 Bad input or a binding mismatch returns exit status 2 with a fixed diagnostic
 and no human explanation. A complete explanation requires a complete write and
