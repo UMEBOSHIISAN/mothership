@@ -270,11 +270,17 @@ resume mechanism, host adapter, or human identity authentication.
 
 Use Python 3.12 or newer and a source checkout of this repository.
 Follow the [clone instructions](docs/installation.md#clone-first-install), then run
-these commands from the repository root. To try the unmerged portable review
-candidate, first use the [pinned candidate installation](docs/action-review.md#install-the-source-candidate).
-A main clone alone does not select an unmerged candidate. That guide installs
-Core and companion from the same checkout and runs the existing offline example
-using the installed packages. The walkthrough was added after v0.4.1;
+these commands from the repository root. Published v0.4.2 remains the historical
+public baseline, while a current main clone includes the portable review API
+merged through PR #43 and is unreleased source. To pin the Core and companion
+runtime and run the existing offline example, use the
+[portable review installation](docs/action-review.md#install-the-source-candidate).
+For the newer readback and inspect-sidecar functionality in the unreleased PR #45
+candidate, use the
+[pinned host adapter setup](docs/host-adapters.md#install-the-source-candidate-in-one-checkout).
+That setup keeps the three packages in one checkout and leaves optional SDK
+extras opt-in. Documentation-only revisions may follow the PR #45 runtime pin.
+The walkthrough was added after v0.4.1;
 it is not included in the v0.4.1 tag or wheel, and it is not included in the
 v0.4.2 wheel either (it is a source-checkout-only example).
 

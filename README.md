@@ -234,9 +234,12 @@ approve / rejectの前に停止します。これは実行時の失効fence、�
 
 Python 3.12以上と、このリポジトリのソースcheckoutが必要です。
 まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
-未マージのportable review候補を試す場合は、先に[候補コミットの取得と導入](docs/action-review.md#install-the-source-candidate)を
-使ってください。mainのcloneだけでは未マージ候補は選ばれません。候補の手順はCoreとcompanionを同じcheckoutから導入し、
-インストールしたpackageで既存のオフライン例を実行します。
+公開済みv0.4.2は歴史的な公開ベースラインで、現在のmain cloneにはPR #43で取り込まれたportable review APIが含まれます。
+Coreとcompanionだけのruntimeを固定して既存のオフライン例を実行する場合は、
+[portable review APIの導入手順](docs/action-review.md#install-the-source-candidate)を
+参照してください。PR #45の新しいreadback / inspect-sidecar機能を試す場合は、
+[host adapter guideの固定setup](docs/host-adapters.md#install-the-source-candidate-in-one-checkout)を
+使ってください。PR #45は未リリース候補で、runtime pin後にdocs-onlyの改訂が続くことがあります。
 下記のwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
 v0.4.2のwheelにも含まれません（source checkout専用の実行例です）。
 

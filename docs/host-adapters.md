@@ -13,13 +13,18 @@ route is documented separately below.
 
 ## Install the source candidate in one checkout
 
-The following is a documentation example for a qualification run. Use the
-candidate ref selected by the project owner, record both revisions, and keep
-the checkout detached. This does not claim that the commands were run for this
-source snapshot or that they select a release tag.
+The current readback and inspect-sidecar candidate is [PR #45](https://github.com/UMEBOSHIISAN/mothership/pull/45),
+published but unreleased, at runtime revision
+`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`. Review the source and current
+target before using it, record both revisions, and keep the checkout detached.
+This pins runtime code only; documentation-only revisions may follow separately.
+This is a documentation recipe and does not claim that the packages are
+installed or that a live host has been qualified. Start in a new directory:
 
 ```sh
-git fetch origin <candidate-ref>
+git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-readback
+cd mothership-readback
+git fetch origin 91f474ed9ba96f5c00925d44f3dd84739d41cdc7
 git rev-parse --verify FETCH_HEAD
 git checkout --detach FETCH_HEAD
 git rev-parse --verify HEAD
@@ -29,13 +34,20 @@ python3 -m venv .venv
 python -m pip install \
   -e . \
   -e packages/mothership-github \
-  -e 'packages/mothership-adapters[agents,langgraph,mcp]'
+  -e packages/mothership-adapters
 ```
 
-The three editable installs are from the same checkout. The optional extras
-pin `openai-agents==0.23.1`, `langgraph==1.2.12`, and `mcp==2.3.0`. Record the
-`FETCH_HEAD` and detached `HEAD` values alongside the test evidence; do not
-reconstruct a live session from an exported JSON request.
+The three editable installs are from the same checkout. Optional SDK extras are
+opt-in; select only the extras required by the routes you use. The following
+additional command selects all three SDK extras:
+
+```sh
+python -m pip install -e 'packages/mothership-adapters[agents,langgraph,mcp]'
+```
+
+These extras pin `openai-agents==0.23.1`, `langgraph==1.2.12`, and
+`mcp==2.3.0`. Record the `FETCH_HEAD` and detached `HEAD` values alongside the
+test evidence; do not reconstruct a live session from an exported JSON request.
 
 ## One retained session and synthetic transport
 
