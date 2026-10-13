@@ -23,6 +23,12 @@ Mothershipは、人間とAIが仕事を分け合うために、任せる操作�
 人間の判断と結び付ける、オープンソースの中核実装です。
 判断・権限の使用・実行報告・独立した結果確認を、それぞれ別の記録として扱います。
 
+伸ばしているのは、**別のAIや担当者に引き継いでも、「何を任せたか」「何が報告されたか」
+「何が独立確認され、何がまだ不明か」を取り違えずに読めること**です。
+操作別の承認や署名付きReceiptには既存OSSがあります。Mothershipは既存hostの承認UI・
+実行環境を活用し、この受け渡しと結果の読み取りに集中します。
+[類似OSS・標準との責務比較（2026-10-13）](docs/ecosystem-position.md)に、重なる機能と制約を整理しています。
+
 現在は、GitHub PRのマージを最初の参照例として、操作の固定、判断との照合、
 同じ信頼されたローカル台帳履歴内での一回限りの取り出しを提供しています。
 
@@ -135,6 +141,14 @@ ReceiptのstatusはVerificationを選びません。authority/ledgerのconsume�
 [composition guide](docs/composition.md) を参照してください。read-back producerはcompanionに
 含まれるopt-in機能ですが、Receiptとは別経路のVerificationを作るもので、人間やGitHubの認証ではありません。
 
+保存済みbundleを読むための別入口として
+`verify_recorded_merge_pr(action, receipt, *, opener=None)` も提供します。これは
+plainなdetached action mappingと結び付いたReceiptをcaller-attestedな記録として検証し、
+同じ観測処理を使います。`FrozenAction`の復元・再発行、Authorityの使用、ledgerやexecutorへの呼出しは
+行いません。既存の `verify_merge_pr()` は引き続きliveなCore-issued `FrozenAction`を要求します。
+adaptersの `mothership-evidence readback` は、この保存済み入口を明示的に選ぶCLIです。
+`export`、`inspect`、`inspect --human`、MCPはofflineのままです。
+
 ## 現在のMothership Core
 
 <p align="center">
@@ -220,9 +234,12 @@ approve / rejectの前に停止します。これは実行時の失効fence、�
 
 Python 3.12以上と、このリポジトリのソースcheckoutが必要です。
 まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
-未マージのportable review候補を試す場合は、先に[候補コミットの取得と導入](docs/action-review.md#install-the-source-candidate)を
-使ってください。mainのcloneだけでは未マージ候補は選ばれません。候補の手順はCoreとcompanionを同じcheckoutから導入し、
-インストールしたpackageで既存のオフライン例を実行します。
+公開済みv0.4.2は歴史的な公開ベースラインで、現在のmain cloneにはPR #43で取り込まれたportable review APIが含まれます。
+Coreとcompanionだけのruntimeを固定して既存のオフライン例を実行する場合は、
+[portable review APIの導入手順](docs/action-review.md#install-the-source-candidate)を
+参照してください。PR #45の新しいreadback / inspect-sidecar機能を試す場合は、
+[host adapter guideの固定setup](docs/host-adapters.md#install-the-source-candidate-in-one-checkout)を
+使ってください。PR #45は未リリース候補で、runtime pin後にdocs-onlyの改訂が続くことがあります。
 下記のwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
 v0.4.2のwheelにも含まれません（source checkout専用の実行例です）。
 
@@ -266,12 +283,29 @@ exact actionへの承認、一度だけの実行まで進められます。`--ve
 `mothership-evidence inspect --human`の標準入力へ渡すと、承認の記録、権限使用の記録、
 実行報告、独立確認、欠けている証拠を分けて読めます。
 ReceiptがSUCCESSでも独立確認の記録がなければ、確認済みとは表示しません。
-UNKNOWNでは、供給された観測要約と不足している理由情報を区別し、次の読み取り確認を示します。
-操作の再実行は勧めません。現行bundleにはread-backの詳細reason codeが含まれないため、
-要約文から理由を推測せず、参照先の観測記録を確認するよう案内します。
+このreadback producerが生成したVerificationでは、固定reason codeとbounded explanationを含む
+`observed_state.summary`をエスケープして表示します。既存またはcaller-suppliedなVerificationの要約は
+任意のcaller-reported表示データとして扱い、要約文からtrustedなstructured reasonを推測したり、出所を認証したりしません。
+操作の再実行は勧めません。read-backの完全な観測evidenceは、Verificationの
+`evidence_refs`にあるcanonical hashと照合できるsidecarとしてcallerが保持します。
+保存したsidecarも明示的に渡すと、hash・操作ID/digest・観測状態のbindingを自動照合し、
+caller-reportedな理由コード、観測時刻、次の読み取り確認をまとめて表示します。
+
+コマンド: `mothership-evidence inspect --human --readback-evidence readback-evidence.json < verified.json`
+
+入力はサイズ制限付きの通常ファイルです。不一致や不正な入力は終了コード2で停止し、説明を出しません。
+一致は記録同士の整合性であり、出所認証・操作の因果関係・現在の状態の証明ではありません。
 記録がないことは、操作や確認が行われなかった証明ではありません。
 出所は引き続きcaller-attested / source-unverifiedです。これはローカルな読み取り経路で、
 Dotsの実機受入や外部操作の実在を証明するものではありません。
+保存済みbundleのread-backは、入力の `missing == ["verification"]` を検証してから、
+[ガイドのreadback手順](docs/host-adapters.md#read-only-evidence-routes)で元bundleを残したまま実行します。
+exit status `0`を要求し、stderrのsidecarを保持してください。
+
+このコマンドは最大2回のpublic tokenless GETだけを行い、credential、retry、polling、Authority、
+executor、ledger write、external effectを使いません。成功時のstderrはerror logではなくsidecar dataです。
+stdoutとstderrを分離し、`2>&1`で結合しないでください。exit statusが0以外ならpartial outputを含む
+両方のファイルを破棄し、0かつcanonical hash照合に成功した場合だけ結果を保持します。
 [導入・合成bundleの例](docs/host-adapters.md#read-only-evidence-routes)。
 
 ## 現在の制約

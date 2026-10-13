@@ -135,6 +135,18 @@ def _receipt(action) -> dict[str, object]:
     return result
 
 
+def _plain_json(value: object) -> object:
+    if isinstance(value, MappingProxyType):
+        return {key: _plain_json(item) for key, item in value.items()}
+    if type(value) is dict:
+        return {key: _plain_json(item) for key, item in value.items()}
+    if type(value) is tuple:
+        return [_plain_json(item) for item in value]
+    if type(value) is list:
+        return [_plain_json(item) for item in value]
+    return value
+
+
 class VerificationProducerTests(unittest.TestCase):
     def import_api(self):
         try:
@@ -142,6 +154,305 @@ class VerificationProducerTests(unittest.TestCase):
         except ImportError as error:
             self.fail(f"read-back verifier API is missing: {error}")
         return verify_merge_pr
+
+    def import_recorded_api(self):
+        try:
+            from mothership_github.verification import verify_recorded_merge_pr
+        except ImportError as error:
+            self.fail(f"recorded read-back verifier API is missing: {error}")
+        return verify_recorded_merge_pr
+
+    def test_recorded_action_happy_path_is_caller_attested_and_has_no_effects(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        issued_action = _action()
+        recorded_action = _plain_json(issued_action.action)
+        receipt = _receipt(issued_action)
+        recorded_before = copy.deepcopy(recorded_action)
+        receipt_before = copy.deepcopy(receipt)
+        opener = ReadBackOpener([_pr_payload(), _commit_payload()])
+
+        with (
+            mock.patch(
+                "mothership_github.verification.action_authority.freeze_action",
+                side_effect=AssertionError("recorded verification must not issue an action"),
+            ),
+            mock.patch(
+                "orchestration.lib.action_authority_ledger.record_action_decision",
+                side_effect=AssertionError("recorded verification must not record authority"),
+            ),
+            mock.patch(
+                "orchestration.lib.action_authority_ledger.consume_action",
+                side_effect=AssertionError("recorded verification must not consume authority"),
+            ),
+            mock.patch(
+                "mothership_github.executor.execute_action_merge_pr",
+                side_effect=AssertionError("recorded verification must not execute an action"),
+            ),
+            mock.patch(
+                "mothership_github.verification._utc_now",
+                return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+            ),
+        ):
+            result = verify_recorded_merge_pr(recorded_action, receipt, opener=opener)
+
+        self.assertEqual("CONFIRMED", result["verification"]["status"])
+        self.assertEqual(2, len(opener.requests))
+        self.assertEqual(recorded_before, recorded_action)
+        self.assertEqual(receipt_before, receipt)
+        summary = result["verification"]["observed_state"]["summary"]
+        self.assertIn("status=CONFIRMED; reason=merge_confirmed;", summary)
+        self.assertLessEqual(len(summary), 256)
+        self.assertFalse(any(request.has_header("Authorization") for request, _ in opener.requests))
+
+    def test_recorded_action_validation_and_strict_api_reject_before_network(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        verify_merge_pr = self.import_api()
+        issued_action = _action()
+        recorded_action = _plain_json(issued_action.action)
+        receipt = _receipt(issued_action)
+
+        malformed = copy.deepcopy(recorded_action)
+        malformed.pop("display")
+        cyclic = copy.deepcopy(recorded_action)
+        cyclic["display"]["cycle"] = cyclic
+
+        class HostileDict(dict):
+            def items(self):
+                raise AssertionError("hostile action hook must not run")
+
+        hostile = copy.deepcopy(recorded_action)
+        hostile["display"] = HostileDict(hostile["display"])
+        tuple_action = copy.deepcopy(recorded_action)
+        tuple_action["display"]["excluded_operations"] = tuple(
+            tuple_action["display"]["excluded_operations"]
+        )
+        foreign_action = _plain_json(_action("act-foreign").action)
+        cases = (
+            (object(), receipt),
+            (malformed, receipt),
+            (cyclic, receipt),
+            (hostile, receipt),
+            (tuple_action, receipt),
+            (MappingProxyType(recorded_action), receipt),
+            (recorded_action, {**receipt, "action_sha256": "f" * 64}),
+            (foreign_action, receipt),
+        )
+        for candidate_action, candidate_receipt in cases:
+            with self.subTest(action_type=type(candidate_action).__name__):
+                opener = ReadBackOpener([])
+                with self.assertRaises(ContractError) as raised:
+                    verify_recorded_merge_pr(candidate_action, candidate_receipt, opener=opener)
+                self.assertEqual("invalid GitHub read-back verification input", str(raised.exception))
+                self.assertEqual([], opener.requests)
+
+        strict_opener = ReadBackOpener([])
+        with self.assertRaises(ContractError):
+            verify_merge_pr(recorded_action, receipt, opener=strict_opener)
+        self.assertEqual([], strict_opener.requests)
+
+    def test_recorded_plain_json_bounds_reject_before_copy_or_network(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        issued_action = _action("act-bounded-recorded")
+        recorded_action = _plain_json(issued_action.action)
+        receipt = _receipt(issued_action)
+
+        oversized_issued = _action("act-" + "x" * 300_000)
+        oversized_action = _plain_json(oversized_issued.action)
+        oversized_action_receipt = _receipt(oversized_issued)
+        oversized_receipt = copy.deepcopy(receipt)
+
+        deep_action = copy.deepcopy(recorded_action)
+        nested: object = "x"
+        for _ in range(24):
+            nested = [nested]
+        deep_action["display"]["nested"] = nested
+
+        container_action = copy.deepcopy(recorded_action)
+        container_action["display"]["entries"] = ["x"] * 1_025
+
+        nodes_action = copy.deepcopy(recorded_action)
+        nodes_action["display"]["entries"] = [["x"] * 1_000 for _ in range(9)]
+
+        total_bytes_action = copy.deepcopy(recorded_action)
+        total_bytes_action["display"]["entries"] = ["x" * 65_536] * 5
+
+        utf8_bytes_action = copy.deepcopy(recorded_action)
+        utf8_bytes_action["display"]["utf8"] = "é" * 40_000
+
+        escaped_bytes_action = copy.deepcopy(recorded_action)
+        escaped_bytes_action["display"]["escaped"] = "\x00" * 50_000
+
+        cyclic_action = copy.deepcopy(recorded_action)
+        cyclic_action["display"]["cycle"] = cyclic_action
+
+        class HostileDict(dict):
+            def items(self):
+                raise AssertionError("bounded validation must reject custom mappings first")
+
+        custom_action = copy.deepcopy(recorded_action)
+        custom_action["display"] = HostileDict(custom_action["display"])
+        tuple_action = copy.deepcopy(recorded_action)
+        tuple_action["display"]["tuple"] = ("x",)
+
+        oversized_receipt["unexpected"] = "x" * 300_000
+        tuple_receipt = copy.deepcopy(receipt)
+        tuple_receipt["executor_ref"] = ("ref_id", "sha256")
+
+        cases = (
+            ("oversized_action", oversized_action, oversized_action_receipt),
+            ("oversized_receipt", recorded_action, oversized_receipt),
+            ("depth", deep_action, receipt),
+            ("container_entries", container_action, receipt),
+            ("node_count", nodes_action, receipt),
+            ("total_bytes", total_bytes_action, receipt),
+            ("string_utf8_bytes", utf8_bytes_action, receipt),
+            ("escaped_total_bytes", escaped_bytes_action, receipt),
+            ("cycle", cyclic_action, receipt),
+            ("custom_mapping", custom_action, receipt),
+            ("tuple", tuple_action, receipt),
+            ("tuple_receipt", recorded_action, tuple_receipt),
+        )
+        for name, candidate_action, candidate_receipt in cases:
+            with self.subTest(case=name):
+                opener = ReadBackOpener([])
+                snapshot_path = (
+                    "mothership_github.verification._snapshot_receipt"
+                    if name in {"oversized_receipt", "tuple_receipt"}
+                    else "mothership_github.verification._snapshot"
+                )
+                with mock.patch(
+                    snapshot_path,
+                    side_effect=AssertionError("bounded input must fail before snapshot"),
+                ):
+                    with self.assertRaises(ContractError) as raised:
+                        verify_recorded_merge_pr(
+                            candidate_action, candidate_receipt, opener=opener
+                        )
+                self.assertEqual(
+                    "invalid GitHub read-back verification input", str(raised.exception)
+                )
+                self.assertEqual([], opener.requests)
+
+    def test_recorded_plain_json_bounds_keep_normal_and_300_char_ids_compatible(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        for action_id in ("act-bounded-normal", "act-" + "x" * 300):
+            with self.subTest(action_id_length=len(action_id)):
+                issued_action = _action(action_id)
+                recorded_action = _plain_json(issued_action.action)
+                receipt = _receipt(issued_action)
+                opener = ReadBackOpener([_pr_payload(), _commit_payload()])
+                with mock.patch(
+                    "mothership_github.verification._utc_now",
+                    return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+                ):
+                    result = verify_recorded_merge_pr(
+                        recorded_action, receipt, opener=opener
+                    )
+                self.assertEqual("CONFIRMED", result["verification"]["status"])
+                self.assertEqual(2, len(opener.requests))
+
+    def test_recorded_canonical_byte_budget_includes_empty_strings_and_escapes(self):
+        from mothership_github import verification
+
+        for value in ("", [""], {"": ""}, {"empty": "", "escaped": "\x00\n\\\"", "utf8": "é漢"}):
+            size = len(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+            with self.subTest(value=value):
+                with mock.patch.object(verification, "_MAX_ENCODED_BYTES", size):
+                    verification._validate_recorded_plain(value)
+                with mock.patch.object(verification, "_MAX_ENCODED_BYTES", size - 1):
+                    with self.assertRaisesRegex(ContractError, "^invalid GitHub read-back verification input$"):
+                        verification._validate_recorded_plain(value)
+
+    def test_recorded_action_summary_has_fixed_reason_and_explanation_for_each_status(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        cases = (
+            (
+                "confirmed",
+                [_pr_payload(body="remote secret"), _commit_payload()],
+                "CONFIRMED",
+                "merge_confirmed",
+            ),
+            (
+                "mismatch",
+                [_pr_payload(head={"sha": "f" * 40, "ref": "feature"})],
+                "MISMATCH",
+                "head_or_base_mismatch",
+            ),
+            (
+                "unknown",
+                [_pr_payload(state="open", closed=False, merged=False, merged_at=None, merge_commit_sha=None)],
+                "UNKNOWN",
+                "unmerged_pr",
+            ),
+        )
+        for name, payloads, expected_status, expected_reason in cases:
+            with self.subTest(status=name):
+                issued_action = _action("act-summary-" + name)
+                recorded_action = _plain_json(issued_action.action)
+                receipt = _receipt(issued_action)
+                opener = ReadBackOpener(payloads)
+                with mock.patch(
+                    "mothership_github.verification._utc_now",
+                    return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+                ):
+                    result = verify_recorded_merge_pr(recorded_action, receipt, opener=opener)
+                summary = result["verification"]["observed_state"]["summary"]
+                self.assertEqual(expected_status, result["verification"]["status"])
+                self.assertIn(f"status={expected_status}; reason={expected_reason};", summary)
+                self.assertLessEqual(len(summary), 256)
+                self.assertNotIn("remote secret", summary)
+                self.assertNotIn("synthetic title", summary)
+
+    def test_recorded_action_preserves_receipt_status_and_same_second_timing(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        for receipt_status in ("SUCCESS", "FAILED", "UNKNOWN"):
+            with self.subTest(receipt_status=receipt_status):
+                issued_action = _action("act-status-recorded-" + receipt_status.lower())
+                recorded_action = _plain_json(issued_action.action)
+                receipt = _receipt(issued_action)
+                receipt["status"] = receipt_status
+                before = copy.deepcopy(receipt)
+                opener = ReadBackOpener([_pr_payload(), _commit_payload()])
+                with mock.patch(
+                    "mothership_github.verification._utc_now",
+                    return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+                ):
+                    result = verify_recorded_merge_pr(recorded_action, receipt, opener=opener)
+                self.assertEqual("CONFIRMED", result["verification"]["status"])
+                self.assertEqual(before, receipt)
+
+        issued_action = _action("act-recorded-same-second")
+        recorded_action = _plain_json(issued_action.action)
+        receipt = _receipt(issued_action)
+        opener = ReadBackOpener([_pr_payload(merged_at=_RECEIPT_STARTED)])
+        with mock.patch(
+            "mothership_github.verification._utc_now",
+            return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+        ):
+            result = verify_recorded_merge_pr(recorded_action, receipt, opener=opener)
+        self.assertEqual("UNKNOWN", result["verification"]["status"])
+        self.assertEqual("ambiguous_merge_time", result["evidence"]["reason"])
+        self.assertEqual(1, len(opener.requests))
+
+    def test_recorded_action_sanitizes_transport_exception_text(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        issued_action = _action("act-recorded-exception")
+        recorded_action = _plain_json(issued_action.action)
+        receipt = _receipt(issued_action)
+
+        def failing_opener(request, *, timeout):
+            raise RuntimeError("private remote exception must not leak")
+
+        with mock.patch(
+            "mothership_github.verification._utc_now",
+            return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+        ):
+            result = verify_recorded_merge_pr(recorded_action, receipt, opener=failing_opener)
+        encoded = json.dumps(result, sort_keys=True)
+        self.assertEqual("UNKNOWN", result["verification"]["status"])
+        self.assertEqual("invalid_pr_observation", result["evidence"]["reason"])
+        self.assertNotIn("private remote exception", encoded)
+        self.assertNotIn("RuntimeError", encoded)
 
     def test_happy_path_binds_exact_action_and_receipt_with_two_gets(self):
         verify_merge_pr = self.import_api()
@@ -396,6 +707,30 @@ class VerificationProducerTests(unittest.TestCase):
                 self.assertEqual(expected_status, result["verification"]["status"])
                 self.assertEqual(expected_reason, result["evidence"]["reason"])
                 self.assertEqual(2, len(opener.requests))
+
+    def test_self_parent_commit_is_unknown_for_live_and_recorded_apis(self):
+        verify_merge_pr = self.import_api()
+        verify_recorded_merge_pr = self.import_recorded_api()
+        cases = (
+            ([{"sha": _MERGE}, {"sha": _HEAD}], "self_parent_sha"),
+            ([{"sha": _BASE}, {"sha": _MERGE}], "self_parent_sha"),
+            ([{"sha": _MERGE}, {"sha": _MERGE}], "duplicate_parent_sha"),
+        )
+        for api_name, verifier in (("live", verify_merge_pr), ("recorded", verify_recorded_merge_pr)):
+            for parents, reason in cases:
+                with self.subTest(api=api_name, parents=parents):
+                    issued_action = _action("act-self-parent-" + api_name)
+                    candidate_action = issued_action if api_name == "live" else _plain_json(issued_action.action)
+                    receipt = _receipt(issued_action)
+                    opener = ReadBackOpener([_pr_payload(), _commit_payload(parents=parents)])
+                    with mock.patch(
+                        "mothership_github.verification._utc_now",
+                        return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+                    ):
+                        result = verifier(candidate_action, receipt, opener=opener)
+                    self.assertEqual("UNKNOWN", result["verification"]["status"])
+                    self.assertEqual(reason, result["evidence"]["reason"])
+                    self.assertEqual(2, len(opener.requests))
 
     def test_commit_identity_parent_shape_and_order_edges_are_classified(self):
         verify_merge_pr = self.import_api()

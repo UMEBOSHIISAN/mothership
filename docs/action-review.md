@@ -93,20 +93,21 @@ scope. A `reject` response with an unchanged empty scope remains valid.
 
 ## Install the source candidate
 
-A default-branch clone does not select an unmerged candidate. The commands
-below select the reviewed runtime revision of [PR #43](https://github.com/UMEBOSHIISAN/mothership/pull/43),
-`4dd76f3208bdfa052dd553e8ff1946450611e25e`, then install Core `0.5.0.dev0`
+The remote default branch includes this portable review API because [PR #43](https://github.com/UMEBOSHIISAN/mothership/pull/43)
+is merged. The commands below pin its reviewed runtime revision,
+`6793c87d2c7866d53d2966d4794be82aafeae917`, then install Core `0.5.0.dev0`
 and companion `0.3.0.dev0` together from that same checkout. This is a pinned
-source example, not a published release or a command to follow a moving PR head.
-Review a later revision separately before substituting it.
+unreleased source example for the main portable review runtime, separate from
+the published v0.4.2 release and the newer PR #45 readback candidate. Review a
+later revision separately before substituting it.
 
 Use Python 3.12 or newer and run this in a new directory:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-portable-review
 cd mothership-portable-review
-git fetch origin 4dd76f3208bdfa052dd553e8ff1946450611e25e
-git switch --detach 4dd76f3208bdfa052dd553e8ff1946450611e25e
+git fetch origin 6793c87d2c7866d53d2966d4794be82aafeae917
+git switch --detach 6793c87d2c7866d53d2966d4794be82aafeae917
 python3 -m venv .venv-portable
 . .venv-portable/bin/activate
 python -m pip install . ./packages/mothership-github

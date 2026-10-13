@@ -3,20 +3,28 @@
 This guide is a practical map of the eight bounded routes in the
 [integration catalog](integrations.md). Execution routes carry one exact
 `github.merge_pr` action through a retained review boundary. Read-only routes
-inspect detached evidence without restoring an action or granting authority. A host supplies
+inspect detached evidence without restoring an action or granting authority;
+the separately named `readback` command may perform one bounded public
+observation. A host supplies
 its own identity, context, credentials, transport, and effect decision. The
-examples use synthetic transport and caller-provided context; they do not use
-API keys, account login, or a live GitHub endpoint.
+examples below use synthetic transport and caller-provided context; they do not
+use API keys, account login, or a live GitHub endpoint. The explicit `readback`
+route is documented separately below.
 
 ## Install the source candidate in one checkout
 
-The following is a documentation example for a qualification run. Use the
-candidate ref selected by the project owner, record both revisions, and keep
-the checkout detached. This does not claim that the commands were run for this
-source snapshot or that they select a release tag.
+The current readback and inspect-sidecar candidate is [PR #45](https://github.com/UMEBOSHIISAN/mothership/pull/45),
+published but unreleased, at runtime revision
+`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`. Review the source and current
+target before using it, record both revisions, and keep the checkout detached.
+This pins runtime code only; documentation-only revisions may follow separately.
+This is a documentation recipe and does not claim that the packages are
+installed or that a live host has been qualified. Start in a new directory:
 
 ```sh
-git fetch origin <candidate-ref>
+git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-readback
+cd mothership-readback
+git fetch origin 91f474ed9ba96f5c00925d44f3dd84739d41cdc7
 git rev-parse --verify FETCH_HEAD
 git checkout --detach FETCH_HEAD
 git rev-parse --verify HEAD
@@ -26,13 +34,20 @@ python3 -m venv .venv
 python -m pip install \
   -e . \
   -e packages/mothership-github \
-  -e 'packages/mothership-adapters[agents,langgraph,mcp]'
+  -e packages/mothership-adapters
 ```
 
-The three editable installs are from the same checkout. The optional extras
-pin `openai-agents==0.23.1`, `langgraph==1.2.12`, and `mcp==2.3.0`. Record the
-`FETCH_HEAD` and detached `HEAD` values alongside the test evidence; do not
-reconstruct a live session from an exported JSON request.
+The three editable installs are from the same checkout. Optional SDK extras are
+opt-in; select only the extras required by the routes you use. The following
+additional command selects all three SDK extras:
+
+```sh
+python -m pip install -e 'packages/mothership-adapters[agents,langgraph,mcp]'
+```
+
+These extras pin `openai-agents==0.23.1`, `langgraph==1.2.12`, and
+`mcp==2.3.0`. Record the `FETCH_HEAD` and detached `HEAD` values alongside the
+test evidence; do not reconstruct a live session from an exported JSON request.
 
 ## One retained session and synthetic transport
 
@@ -214,37 +229,113 @@ It exposes exactly three read-only tools:
 * `receipt_verification_validate`
 * `evidence_inspect`
 
-The CLI is stdin-only. Pass bytes through the host's supported local command
-interface, for example the repository-local Dots fixture:
+Export and default inspection are stdin-only and offline. Pass bytes
+through the host's supported local command interface, for example the
+repository-local Dots fixture:
 
 ```sh
 mothership-evidence inspect < integrations/dots/example-bundle.json
 mothership-evidence inspect --human < integrations/dots/example-bundle.json
 ```
 
+The explicit `readback` command is the only CLI route that may perform the
+companion's public observation. It accepts one complete
+`host-evidence-bundle.v0` whose derived Receipt is present and whose
+`missing` list is exactly `["verification"]`. It validates the bundle, action
+digest, Receipt lineage, and absence of an existing Verification before any
+network call; malformed, foreign, incomplete, or already-verified input is
+rejected without a GET. It writes a new bundle and leaves the input untouched:
+
+```sh
+mothership-evidence readback < original.json > verified.json 2> readback-evidence.json
+```
+
+Require exit status `0` and retain `readback-evidence.json`. The Python helper
+`mothership_adapters.readback.readback_evidence(bundle, *, opener=None)` returns
+`{"bundle": ..., "evidence": ...}`; the stderr file is that complete sanitized
+`evidence` sidecar. Its canonical SHA-256 must equal the `sha256` in `verified.json`'s
+`verification.evidence_refs`; this sidecar is caller-retained and is not a
+source-authentication record. A single invocation makes at most two public
+tokenless GETs, sends no credentials or `Authorization` header, and never
+retries, polls, consumes authority, calls an executor, or writes a ledger.
+The command emits the sidecar to stderr before attempting the new bundle on
+stdout. Successful stderr is data, not an error log; do not merge the streams
+with `2>&1`. Input and setup failures report a fixed sanitized diagnostic on
+stderr with a nonzero exit status. Stream failures stop with a nonzero exit;
+when the error sink is still writable, the fixed diagnostic may be reported,
+but a failed stderr write is not retried. Discard both redirected files,
+including any partial stream, unless the exit status is `0` and the canonical
+hash check passes. A valid observation that is `UNKNOWN` or `MISMATCH` remains
+a successful read-back bundle with its status preserved.
+
+JSON export and inspection emit one complete newline-terminated value and require
+a successful flush before exit `0`. A short write, invalid write count, or stream
+failure returns nonzero without retry; discard partial output. Successful JSON
+bytes and the inspection schema are unchanged.
+
 The default command retains its JSON inspection contract. `--human` selects a
 bounded text explanation for the local Terminal: recorded approval, recorded
 authority use, Receipt, independent Verification, missing records, the supplied
-observation summary, unavailable reason information, and a next read-only check. A missing
+observation summary, and a next read-only check. A missing
 Verification record means independent confirmation has not been established by
 this bundle; it does not prove verification never occurred. Missing decision or
 consume records do not prove cancellation or absence of an effect. The current
-bundle's closed Verification contract carries `observed_state.summary` but not
-the read-back producer's separate `evidence.reason`. The formatter states that
-the reason is unavailable and points to referenced read-back evidence; it never
-infers a reason code from prose. The supplied summary is escaped display data,
-not a trusted diagnosis or instruction.
+Bundles produced by this read-back producer carry its allowlisted fixed reason
+code and bounded explanation inside `observed_state.summary`; existing or
+caller-supplied Verification summaries remain arbitrary caller-reported text.
+The producer's structured sibling `evidence.reason` remains in the
+caller-retained sidecar. Without an explicit sidecar, the formatter displays the supplied summary after
+escaping it and does not parse prose into a trusted reason or authenticate the
+source. The displayed text is not a diagnosis or instruction. The separate
+`structured reason: unavailable in bundle` label refers to the absent structured
+field, even when the caller-reported summary includes a reason string. The
+next read-only check compares the referenced evidence’s canonical hash with
+`verification.evidence_refs`; it does not require another readback.
 The explanation keeps source-unverified visible and never suggests re-execution
 or reconsume as recovery. It performs no read-back or other network request.
 
+To inspect the retained sidecar as well, use the optional local-file input:
+
+```sh
+mothership-evidence inspect --human --readback-evidence readback-evidence.json < verified.json
+```
+
+`--readback-evidence` requires `--human`; it does not change the default JSON
+inspection or MCP contract. The bundle still comes from stdin. Only the explicit
+sidecar path is opened, with no-follow/nonblocking access and a regular-file
+check. Final-component symlinks, FIFOs, devices and directories are rejected. Each input has the
+existing 262,144-byte limit and strict JSON/type/depth/node bounds. Unsupported
+file-access safeguards fail closed. No URL or path inside evidence is opened.
+
+The offline reader validates the current `github-merge-readback.v0` shape and
+matches the sidecar's canonical SHA-256 to the single `github-readback:` evidence
+reference, its action ID/digest to the bundle, and its state hash to Verification.
+It then displays the structured reason as **caller-reported**, with the recorded
+observation time and conservative guidance. `clock_rollback` remains readable as
+`UNKNOWN`: timestamp syntax is checked, but ordering and external semantics are
+not re-evaluated. Unknown well-formed reason codes receive generic guidance.
+
+Bad input or a binding mismatch returns exit status 2 with a fixed diagnostic
+and no human explanation. A complete explanation requires a complete write and
+successful flush; discard partial output on failure. Exit 0 means inspection
+completed, including for `UNKNOWN` and `MISMATCH`, not that the action succeeded.
+This check proves internal binding only; it does not authenticate the source,
+transport, actor, timing or causation, and it does not establish current remote
+state. No network, retry, re-execution, reconsume or ledger write occurs.
+
+The Python equivalent is `summarize_evidence(bundle, readback_evidence=sidecar)`
+from `mothership_adapters.evidence`. Omitting the keyword preserves the existing
+human output. Retain both original inputs for later inspection.
+
 `mothership-evidence export` accepts a bounded request/envelope on stdin and
-produces a deterministic `host-evidence-bundle.v0`. Both CLI and MCP routes
+produces a deterministic `host-evidence-bundle.v0`. Export, inspect, inspect
+`--human`, and MCP routes
 preserve `caller-attested`, `source_authenticated=false`,
 `authority=false`, and `external_effect_verified=false`. A self-consistent
 bundle is still not authenticated external evidence.
 
-Dots uses the repository-local `mothership-evidence-inspect` skill and the same
-stdin-only CLI. The skill is not installed or activated by this repository;
+Dots uses the repository-local `mothership-evidence-inspect` skill and the
+default stdin-only inspection route. The skill is not installed or activated by this repository;
 local and cloud Dots runtime qualification remains unperformed.
 
 ## Qualification boundaries

@@ -13,11 +13,14 @@ the v0.4.2 documentation and offline walkthrough added after v0.4.1; the
 walkthrough is a source-checkout example and is not part of either the v0.4.1
 or v0.4.2 release tag or wheel.
 
-This selects the remote default branch, which may differ from an unmerged
-source candidate. To try the portable review API described in this candidate,
-use the [pinned candidate installation](action-review.md#install-the-source-candidate)
-instead; it installs the matching Core and optional companion from one reviewed
-checkout and runs the existing offline example with installed-package imports.
+The published v0.4.2 release remains the historical baseline. The remote default
+branch includes the portable review API merged through PR #43, and this main
+checkout is unreleased source. For a pinned Core and companion runtime, use the
+[portable review installation](action-review.md#install-the-source-candidate).
+For the newer readback and inspect-sidecar functionality in the unreleased PR
+#45 candidate, use the [pinned PR #45 setup](host-adapters.md#install-the-source-candidate-in-one-checkout).
+That setup installs all three packages from one checkout; optional SDK extras
+remain opt-in.
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git

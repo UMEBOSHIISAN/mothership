@@ -65,11 +65,84 @@ _SOURCE_KEYS = (
 )
 _MISSING_KEYS = ("response", "decision", "consume", "started", "finished", "verification")
 _DIGEST = re.compile(r"^[0-9a-f]{64}$\Z")
+_SHA40 = re.compile(r"^[0-9a-f]{40}$\Z")
 _ACTION_ID = re.compile(r"^act-[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
 _EVENT_ID = re.compile(r"^event-[0-9a-f]{32}\Z")
 _REF_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
 _UTC = "%Y-%m-%dT%H:%M:%SZ"
 _MAX_DISPLAY_SUMMARY_CHARS = 256
+_READBACK_VERSION = "github-merge-readback.v0"
+_READBACK_REASON = re.compile(r"^[a-z][a-z0-9_]{0,63}\Z")
+_READBACK_KEYS = frozenset(
+    {
+        "version",
+        "action_id",
+        "action_sha256",
+        "transport",
+        "observations",
+        "state",
+        "reason",
+    }
+)
+_READBACK_OBSERVATION_KEYS = frozenset({"endpoint", "started_at", "finished_at"})
+_READBACK_STATE_KEYS = frozenset({"pull_request", "commit"})
+_READBACK_PR_KEYS = frozenset(
+    {
+        "repository",
+        "number",
+        "state",
+        "merged",
+        "merged_at",
+        "head_sha",
+        "base_ref",
+        "merge_commit_sha",
+    }
+)
+_READBACK_COMMIT_KEYS = frozenset({"sha", "parents"})
+_READBACK_GUIDANCE = {
+    "ambiguous_merge_time": (
+        "compare receipt started_at with reported merged_at; "
+        "second-resolution equality cannot establish ordering; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "preexisting_merge": (
+        "compare retained PR merged_at with receipt started_at; "
+        "an earlier merge cannot show this attempt caused it; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "receipt_not_finished": (
+        "compare receipt finished_at with Verification observed_at; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "head_or_base_mismatch": (
+        "compare action expected_head_sha/expected_base with retained PR projection; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "merge_topology_mismatch": (
+        "compare retained commit parents with expected head; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "invalid_pr_observation": (
+        "check PR visibility and retained observation completeness; cause remains unknown; "
+        "no request auto-run; no automatic retry/re-execution/reconsume"
+    ),
+    "invalid_commit_observation": (
+        "inspect retained merge_commit_sha and available commit evidence; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "unmerged_pr": (
+        "inspect retained state/merged/merged_at; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "merge_confirmed": (
+        "review source provenance and observation time; no causation claim; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+    "clock_rollback": (
+        "review retained timing records; do not infer freshness; "
+        "no automatic retry/re-execution/reconsume"
+    ),
+}
 
 
 class EvidenceError(ContractError):
@@ -658,6 +731,138 @@ def inspect_evidence(bundle: object) -> dict[str, object]:
         raise _invalid() from None
 
 
+def _require_bounded_text(value: object) -> str:
+    if type(value) is not str or not value:
+        raise _invalid()
+    try:
+        if len(value.encode("utf-8")) > MAX_STRING_BYTES:
+            raise _invalid()
+    except UnicodeEncodeError:
+        raise _invalid() from None
+    return value
+
+
+def _validate_readback_projection(value: object, *, kind: str) -> dict[str, object]:
+    if type(value) is not dict:
+        raise _invalid()
+    if kind == "pull_request":
+        if set(value) != _READBACK_PR_KEYS:
+            raise _invalid()
+        _require_bounded_text(value["repository"])
+        if type(value["number"]) is not int:
+            raise _invalid()
+        if value["state"] not in {"open", "closed"}:
+            raise _invalid()
+        if type(value["merged"]) is not bool:
+            raise _invalid()
+        _require_bounded_text(value["base_ref"])
+        if type(value["head_sha"]) is not str or _SHA40.fullmatch(value["head_sha"]) is None:
+            raise _invalid()
+        merged_at = value["merged_at"]
+        if merged_at is not None:
+            _parse_utc(merged_at)
+        merge_commit_sha = value["merge_commit_sha"]
+        if merge_commit_sha is not None and (
+            type(merge_commit_sha) is not str or _SHA40.fullmatch(merge_commit_sha) is None
+        ):
+            raise _invalid()
+        return value
+    if kind == "commit":
+        if set(value) != _READBACK_COMMIT_KEYS:
+            raise _invalid()
+        if type(value["sha"]) is not str or _SHA40.fullmatch(value["sha"]) is None:
+            raise _invalid()
+        parents = value["parents"]
+        if type(parents) is not list or len(parents) > MAX_CONTAINER_ENTRIES:
+            raise _invalid()
+        for parent in parents:
+            if type(parent) is not str or _SHA40.fullmatch(parent) is None:
+                raise _invalid()
+        return value
+    raise _invalid()
+
+
+def _validate_readback_evidence(
+    bundle: dict[str, object], value: object
+) -> dict[str, object]:
+    detached, _ = _canonical(value)
+    if type(detached) is not dict or set(detached) != _READBACK_KEYS:
+        raise _invalid()
+    if detached["version"] != _READBACK_VERSION:
+        raise _invalid()
+    action_id = _require_action_id(detached["action_id"])
+    action_sha256 = _require_digest(detached["action_sha256"])
+    if detached["transport"] not in {"default_tokenless", "injected"}:
+        raise _invalid()
+    observations = detached["observations"]
+    if type(observations) is not list or len(observations) > 2:
+        raise _invalid()
+    for observation in observations:
+        if type(observation) is not dict or set(observation) != _READBACK_OBSERVATION_KEYS:
+            raise _invalid()
+        _require_bounded_text(observation["endpoint"])
+        _parse_utc(observation["started_at"])
+        _parse_utc(observation["finished_at"])
+
+    state = detached["state"]
+    if type(state) is not dict or set(state) != _READBACK_STATE_KEYS:
+        raise _invalid()
+    pull_request = state["pull_request"]
+    commit = state["commit"]
+    if pull_request is not None:
+        _validate_readback_projection(pull_request, kind="pull_request")
+    if commit is not None:
+        _validate_readback_projection(commit, kind="commit")
+
+    reason = detached["reason"]
+    if type(reason) is not str or _READBACK_REASON.fullmatch(reason) is None:
+        raise _invalid()
+
+    verification = bundle.get("verification")
+    if type(verification) is not dict:
+        raise _invalid()
+    action = bundle["request"]["action"]
+    if (
+        action_id != action["action_id"]
+        or action_sha256 != bundle["request"]["action_sha256"]
+        or action_id != verification["action_id"]
+        or action_sha256 != verification["action_sha256"]
+    ):
+        raise _invalid()
+    evidence_refs = verification["evidence_refs"]
+    if type(evidence_refs) is not list or len(evidence_refs) != 1:
+        raise _invalid()
+    evidence_ref = evidence_refs[0]
+    sidecar_digest = _hash(detached)
+    if (
+        type(evidence_ref) is not dict
+        or evidence_ref.get("ref_id") != "github-readback:" + sidecar_digest
+        or evidence_ref.get("sha256") != sidecar_digest
+    ):
+        raise _invalid()
+
+    observed_state = verification["observed_state"]
+    state_sha256 = observed_state["state_sha256"]
+    if pull_request is None and commit is None:
+        if state_sha256 is not None:
+            raise _invalid()
+    else:
+        if type(state_sha256) is not str or _DIGEST.fullmatch(state_sha256) is None:
+            raise _invalid()
+        if _hash(state) != state_sha256:
+            raise _invalid()
+    _parse_utc(verification["observed_at"])
+    return detached
+
+
+def _readback_guidance(reason: str) -> str:
+    return _READBACK_GUIDANCE.get(
+        reason,
+        "check provenance and recorded status; "
+        "no automatic retry/re-execution/reconsume",
+    )
+
+
 def _escape_display_summary(value: object) -> str:
     """Return bounded, single-line text for caller-supplied evidence context."""
 
@@ -689,7 +894,9 @@ def _escape_display_summary(value: object) -> str:
     return "".join(pieces) or "unavailable"
 
 
-def summarize_evidence(bundle: object) -> str:
+def summarize_evidence(
+    bundle: object, *, readback_evidence: object = None
+) -> str:
     """Render one validated bundle as bounded human-facing Terminal text.
 
     This is a display-only view over the existing detached bundle.  It does
@@ -702,6 +909,9 @@ def summarize_evidence(bundle: object) -> str:
         # Reuse the existing full projection check so human text has exactly
         # the same validation boundary as the default JSON/MCP inspection.
         inspect_evidence(checked)
+        readback = None
+        if readback_evidence is not None:
+            readback = _validate_readback_evidence(checked, readback_evidence)
         decision = checked["decision"]
         consume = checked["consume"]
         receipt = checked["receipt"]
@@ -731,10 +941,9 @@ def summarize_evidence(bundle: object) -> str:
         else:
             conclusion = "independent verification recorded"
 
-        # The closed bundle carries only observed_state.summary.  The
-        # structured reason code lives in verify_merge_pr's sibling evidence
-        # object and is intentionally unavailable on this stdin-only route.
-        reason = "unavailable"
+        # The closed bundle carries only observed_state.summary.  Without an
+        # explicit sidecar, the structured reason code remains unavailable.
+        reason = "unavailable in bundle"
         action = checked["request"]["action"]
         parameters = action["execution_parameters"]
         target_text = (
@@ -749,10 +958,15 @@ def summarize_evidence(bundle: object) -> str:
                 "inspect an existing independent Verification record for this action, "
                 "if one exists"
             )
+        elif readback is not None:
+            next_check = _readback_guidance(str(readback["reason"]))
         else:
             next_check = (
-                "inspect the referenced read-back evidence for the recorded reason code"
+                "compare the referenced evidence's canonical hash with verification.evidence_refs"
             )
+
+        if readback is not None:
+            reason = f"{readback['reason']} (caller-reported)"
 
         missing_text = "none" if not missing else ", ".join(str(item) for item in missing)
         lines = [
@@ -764,13 +978,32 @@ def summarize_evidence(bundle: object) -> str:
             f"verification: {verification_status}",
             f"missing: {missing_text}",
             f"conclusion: {conclusion}",
-            f"reason: {reason}",
+            f"structured reason: {reason}",
             *(
                 [
                     "reported observation summary: "
                     + _escape_display_summary(verification["observed_state"]["summary"])
                 ]
                 if verification is not None
+                else []
+            ),
+            *(
+                [
+                    "readback: structurally valid sidecar (source-unverified)",
+                    "readback evidence hash binding: match (structural)",
+                    "readback action binding: match (structural)",
+                    "readback state hash binding: match (structural)",
+                    "readback verification method (caller-reported): "
+                    + str(verification["verification_method"]),
+                    "readback transport (caller-reported): "
+                    + str(readback["transport"]),
+                    "readback reason (caller-reported): " + str(readback["reason"]),
+                    "readback observed_at (caller-reported): "
+                    + str(verification["observed_at"]),
+                    "readback original verification status (caller-reported): "
+                    + str(verification["status"]),
+                ]
+                if readback is not None
                 else []
             ),
             "provenance: caller-attested",
