@@ -25,7 +25,7 @@ Do not re-execute or reconsume to recover an uncertain result.
 
 Report `missing`, `receipt_status`, and `verification_status` separately. A null
 Receipt means no complete terminal attempt pair was supplied. Receipt SUCCESS
-does not mean independent Verification MATCH. Invalid input is an error, never
+does not mean independent Verification CONFIRMED. Invalid input is an error, never
 completion evidence.
 
 Separate recorded approval from recorded authority use. Missing records do not

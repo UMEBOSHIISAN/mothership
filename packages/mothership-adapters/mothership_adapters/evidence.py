@@ -70,6 +70,9 @@ _ACTION_ID = re.compile(r"^act-[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
 _EVENT_ID = re.compile(r"^event-[0-9a-f]{32}\Z")
 _REF_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*\Z")
 _UTC = "%Y-%m-%dT%H:%M:%SZ"
+_UTC_SYNTAX = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z"
+)
 _MAX_DISPLAY_SUMMARY_CHARS = 256
 _READBACK_VERSION = "github-merge-readback.v0"
 _READBACK_REASON = re.compile(r"^[a-z][a-z0-9_]{0,63}\Z")
@@ -278,7 +281,7 @@ def _copy_checked_contract(kind: str, value: object) -> dict[str, object]:
 
 
 def _parse_utc(value: object) -> _datetime.datetime:
-    if type(value) is not str:
+    if type(value) is not str or _UTC_SYNTAX.fullmatch(value) is None:
         raise _invalid()
     try:
         return _datetime.datetime.strptime(value, _UTC).replace(tzinfo=_datetime.UTC)

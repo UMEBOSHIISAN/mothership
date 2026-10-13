@@ -234,12 +234,13 @@ approve / rejectの前に停止します。これは実行時の失効fence、�
 
 Python 3.12以上と、このリポジトリのソースcheckoutが必要です。
 まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
-公開済みv0.4.2は歴史的な公開ベースラインで、現在のmain cloneにはPR #43で取り込まれたportable review APIが含まれます。
+公開済みv0.4.2は歴史的な公開ベースラインです。現在のmain cloneには、PR #43のportable review APIと
+PR #45のreadback / inspect-sidecar機能が含まれます。mainも未リリースのソースです。
 Coreとcompanionだけのruntimeを固定して既存のオフライン例を実行する場合は、
 [portable review APIの導入手順](docs/action-review.md#install-the-source-candidate)を
-参照してください。PR #45の新しいreadback / inspect-sidecar機能を試す場合は、
+参照してください。readback / inspect-sidecarのレビュー済みruntimeを固定して試す場合は、
 [host adapter guideの固定setup](docs/host-adapters.md#install-the-source-candidate-in-one-checkout)を
-使ってください。PR #45は未リリース候補で、runtime pin後にdocs-onlyの改訂が続くことがあります。
+使ってください。固定したruntimeと現在のcheckoutのrevisionを、それぞれ記録してください。
 下記のwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
 v0.4.2のwheelにも含まれません（source checkout専用の実行例です）。
 
@@ -293,6 +294,8 @@ caller-reportedな理由コード、観測時刻、次の読み取り確認を�
 
 コマンド: `mothership-evidence inspect --human --readback-evidence readback-evidence.json < verified.json`
 
+この例には、先に保存した `verified.json` と `readback-evidence.json` が必要です。
+`inspect`は保存済み記録をオフラインで読み、ネットワーク通信は行いません。
 入力はサイズ制限付きの通常ファイルです。不一致や不正な入力は終了コード2で停止し、説明を出しません。
 一致は記録同士の整合性であり、出所認証・操作の因果関係・現在の状態の証明ではありません。
 記録がないことは、操作や確認が行われなかった証明ではありません。
@@ -302,7 +305,8 @@ Dotsの実機受入や外部操作の実在を証明するものではありま�
 [ガイドのreadback手順](docs/host-adapters.md#read-only-evidence-routes)で元bundleを残したまま実行します。
 exit status `0`を要求し、stderrのsidecarを保持してください。
 
-このコマンドは最大2回のpublic tokenless GETだけを行い、credential、retry、polling、Authority、
+明示的に呼び出した `mothership-evidence readback` は、最大2回のpublic tokenless GETを行います。
+credential、retry、polling、Authority、
 executor、ledger write、external effectを使いません。成功時のstderrはerror logではなくsidecar dataです。
 stdoutとstderrを分離し、`2>&1`で結合しないでください。exit statusが0以外ならpartial outputを含む
 両方のファイルを破棄し、0かつcanonical hash照合に成功した場合だけ結果を保持します。

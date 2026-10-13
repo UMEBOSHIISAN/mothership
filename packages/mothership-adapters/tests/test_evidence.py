@@ -348,6 +348,36 @@ class EvidenceTests(EvidenceFixture):
                         candidate_bundle, readback_evidence=candidate
                     )
 
+    def test_human_summary_rejects_noncanonical_utc_timestamp_syntax(self) -> None:
+        bundle, sidecar = self._readback_artifacts(
+            observations=[
+                {
+                    "endpoint": "pull_request",
+                    "started_at": "2026-10-13T02:54:00Z",
+                    "finished_at": "2026-10-13T02:54:01Z",
+                }
+            ]
+        )
+        malformed_timestamps = (
+            ("month", "2026-1-13T02:54:00Z"),
+            ("day", "2026-10-3T02:54:00Z"),
+            ("hour", "2026-10-13T2:54:00Z"),
+            ("minute", "2026-10-13T02:4:00Z"),
+            ("second", "2026-10-13T02:54:0Z"),
+            ("lowercase_z", "2026-10-13T02:54:00z"),
+        )
+        for name, timestamp in malformed_timestamps:
+            with self.subTest(name=name):
+                candidate = copy.deepcopy(sidecar)
+                candidate["observations"][0]["started_at"] = timestamp
+                candidate_bundle, candidate = self._rebind_readback_sidecar(
+                    bundle, candidate
+                )
+                with self.assertRaises(EvidenceError):
+                    evidence_module.summarize_evidence(
+                        candidate_bundle, readback_evidence=candidate
+                    )
+
     def test_human_summary_accepts_unknown_reason_and_clock_rollback_without_rechecking_semantics(
         self,
     ) -> None:

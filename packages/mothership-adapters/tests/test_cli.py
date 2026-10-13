@@ -153,6 +153,27 @@ class AdapterEvidenceCLITests(EvidenceFixture):
                 self.assertEqual("", output)
                 self.assertEqual("invalid bounded evidence input\n", error)
 
+    def test_inspect_human_rejects_noncanonical_sidecar_timestamp(self) -> None:
+        bundle, sidecar = self._readback_artifacts(
+            observations=[
+                {
+                    "endpoint": "pull_request",
+                    "started_at": "2026-10-13T02:54:00Z",
+                    "finished_at": "2026-10-13T02:54:01Z",
+                }
+            ]
+        )
+        sidecar["observations"][0]["started_at"] = "2026-10-13T02:54:00z"
+        bundle, sidecar = self._rebind_readback_sidecar(bundle, sidecar)
+        path = pathlib.Path(self.temp.name) / "readback-invalid-timestamp.json"
+        path.write_bytes(json.dumps(sidecar, separators=(",", ":")).encode())
+
+        code, output, error = self._run_inspect_with_sidecar(bundle, path)
+
+        self.assertEqual(2, code)
+        self.assertEqual("", output)
+        self.assertEqual("invalid bounded evidence input\n", error)
+
     def _run(self, argv: list[str], payload: object) -> tuple[int, str, str]:
         raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
         stdin = io.TextIOWrapper(io.BytesIO(raw), encoding="utf-8")
