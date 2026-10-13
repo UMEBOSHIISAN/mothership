@@ -1,0 +1,5 @@
+Mothership inspect --human isolated canary.
+Route: retained session -> evidence export -> human inspection.
+No production or medical workload.
+Base: isolated branch; main is not a merge target.
+Single attempt; no retry or reconsume.
