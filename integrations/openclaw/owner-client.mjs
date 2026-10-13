@@ -416,6 +416,7 @@ export class MergeOwnerClient {
         { shell: false, env: process.env, stdio: ["pipe", "pipe", "pipe"] },
       );
       this._childPid = this._child.pid ?? null;
+      this._child.stdin.on("error", () => this._fatal("eof"));
       this._child.stdout.on("data", (chunk) => this._onData(chunk));
       this._child.stdout.on("error", () => this._childFailure("eof"));
       this._child.stderr.on("data", () => {});
