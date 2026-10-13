@@ -168,6 +168,28 @@ sequence `prepare(parameters, executorRef)`, `review(response)`,
 context and the exact two transport operations:
 `getPullRequest(repository, pullRequest)` and
 `mergePullRequest(repository, pullRequest, expectedHeadSha, mergeMethod)`.
+These positional signatures are the default, including callbacks with default
+or rest parameters. `transport.getPullRequestMode` and
+`transport.mergePullRequestMode` select each callback's contract independently:
+omitting a mode or passing `undefined` selects `"positional"`; `"object"` passes
+one detached payload object. Only these two strings are accepted. Other values,
+including `null`, raise `OwnerClientError("parameters")` before child creation.
+The constructor retains each selected mode; later transport-property changes do
+not change it. Both constructor forms accept these transport options, and the
+`get_pull_request` / `merge_pull_request` aliases use the same camel-case mode
+keys. Existing callbacks that expect one payload object must opt in explicitly:
+
+```js
+transport: {
+  getPullRequestMode: "object",
+  mergePullRequestMode: "object",
+  getPullRequest: objectGetPullRequest,
+  mergePullRequest: objectMergePullRequest,
+}
+```
+
+Callbacks that ignore all arguments need no change. Callback arity is not used
+to infer a contract, and callback exceptions do not trigger a second call.
 The owner checks callback parameters against the retained action and uses a
 30-second bounded command deadline. A child failure after consume is
 unresolved; the caller must not restart or replay it.

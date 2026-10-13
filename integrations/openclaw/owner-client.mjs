@@ -105,6 +105,12 @@ function idValue(value, nullable = true) {
   return value;
 }
 
+function callbackMode(value) {
+  if (value === undefined) return "positional";
+  if (value !== "positional" && value !== "object") fail("parameters");
+  return value;
+}
+
 function parametersValue(value) {
   const data = exactObject(value, ["repository", "pull_request", "expected_head_sha", "expected_base", "merge_method"]);
   if (typeof data.repository !== "string" || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(data.repository)
@@ -385,6 +391,8 @@ export class MergeOwnerClient {
     const getPullRequest = callbacks.getPullRequest ?? callbacks.get_pull_request;
     const mergePullRequest = callbacks.mergePullRequest ?? callbacks.merge_pull_request;
     if (typeof getPullRequest !== "function" || typeof mergePullRequest !== "function") fail("parameters");
+    const getPullRequestMode = callbackMode(callbacks.getPullRequestMode);
+    const mergePullRequestMode = callbackMode(callbacks.mergePullRequestMode);
     this._ownerId = randomUUID();
     this._pythonExecutable = pythonExecutable;
     this._authorityPath = authority;
@@ -392,6 +400,8 @@ export class MergeOwnerClient {
     this._contextProvider = context;
     this._getPullRequest = getPullRequest;
     this._mergePullRequest = mergePullRequest;
+    this._getPullRequestMode = getPullRequestMode;
+    this._mergePullRequestMode = mergePullRequestMode;
     this._parentSeq = 1;
     this._childSeq = 1;
     this._buffer = Buffer.alloc(0);
@@ -567,7 +577,7 @@ export class MergeOwnerClient {
           const value = detach(frame.payload);
           assertRetainedCallbackParameters(frame.type, value, this._parameters);
           const callback = this._getPullRequest;
-          payload = callback.length >= 2
+          payload = this._getPullRequestMode === "positional"
             ? await callback(value.repository, value.pull_request)
             : await callback(value);
           payload = getResultValue(detach(payload));
@@ -575,7 +585,7 @@ export class MergeOwnerClient {
           const callback = this._mergePullRequest;
           const value = detach(frame.payload);
           assertRetainedCallbackParameters(frame.type, value, this._parameters);
-          payload = callback.length >= 4
+          payload = this._mergePullRequestMode === "positional"
             ? await callback(value.repository, value.pull_request, value.expected_head_sha, value.merge_method)
             : await callback(value);
           payload = mergeResultValue(detach(payload));
