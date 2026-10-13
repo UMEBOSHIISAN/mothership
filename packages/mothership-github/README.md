@@ -55,6 +55,48 @@ persisted JSON cannot reconstruct its binding. Read-back remains available
 after consume expiry because it does not consume or renew authority. The caller
 retains the bundle and judges freshness; the `transport` label is metadata and
 cannot authenticate transport by itself.
+
+For a persisted bundle, use the separate
+`verify_recorded_merge_pr(action, receipt, *, opener=None)` entry point. It
+accepts a validated detached action mapping and its externally supplied,
+action-bound Receipt as caller-attested records, validates their digests, and
+shares the same bounded observer. It does not restore or reissue a
+`FrozenAction`, grant authority, consume a ledger, call an executor, or alter a
+session. The strict `verify_merge_pr()` contract above remains unchanged and
+continues to require the live Core-issued action.
+The detached action and Receipt must be exact plain JSON and each is checked
+before snapshotting against 24 levels, 8,192 nodes, 1,024 entries per
+container, 65,536 UTF-8 bytes per string, and 262,144 canonical UTF-8 bytes.
+An observed commit that lists its own SHA as a parent remains `UNKNOWN` with
+the fixed `self_parent_sha` reason; duplicate parents retain the existing
+`duplicate_parent_sha` reason.
+
+The adapters package connects this producer through the explicit
+`mothership-evidence readback` command. The command rejects incomplete input or
+a bundle that already contains a Verification before any GET, then emits a new
+bundle on stdout and the complete sanitized evidence as one JSON sidecar on
+stderr. Keep the source bundle unchanged, require exit status `0`, and verify
+that the sidecar's canonical hash matches the new Verification's
+`evidence_refs`. `inspect --human`, export, and MCP remain offline; the readback
+command is the only separately named network-capable route. The returned
+Verification summary contains an allowlisted fixed reason and bounded
+explanation for escaped human display, while its caller-attested and
+source-unverified qualification remains explicit. Successful stderr is the
+sidecar data stream, not an error log; keep stdout and stderr separate and
+discard both outputs on any nonzero exit, including partial output.
+
+Example retention command:
+
+```sh
+mothership-evidence readback < original.json > verified.json 2> readback-evidence.json
+```
+
+The Python helper
+`mothership_adapters.readback.readback_evidence(bundle, *, opener=None)` returns
+`{"bundle": ..., "evidence": ...}` so a caller can retain that complete
+sidecar. A successful read-back uses at most two public tokenless GETs and has
+no credentials, retry, polling, authority, executor, ledger, or external-effect
+behavior.
 The 10-minute TTL ends eligibility to consume, not necessarily the time to start
 PUT. Expected base is checked at preflight only; PUT has no atomic base condition.
 See [candidate limits](../../docs/option-a-candidate.md) before choosing a consumer.

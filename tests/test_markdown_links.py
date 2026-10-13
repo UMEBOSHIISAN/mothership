@@ -28,6 +28,20 @@ INTEGRATION_REFERENCE_URLS = {
     "https://docs.langchain.com/oss/python/langgraph/interrupts",
     "https://modelcontextprotocol.io/specification/2026-07-28/server/tools",
 }
+# Sources reviewed for the dated ecosystem comparison. These exceptions apply
+# only to that document; they do not allow other URLs on the same hosts.
+ECOSYSTEM_REFERENCE_URLS = {
+    "https://openai.github.io/openai-agents-python/human_in_the_loop/",
+    "https://docs.openclaw.ai/tools/exec-approvals",
+    "https://docs.langchain.com/oss/python/langgraph/interrupts",
+    "https://github.com/Delego-Dev/delego",
+    "https://github.com/Prismer-AI/signet",
+    "https://github.com/inchwormz/agent-receipts",
+    "https://github.github.com/gh-aw/reference/safe-outputs/",
+    "https://github.com/in-toto/attestation/blob/main/spec/v1/README.md",
+    "https://github.com/secure-systems-lab/dsse/blob/master/envelope.md",
+    "https://docs.sigstore.dev/about/bundle/",
+}
 
 
 def _tracked_markdown() -> tuple[Path, ...]:
@@ -132,13 +146,16 @@ class MarkdownLinkTests(unittest.TestCase):
                 reviewed_reference = (
                     document.relative_to(ROOT).as_posix() == "docs/integrations.md"
                     and target in INTEGRATION_REFERENCE_URLS
+                ) or (
+                    document.relative_to(ROOT).as_posix() == "docs/ecosystem-position.md"
+                    and target in ECOSYSTEM_REFERENCE_URLS
                 )
                 if parsed.scheme != "https" or (
                     parsed.hostname not in ALLOWED_EXTERNAL_HOSTS and not reviewed_reference
                 ):
                     failures.append(f"{document.relative_to(ROOT)}: disallowed URL {target}")
                     continue
-                if parsed.hostname == "github.com":
+                if parsed.hostname == "github.com" and not reviewed_reference:
                     pieces = [piece for piece in parsed.path.split("/") if piece]
                     if len(pieces) < 2 or pieces[0] != ALLOWED_GITHUB_OWNER:
                         failures.append(f"{document.relative_to(ROOT)}: unowned URL {target}")

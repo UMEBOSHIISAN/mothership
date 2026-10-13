@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime
+import json
+import math
 import re
 from types import MappingProxyType
 from urllib.parse import urlsplit
@@ -26,6 +28,11 @@ _SHA = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST = re.compile(r"^[0-9a-f]{64}$")
 _UTC = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 _API_ROOT = "https://api.github.com"
+_MAX_ENCODED_BYTES = 262_144
+_MAX_DEPTH = 24
+_MAX_NODES = 8_192
+_MAX_CONTAINER_ENTRIES = 1_024
+_MAX_STRING_BYTES = 65_536
 _PR_PROJECTION_KEYS = frozenset(
     {
         "repository",
@@ -39,6 +46,27 @@ _PR_PROJECTION_KEYS = frozenset(
     }
 )
 _COMMIT_PROJECTION_KEYS = frozenset({"sha", "parents"})
+_REASON_EXPLANATIONS = {
+    "readback_started": "read-back observation has started.",
+    "receipt_not_finished": "receipt finished time is after observation time.",
+    "invalid_pr_observation": "pull request observation was invalid or unavailable.",
+    "pr_identity_mismatch": "pull request identity did not match the requested repository.",
+    "contradictory_pr_state": "pull request state fields contradicted each other.",
+    "future_merged_at": "merge time was later than the observation response.",
+    "preexisting_merge": "merge time preceded receipt start.",
+    "ambiguous_merge_time": "merge time equaled receipt start.",
+    "unmerged_pr": "pull request was not reported as merged.",
+    "valid_merged_pr": "pull request was reported as merged.",
+    "head_or_base_mismatch": "observed head or base differed from the requested action.",
+    "invalid_commit_observation": "merge commit observation was invalid or unavailable.",
+    "commit_identity_mismatch": "merge commit identity did not match the pull request.",
+    "invalid_parent_shape": "merge commit parent data had an invalid shape.",
+    "duplicate_parent_sha": "merge commit parent data repeated a parent SHA.",
+    "self_parent_sha": "merge commit listed its own SHA as a parent.",
+    "merge_topology_mismatch": "merge commit did not have the requested two-parent topology.",
+    "merge_confirmed": "merge commit had the requested two-parent topology.",
+    "clock_rollback": "observation time moved backwards.",
+}
 
 
 def _utc_now() -> datetime.datetime:
@@ -67,13 +95,14 @@ def _snapshot(
     *,
     _active: set[int] | None = None,
     allow_mappingproxy: bool = False,
+    allow_tuple: bool = True,
 ) -> object:
     """Copy only plain JSON containers, without invoking custom copy hooks."""
 
     if value is None or type(value) in (str, int, bool):
         return value
     active = set() if _active is None else _active
-    if type(value) in (dict, list, tuple, MappingProxyType):
+    if type(value) in (dict, list, MappingProxyType) or (type(value) is tuple and allow_tuple):
         if type(value) is MappingProxyType and not allow_mappingproxy:
             raise ContractError(_INVALID)
         marker = id(value)
@@ -86,17 +115,170 @@ def _snapshot(
                     raise ContractError(_INVALID)
                 return {
                     key: _snapshot(
-                        item, _active=active, allow_mappingproxy=allow_mappingproxy
+                        item,
+                        _active=active,
+                        allow_mappingproxy=allow_mappingproxy,
+                        allow_tuple=allow_tuple,
                     )
                     for key, item in value.items()
                 }
             return [
-                _snapshot(item, _active=active, allow_mappingproxy=allow_mappingproxy)
+                _snapshot(
+                    item,
+                    _active=active,
+                    allow_mappingproxy=allow_mappingproxy,
+                    allow_tuple=allow_tuple,
+                )
                 for item in value
             ]
         finally:
             active.remove(marker)
     raise ContractError(_INVALID)
+
+
+def _json_fragment_size(value: object) -> int:
+    if type(value) is int and value:
+        # Reject integers whose decimal representation is certainly larger than
+        # the complete input budget before asking json to materialize it.
+        lower_bound_digits = ((value.bit_length() - 1) * 30_102) // 100_000 + 1
+        if lower_bound_digits + (1 if value < 0 else 0) > _MAX_ENCODED_BYTES:
+            raise ContractError(_INVALID)
+    try:
+        return len(
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        )
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError, OverflowError):
+        raise ContractError(_INVALID) from None
+
+
+def _string_fragment_size(value: str, *, remaining: int = _MAX_ENCODED_BYTES) -> int:
+    # Check code-point length before scanning for UTF-8 and JSON sizes.
+    if len(value) > _MAX_STRING_BYTES:
+        raise ContractError(_INVALID)
+    if type(remaining) is not int or remaining < 0:
+        raise ContractError(_INVALID)
+    encoded_length = 0
+    fragment_length = 2  # JSON string quotes.
+    if fragment_length > remaining:
+        raise ContractError(_INVALID)
+    for character in value:
+        codepoint = ord(character)
+        if 0xD800 <= codepoint <= 0xDFFF:
+            raise ContractError(_INVALID)
+        if codepoint <= 0x7F:
+            utf8_length = 1
+        elif codepoint <= 0x7FF:
+            utf8_length = 2
+        elif codepoint <= 0xFFFF:
+            utf8_length = 3
+        else:
+            utf8_length = 4
+        encoded_length += utf8_length
+        if encoded_length > _MAX_STRING_BYTES:
+            raise ContractError(_INVALID)
+        if character in {'"', "\\"}:
+            fragment_length += 2
+        elif codepoint <= 0x1F:
+            fragment_length += 2 if codepoint in {8, 9, 10, 12, 13} else 6
+        else:
+            fragment_length += utf8_length
+        if fragment_length > remaining:
+            raise ContractError(_INVALID)
+    return fragment_length
+
+
+def _validate_recorded_plain(value: object) -> None:
+    """Validate detached input bounds before recursive copying or hashing."""
+
+    stack: list[tuple[object, int, bool]] = [(value, 1, False)]
+    active: set[int] = set()
+    nodes = 0
+    encoded_bytes = 0
+
+    try:
+        while stack:
+            current, depth, leaving = stack.pop()
+            if leaving:
+                active.discard(id(current))
+                continue
+
+            nodes += 1
+            if nodes > _MAX_NODES or depth > _MAX_DEPTH:
+                raise ContractError(_INVALID)
+
+            current_type = type(current)
+            if current is None or current_type in (bool, int):
+                encoded_bytes += _json_fragment_size(current)
+                if encoded_bytes > _MAX_ENCODED_BYTES:
+                    raise ContractError(_INVALID)
+                continue
+            if current_type is float:
+                if not math.isfinite(current):
+                    raise ContractError(_INVALID)
+                encoded_bytes += _json_fragment_size(current)
+                if encoded_bytes > _MAX_ENCODED_BYTES:
+                    raise ContractError(_INVALID)
+                continue
+            if current_type is str:
+                encoded_bytes += _string_fragment_size(
+                    current, remaining=_MAX_ENCODED_BYTES - encoded_bytes
+                )
+                continue
+            if current_type is dict:
+                if len(current) > _MAX_CONTAINER_ENTRIES:
+                    raise ContractError(_INVALID)
+                if any(type(key) is not str for key in current):
+                    raise ContractError(_INVALID)
+                marker = id(current)
+                if marker in active:
+                    raise ContractError(_INVALID)
+                active.add(marker)
+                encoded_bytes += 2
+                if encoded_bytes > _MAX_ENCODED_BYTES:
+                    raise ContractError(_INVALID)
+                stack.append((current, depth, True))
+                for index, key in enumerate(current):
+                    key_size = _string_fragment_size(
+                        key, remaining=_MAX_ENCODED_BYTES - encoded_bytes
+                    )
+                    encoded_bytes += key_size + 1
+                    if index:
+                        encoded_bytes += 1
+                    if encoded_bytes > _MAX_ENCODED_BYTES:
+                        raise ContractError(_INVALID)
+                ordered_keys = sorted(current)
+                for key in reversed(ordered_keys):
+                    stack.append((current[key], depth + 1, False))
+                continue
+            if current_type is list:
+                if len(current) > _MAX_CONTAINER_ENTRIES:
+                    raise ContractError(_INVALID)
+                marker = id(current)
+                if marker in active:
+                    raise ContractError(_INVALID)
+                active.add(marker)
+                encoded_bytes += 2
+                if encoded_bytes > _MAX_ENCODED_BYTES:
+                    raise ContractError(_INVALID)
+                stack.append((current, depth, True))
+                for index, item in reversed(list(enumerate(current))):
+                    if index:
+                        encoded_bytes += 1
+                        if encoded_bytes > _MAX_ENCODED_BYTES:
+                            raise ContractError(_INVALID)
+                    stack.append((item, depth + 1, False))
+                continue
+            raise ContractError(_INVALID)
+    except ContractError:
+        raise
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError, RuntimeError, OverflowError):
+        raise ContractError(_INVALID) from None
 
 
 def _snapshot_action(frozen_action: object) -> tuple[dict[str, object], str]:
@@ -120,6 +302,29 @@ def _snapshot_action(frozen_action: object) -> tuple[dict[str, object], str]:
     if checked_digest != raw_digest:
         raise ContractError(_INVALID)
     return action, raw_digest
+
+
+def _snapshot_recorded_action(action: object) -> tuple[dict[str, object], str]:
+    """Copy and validate one caller-attested plain JSON action mapping."""
+
+    try:
+        _validate_recorded_plain(action)
+        value = _snapshot(action, allow_tuple=False)
+        if type(value) is not dict:
+            raise ContractError(_INVALID)
+        digest = action_authority.action_sha256(value)
+    except (ContractError, action_authority.ActionAuthorityError, TypeError, ValueError, RecursionError):
+        raise ContractError(_INVALID) from None
+    return value, digest
+
+
+def _snapshot_recorded_receipt(
+    receipt: object, action: dict[str, object], digest: str
+) -> tuple[dict[str, object], str, datetime.datetime, datetime.datetime]:
+    """Bound and copy one caller-attested plain JSON receipt."""
+
+    _validate_recorded_plain(receipt)
+    return _snapshot_receipt(receipt, action, digest)
 
 
 def _snapshot_receipt(receipt: object, action: dict[str, object], digest: str) -> tuple[dict[str, object], str, datetime.datetime, datetime.datetime]:
@@ -290,6 +495,8 @@ def _semantic_commit(payload: object, *, repository: str, expected_sha: str, exp
         if len(parent_shas) != len(set(parent_shas)):
             return "UNKNOWN", None, "duplicate_parent_sha"
         projection = {"sha": expected_sha, "parents": parent_shas}
+        if expected_sha in parent_shas:
+            return "UNKNOWN", projection, "self_parent_sha"
         if len(parent_shas) != 2 or parent_shas[1] != expected_head:
             return "MISMATCH", projection, "merge_topology_mismatch"
         return "CONFIRMED", projection, "merge_confirmed"
@@ -305,16 +512,19 @@ def _bundle(
     receipt_digest: str,
     evidence: dict[str, object],
     status: str,
+    reason: str,
     observed_at: datetime.datetime,
 ) -> dict[str, object]:
     state = evidence["state"]
     state_sha = canonical_json_sha256(state) if any(value is not None for value in state.values()) else None
     evidence_sha = canonical_json_sha256(evidence)
-    summary = {
-        "CONFIRMED": "Observed merged pull request with a confirmed two-parent commit topology.",
-        "MISMATCH": "Observed merged pull request or commit topology does not match the frozen action.",
-        "UNKNOWN": "Observed GitHub pull request or commit topology is inconclusive.",
-    }[status]
+    try:
+        explanation = _REASON_EXPLANATIONS[reason]
+    except (KeyError, TypeError):
+        raise ContractError(_INVALID) from None
+    summary = f"status={status}; reason={reason}; {explanation}"
+    if len(summary) > 256:
+        raise ContractError(_INVALID)
     verification = {
         "schema_version": "external-action-verification.v0",
         "action_id": action["action_id"],
@@ -338,22 +548,13 @@ def _bundle(
     return {"verification": checked_verification, "evidence": evidence}
 
 
-def verify_merge_pr(
-    frozen_action: FrozenAction,
-    receipt: object,
-    *,
-    opener=None,
-) -> dict[str, object]:
-    """Produce one bounded public GitHub read-back for a Core merge action."""
-
-    if opener is not None and not callable(opener):
-        raise ContractError(_INVALID)
-    action, digest = _snapshot_action(frozen_action)
-    receipt_value, receipt_digest, receipt_started, receipt_finished = _snapshot_receipt(
-        receipt, action, digest
-    )
+def _prepare_observation_target(
+    action: dict[str, object],
+) -> tuple[str, int, str, str, object]:
     try:
         parameters = action["execution_parameters"]
+        if type(parameters) is not dict:
+            raise ContractError(_INVALID)
         repository = parameters["repository"]
         number = parameters["pull_request"]
         expected_head = parameters["expected_head_sha"]
@@ -371,9 +572,22 @@ def verify_merge_pr(
         )
         repository = f"{parsed_repository.owner}/{parsed_repository.repo}"
         action["execution_parameters"]["repository"] = repository
+        return repository, number, expected_head, expected_base, parsed_repository
     except (ContractError, KeyError, TypeError, ValueError):
         raise ContractError(_INVALID) from None
 
+
+def _observe_merge_pr(
+    *,
+    action: dict[str, object],
+    digest: str,
+    receipt_value: dict[str, object],
+    receipt_digest: str,
+    receipt_started: datetime.datetime,
+    receipt_finished: datetime.datetime,
+    opener,
+) -> dict[str, object]:
+    repository, number, expected_head, expected_base, parsed_repository = _prepare_observation_target(action)
     evidence: dict[str, object] = {
         "version": _VERSION,
         "action_id": action["action_id"],
@@ -388,7 +602,7 @@ def verify_merge_pr(
         evidence["reason"] = "receipt_not_finished"
         return _bundle(
             action=action, digest=digest, receipt=receipt_value, receipt_digest=receipt_digest,
-            evidence=evidence, status="UNKNOWN", observed_at=now,
+            evidence=evidence, status="UNKNOWN", reason="receipt_not_finished", observed_at=now,
         )
 
     adapter = GitHubObservationAdapter(token=None, opener=opener)
@@ -411,6 +625,7 @@ def verify_merge_pr(
             receipt_digest=receipt_digest,
             evidence=evidence,
             status=status,
+            reason=reason,
             observed_at=observed_at,
         )
 
@@ -470,4 +685,54 @@ def verify_merge_pr(
     return finalize(commit_kind, commit_reason)
 
 
-__all__ = ["verify_merge_pr"]
+def verify_merge_pr(
+    frozen_action: FrozenAction,
+    receipt: object,
+    *,
+    opener=None,
+) -> dict[str, object]:
+    """Produce one bounded public GitHub read-back for a Core merge action."""
+
+    if opener is not None and not callable(opener):
+        raise ContractError(_INVALID)
+    action, digest = _snapshot_action(frozen_action)
+    receipt_value, receipt_digest, receipt_started, receipt_finished = _snapshot_receipt(
+        receipt, action, digest
+    )
+    return _observe_merge_pr(
+        action=action,
+        digest=digest,
+        receipt_value=receipt_value,
+        receipt_digest=receipt_digest,
+        receipt_started=receipt_started,
+        receipt_finished=receipt_finished,
+        opener=opener,
+    )
+
+
+def verify_recorded_merge_pr(
+    action: object,
+    receipt: object,
+    *,
+    opener=None,
+) -> dict[str, object]:
+    """Produce a caller-attested read-back for a detached plain JSON action."""
+
+    if opener is not None and not callable(opener):
+        raise ContractError(_INVALID)
+    recorded_action, digest = _snapshot_recorded_action(action)
+    receipt_value, receipt_digest, receipt_started, receipt_finished = _snapshot_recorded_receipt(
+        receipt, recorded_action, digest
+    )
+    return _observe_merge_pr(
+        action=recorded_action,
+        digest=digest,
+        receipt_value=receipt_value,
+        receipt_digest=receipt_digest,
+        receipt_started=receipt_started,
+        receipt_finished=receipt_finished,
+        opener=opener,
+    )
+
+
+__all__ = ["verify_merge_pr", "verify_recorded_merge_pr"]

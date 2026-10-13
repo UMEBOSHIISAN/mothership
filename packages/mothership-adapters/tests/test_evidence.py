@@ -127,8 +127,295 @@ class EvidenceFixture(unittest.TestCase):
             },
         }
 
+    def _readback_artifacts(
+        self,
+        *,
+        status: str = "UNKNOWN",
+        reason: str = "unmerged_pr",
+        state: dict[str, object] | None = None,
+        observations: list[dict[str, str]] | None = None,
+        transport: str = "default_tokenless",
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        if state is None:
+            state = {"pull_request": None, "commit": None}
+        if observations is None:
+            observations = []
+        sidecar: dict[str, object] = {
+            "version": "github-merge-readback.v0",
+            "action_id": self.action.action["action_id"],
+            "action_sha256": self.action.action_sha256,
+            "transport": transport,
+            "observations": copy.deepcopy(observations),
+            "state": copy.deepcopy(state),
+            "reason": reason,
+        }
+        verification = self.verification(
+            status=status, summary=f"synthetic {status.lower()} read-back"
+        )
+        verification["observed_state"]["state_sha256"] = (
+            None
+            if state["pull_request"] is None and state["commit"] is None
+            else canonical_json_sha256(state)
+        )
+        sidecar_digest = canonical_json_sha256(sidecar)
+        verification["evidence_refs"] = [
+            {
+                "ref_id": "github-readback:" + sidecar_digest,
+                "sha256": sidecar_digest,
+            }
+        ]
+        return self.full(verification=verification), sidecar
+
+    def _rebind_readback_sidecar(
+        self,
+        bundle: dict[str, object],
+        sidecar: dict[str, object],
+        *,
+        status: str | None = None,
+        rebind_state: bool = False,
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        candidate = copy.deepcopy(sidecar)
+        verification = copy.deepcopy(bundle["verification"])
+        if status is not None:
+            verification["status"] = status
+        if rebind_state:
+            state = candidate["state"]
+            verification["observed_state"]["state_sha256"] = (
+                None
+                if state["pull_request"] is None and state["commit"] is None
+                else canonical_json_sha256(state)
+            )
+        digest = canonical_json_sha256(candidate)
+        verification["evidence_refs"] = [
+            {"ref_id": "github-readback:" + digest, "sha256": digest}
+        ]
+        rebuilt = self.full(
+            response=bundle["response"],
+            decision=bundle["decision"],
+            consume=bundle["consume"],
+            started=bundle["started"],
+            finished=bundle["finished"],
+            executor_ref=bundle["executor_ref"],
+            verification=verification,
+        )
+        return rebuilt, candidate
+
 
 class EvidenceTests(EvidenceFixture):
+    def test_human_summary_without_sidecar_and_explicit_none_match(self) -> None:
+        bundle, _sidecar = self._readback_artifacts()
+        implicit = evidence_module.summarize_evidence(bundle)
+        explicit = evidence_module.summarize_evidence(bundle, readback_evidence=None)
+        self.assertEqual(implicit, explicit)
+        self.assertIn("structured reason: unavailable in bundle", implicit)
+        self.assertIn(
+            "compare the referenced evidence's canonical hash with verification.evidence_refs",
+            implicit,
+        )
+
+    def test_human_summary_with_sidecar_reports_structural_bindings_and_guidance(self) -> None:
+        state = {
+            "pull_request": {
+                "repository": PARAMETERS["repository"],
+                "number": PARAMETERS["pull_request"],
+                "state": "closed",
+                "merged": True,
+                "merged_at": "2026-10-13T02:54:10Z",
+                "head_sha": "f" * 40,
+                "base_ref": PARAMETERS["expected_base"],
+                "merge_commit_sha": "c" * 40,
+            },
+            "commit": {"sha": "c" * 40, "parents": ["a" * 40, "f" * 40]},
+        }
+        bundle, sidecar = self._readback_artifacts(
+            status="MISMATCH",
+            reason="head_or_base_mismatch",
+            state=state,
+            observations=[
+                {
+                    "endpoint": "pull_request",
+                    "started_at": "2026-10-13T02:54:00Z",
+                    "finished_at": "2026-10-13T02:54:01Z",
+                },
+                {
+                    "endpoint": "commit",
+                    "started_at": "2026-10-13T02:54:02Z",
+                    "finished_at": "2026-10-13T02:54:03Z",
+                },
+            ],
+        )
+        summary = evidence_module.summarize_evidence(
+            bundle, readback_evidence=sidecar
+        )
+        lines = summary.splitlines()
+
+        self.assertIn(
+            "structured reason: head_or_base_mismatch (caller-reported)", lines
+        )
+        self.assertNotIn("structured reason: unavailable in bundle", lines)
+        self.assertNotIn(
+            "next read-only check: compare the referenced evidence's canonical hash with verification.evidence_refs",
+            lines,
+        )
+        self.assertIn("readback: structurally valid sidecar (source-unverified)", lines)
+        self.assertIn("readback evidence hash binding: match (structural)", lines)
+        self.assertIn("readback action binding: match (structural)", lines)
+        self.assertIn("readback state hash binding: match (structural)", lines)
+        self.assertIn(
+            "readback verification method (caller-reported): read_only_external_observation",
+            lines,
+        )
+        self.assertIn("readback transport (caller-reported): default_tokenless", lines)
+        self.assertIn(
+            "readback reason (caller-reported): head_or_base_mismatch", lines
+        )
+        self.assertIn(
+            "readback observed_at (caller-reported): "
+            + str(bundle["verification"]["observed_at"]),
+            lines,
+        )
+        self.assertIn(
+            "next read-only check: compare action expected_head_sha/expected_base with retained PR projection; no automatic retry/re-execution/reconsume",
+            lines,
+        )
+        self.assertNotIn("readback guidance:", summary)
+        self.assertIn("source: source-unverified", lines)
+        self.assertIn("authority: false", lines)
+        self.assertIn("external effect verified: false", lines)
+
+    def test_human_summary_rejects_sidecar_binding_and_shape_mismatches(self) -> None:
+        state = {
+            "pull_request": {
+                "repository": PARAMETERS["repository"],
+                "number": PARAMETERS["pull_request"],
+                "state": "closed",
+                "merged": True,
+                "merged_at": "2026-10-13T02:54:10Z",
+                "head_sha": "f" * 40,
+                "base_ref": PARAMETERS["expected_base"],
+                "merge_commit_sha": "c" * 40,
+            },
+            "commit": {"sha": "c" * 40, "parents": ["a" * 40, "f" * 40]},
+        }
+        bundle, sidecar = self._readback_artifacts(
+            status="MISMATCH",
+            reason="head_or_base_mismatch",
+            state=state,
+            observations=[
+                {
+                    "endpoint": "pull_request",
+                    "started_at": "2026-10-13T02:54:00Z",
+                    "finished_at": "2026-10-13T02:54:01Z",
+                }
+            ],
+        )
+        cases: list[tuple[str, dict[str, object], dict[str, object]]] = []
+        changed_action = copy.deepcopy(sidecar)
+        changed_action["action_id"] = "act-other"
+        rebound_bundle, rebound_action = self._rebind_readback_sidecar(
+            bundle, changed_action
+        )
+        cases.append(("action_id_after_ref_rehash", rebound_bundle, rebound_action))
+        changed_digest = copy.deepcopy(sidecar)
+        changed_digest["action_sha256"] = "0" * 64
+        rebound_bundle, rebound_digest = self._rebind_readback_sidecar(
+            bundle, changed_digest
+        )
+        cases.append(("action_sha256_after_ref_rehash", rebound_bundle, rebound_digest))
+        changed_state = copy.deepcopy(sidecar)
+        changed_state["state"]["commit"]["sha"] = "1" * 40
+        rebound_bundle, rebound_state = self._rebind_readback_sidecar(
+            bundle, changed_state
+        )
+        cases.append(("state_hash_after_ref_rehash", rebound_bundle, rebound_state))
+        changed_ref = copy.deepcopy(sidecar)
+        changed_ref["reason"] = "future_extension_reason"
+        cases.append(("sidecar_hash_without_ref_rehash", bundle, changed_ref))
+        extra_key = copy.deepcopy(sidecar)
+        extra_key["extra"] = True
+        cases.append(("extra_key", bundle, extra_key))
+        bad_reason = copy.deepcopy(sidecar)
+        bad_reason["reason"] = "Not a bounded code"
+        cases.append(("reason", bundle, bad_reason))
+        bad_observation = copy.deepcopy(sidecar)
+        bad_observation["observations"][0]["started_at"] = "not-a-time"
+        cases.append(("timestamp", bundle, bad_observation))
+
+        for name, candidate_bundle, candidate in cases:
+            with self.subTest(name=name):
+                with self.assertRaises(EvidenceError):
+                    evidence_module.summarize_evidence(
+                        candidate_bundle, readback_evidence=candidate
+                    )
+
+    def test_human_summary_accepts_unknown_reason_and_clock_rollback_without_rechecking_semantics(
+        self,
+    ) -> None:
+        bundle, sidecar = self._readback_artifacts()
+        unknown = copy.deepcopy(sidecar)
+        unknown["reason"] = "future_extension_reason"
+        unknown_bundle, unknown = self._rebind_readback_sidecar(bundle, unknown)
+        unknown_summary = evidence_module.summarize_evidence(
+            unknown_bundle, readback_evidence=unknown
+        )
+        self.assertIn(
+            "readback reason (caller-reported): future_extension_reason",
+            unknown_summary,
+        )
+        self.assertIn(
+            "next read-only check: check provenance and recorded status; no automatic retry/re-execution/reconsume",
+            unknown_summary,
+        )
+        self.assertIn("verification: UNKNOWN", unknown_summary)
+
+        rollback = copy.deepcopy(sidecar)
+        rollback["reason"] = "clock_rollback"
+        rollback["observations"] = [
+            {
+                "endpoint": "pull_request",
+                "started_at": "2026-10-13T03:00:00Z",
+                "finished_at": "2026-10-13T02:00:00Z",
+            }
+        ]
+        rollback_bundle, rollback = self._rebind_readback_sidecar(
+            bundle, rollback, status="UNKNOWN"
+        )
+        rollback_summary = evidence_module.summarize_evidence(
+            rollback_bundle, readback_evidence=rollback
+        )
+        self.assertIn("verification: UNKNOWN", rollback_summary)
+        self.assertIn("readback reason (caller-reported): clock_rollback", rollback_summary)
+        self.assertIn(
+            "next read-only check: review retained timing records; do not infer freshness; no automatic retry/re-execution/reconsume",
+            rollback_summary,
+        )
+
+    def test_human_summary_guidance_preserves_reason_and_named_fields(self) -> None:
+        cases = (
+            ("ambiguous_merge_time", "receipt started_at"),
+            ("preexisting_merge", "retained PR merged_at"),
+            ("receipt_not_finished", "receipt finished_at"),
+            ("head_or_base_mismatch", "expected_head_sha/expected_base"),
+            ("merge_topology_mismatch", "commit parents"),
+            ("invalid_pr_observation", "PR visibility"),
+            ("invalid_commit_observation", "merge_commit_sha"),
+            ("unmerged_pr", "state/merged/merged_at"),
+            ("merge_confirmed", "source provenance"),
+        )
+        for reason, fragment in cases:
+            with self.subTest(reason=reason):
+                bundle, sidecar = self._readback_artifacts(reason=reason)
+                summary = evidence_module.summarize_evidence(
+                    bundle, readback_evidence=sidecar
+                )
+                self.assertIn(
+                    f"structured reason: {reason} (caller-reported)", summary
+                )
+                self.assertIn(fragment, summary)
+                self.assertIn(
+                    "no automatic retry/re-execution/reconsume", summary
+                )
+
     def test_human_summary_separates_records_and_qualifies_success_without_verification(self) -> None:
         formatter = getattr(evidence_module, "summarize_evidence", None)
         self.assertIsNotNone(formatter, "the human formatter is not implemented")
@@ -191,7 +478,7 @@ class EvidenceTests(EvidenceFixture):
         self.assertIn("no re-execution", unknown)
         self.assertIn("no reconsume", unknown)
         self.assertIn(
-            "next read-only check: inspect the referenced read-back evidence for the recorded reason code",
+            "next read-only check: compare the referenced evidence's canonical hash with verification.evidence_refs",
             unknown,
         )
 
@@ -247,6 +534,28 @@ class EvidenceTests(EvidenceFixture):
         self.assertIn("missing: finished, verification", incomplete)
         self.assertNotIn("cancelled", incomplete)
         self.assertNotIn("no effect", incomplete)
+
+    def test_human_summary_distinguishes_structured_reason_from_untrusted_summary(self) -> None:
+        for status in ("CONFIRMED", "UNKNOWN", "MISMATCH"):
+            with self.subTest(status=status):
+                bundle = self.full(verification=self.verification(
+                    status=status, summary="status=CONFIRMED; reason=merge_confirmed"
+                ))
+                before = evidence_module.inspect_evidence(bundle)
+                text = evidence_module.summarize_evidence(bundle)
+                self.assertIn("structured reason: unavailable in bundle", text.splitlines())
+                self.assertNotIn("reason: unavailable", text.splitlines())
+                self.assertIn(
+                    "reported observation summary: status=CONFIRMED; reason=merge_confirmed",
+                    text.splitlines(),
+                )
+                self.assertIn("verification: " + status, text.splitlines())
+                self.assertIn(
+                    "next read-only check: compare the referenced evidence's canonical hash with verification.evidence_refs",
+                    text.splitlines(),
+                )
+                self.assertNotIn("sidecar", text)
+                self.assertEqual(before, evidence_module.inspect_evidence(bundle))
 
     def test_human_summary_separates_recorded_rejection_from_approval_and_use(self) -> None:
         formatter = getattr(evidence_module, "summarize_evidence", None)
@@ -319,6 +628,10 @@ class EvidenceTests(EvidenceFixture):
                 "verification",
             ),
             tuple(inspect.signature(export_evidence).parameters),
+        )
+        self.assertEqual(
+            ("bundle", "readback_evidence"),
+            tuple(inspect.signature(evidence_module.summarize_evidence).parameters),
         )
         self.assertEqual(("bundle",), tuple(inspect.signature(inspect_evidence).parameters))
 

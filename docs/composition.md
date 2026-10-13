@@ -84,6 +84,59 @@ does not authenticate GitHub, the executor, a human, or the method used to
 create a merge. Two GETs are a bounded non-atomic snapshot, and the current
 action profile does not bind a base commit SHA.
 
+### Read back a recorded bundle
+
+For a retained bundle whose Core action is no longer live, the companion also
+provides `verify_recorded_merge_pr(action, receipt, *, opener=None)`. It accepts
+a plain detached action mapping and its bound Receipt as caller-attested data.
+It validates the action digest and Receipt binding, then shares the existing
+read-only observer; it never restores or reissues a `FrozenAction`, consumes
+authority, calls an executor, or changes a ledger. This entry point can observe
+after the Core action has expired because it has no authority operation. The
+existing `verify_merge_pr()` remains strict and still requires the live
+Core-issued `FrozenAction` in the same process.
+
+The installed adapter exposes this path only through the explicit
+`mothership-evidence readback` command. Before any GET it validates one complete
+`host-evidence-bundle.v0`, its derived Receipt, and `missing == ["verification"]`;
+an incomplete bundle or an existing Verification is rejected and cannot be
+replaced. A successful command writes a distinct verified bundle to stdout and
+the complete sanitized observer evidence as one JSON sidecar on stderr:
+
+```sh
+mothership-evidence readback < original.json > verified.json 2> readback-evidence.json
+```
+
+Require exit status `0`, keep `original.json` unchanged, and retain the sidecar.
+The Python helper `mothership_adapters.readback.readback_evidence(bundle, *,
+opener=None)` returns `{"bundle": ..., "evidence": ...}`. Its complete
+`evidence` sidecar's canonical SHA-256 must equal the `sha256` in the new
+Verification's `evidence_refs`. The observer performs at most two public tokenless GETs and
+does not use credentials, an `Authorization` header, retry, polling, authority,
+or an external effect. Input/setup failures use a fixed sanitized stderr
+diagnostic and nonzero exit; the command emits the sidecar before stdout and
+callers must discard both streams on any nonzero exit, including partial output.
+Do not merge stdout and stderr with `2>&1`. `UNKNOWN` and `MISMATCH`
+observations remain valid output bundles with their status preserved. `export`, `inspect`,
+`inspect --human`, and the MCP tools remain offline and do not initiate this
+read-back.
+
+The producer writes an allowlisted fixed reason code and bounded explanation
+into the existing `observed_state.summary`. `inspect --human` displays that
+caller-reported summary after escaping it for terminal output, while keeping
+the `caller-attested` / `source-unverified`, `authority=false`, and
+`external_effect_verified=false` qualifications. The summary is display data;
+the inspector does not parse it into a trusted structured reason or authenticate
+the source.
+
+Supplying `inspect --human --readback-evidence readback-evidence.json` with
+`verified.json` on stdin also checks the existing sidecar's canonical hash,
+action identity/digest and observed-state binding offline. It displays the
+sidecar's structured reason as caller-reported data. Hash consistency does not
+change source authentication, effect status, timing or causation guarantees.
+The [adapter guide](host-adapters.md#read-only-evidence-routes) describes the
+bounded regular-file input, failure behavior and preserved UNKNOWN cases.
+
 ## Portable action review seam
 
 The source candidate adds the pure
