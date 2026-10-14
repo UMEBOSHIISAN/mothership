@@ -128,6 +128,73 @@ ledgers. A real host retains its ledgers in a private mode0700 parent directory;
 or uncertain transport result is preserved as rejection or UNKNOWN according
 to the existing contract. There is no retry, restart, or reconsume path.
 
+## Session failures and existing evidence
+
+The local diagnostic API described here is an additive source change. The pinned
+PR #45 revision above does not contain it; use a checkout containing this change
+and record that revision. It is not a released-package or live-host qualification.
+
+Python callers can read `SessionError.diagnostic` without exposing callback or
+ledger exception text. It is a detached mapping: changing the returned mapping
+does not change the error or session. Existing exception messages, terminal
+states and execution results remain unchanged.
+
+```python
+import json
+from mothership_adapters.session import SessionError
+
+try:
+    result = session.execute(parameters)  # The host's one approved invocation.
+except SessionError as error:
+    print(json.dumps(error.diagnostic, sort_keys=True))
+    # Keep the existing records for inspection; do not execute again here.
+```
+
+The mapping contains `code`, `phase`, `authority_use`, `external_effect`,
+`next_check`, and `retry_allowed` (always false). Codes and phases come from a
+fixed vocabulary, never from raw exceptions, paths or host input. The phase is
+the last local boundary observed, not a certified exact failure location.
+
+| Observed phase | What to inspect |
+| --- | --- |
+| `review_validation` | Retained request and response; their action, expiry and context binding |
+| `decision_record` | Existing authority records; the decision write may have persisted before raising |
+| `execution_validation` | Retained request and supplied parameters/context, plus existing records |
+| `companion_execution`, `preflight_transport`, `preflight_returned` | Existing authority and attempt records; the last phase does not prove whether consume/start persisted |
+| `mutation_guard`, `mutation_transport`, `mutation_returned` | Existing authority and attempt records; transport return does not prove external success or finish persistence |
+| `receipt_build`, `result_export` | Existing evidence and source records; do not manufacture a Receipt or missing record |
+| `unknown` | Existing evidence and source records; this includes owner/phase errors and unclassified errors |
+
+`authority_use` means one-shot consume, not writing an approval/rejection.
+`not_attempted BY THIS CALL` is limited to the current call before companion
+entry; it says nothing about earlier calls, other tools or host callback effects.
+Once the companion is entered, authority use and external effect are both
+`unknown`. This intentionally does not infer a durable consume or remote outcome
+from an exception or from the absence of a record.
+
+The fixed `next_check` values select these read-only categories:
+`review_request`, `authority_records`, `review_request_and_existing_records`,
+`authority_and_attempt_records`, or `existing_evidence_bundle`. They are guidance,
+not executable commands or permission to create replacement evidence. The
+owner/JavaScript protocol still reports its existing generic error; this Python
+mapping is not automatically forwarded through every host adapter.
+
+If an evidence bundle has already been retained or exported through the existing
+validated exporter, inspect it offline:
+
+```sh
+mothership-evidence inspect --human < existing-bundle.json
+```
+
+This command requires that existing file. Diagnostics do not save or assemble a
+bundle and do not read a ledger themselves. Preserve original records and bind
+any exported bundle using the existing [evidence route](#read-only-evidence-routes).
+A missing finish remains missing: inspection can explain the missing Receipt and
+Verification, but `readback` still accepts only complete execution evidence with
+`missing == ["verification"]`. Do not insert a finish, mint a Receipt, retry a
+mutation or consume again to make the bundle eligible. Inspecting records is not
+proof of their origin or the current external state.
+
 ## Python host routes
 
 The optional SDK adapters do not replace the retained session or serialize it

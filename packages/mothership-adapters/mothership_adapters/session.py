@@ -20,8 +20,106 @@ from mothership_github.executor import execute_action_merge_pr
 from mothership_github.external_action import build_external_action_receipt
 
 
+_NOT_ATTEMPTED = "not_attempted BY THIS CALL"
+_UNKNOWN = "unknown"
+_DIAGNOSTIC_KEYS = frozenset({
+    "code", "phase", "authority_use", "external_effect", "next_check", "retry_allowed"
+})
+_PHASE_DIAGNOSTICS = {
+    "review_validation": ("review_validation_failed", "review_request"),
+    "decision_record": ("decision_record_failed", "authority_records"),
+    "execution_validation": ("execution_validation_failed", "review_request_and_existing_records"),
+    "preflight_transport": ("preflight_transport_failed", "review_request_and_existing_records"),
+    "preflight_returned": ("preflight_returned_failed", "review_request_and_existing_records"),
+    "companion_execution": ("companion_execution_failed", "authority_and_attempt_records"),
+    "mutation_guard": ("mutation_guard_failed", "authority_and_attempt_records"),
+    "mutation_transport": ("mutation_transport_failed", "authority_and_attempt_records"),
+    "mutation_returned": ("mutation_returned_failed", "authority_and_attempt_records"),
+    "receipt_build": ("receipt_build_failed", "existing_evidence_bundle"),
+    "result_export": ("result_export_failed", "existing_evidence_bundle"),
+}
+_KNOWN_PHASES = frozenset(_PHASE_DIAGNOSTICS) | {"unknown"}
+_KNOWN_CODES = frozenset(code for code, _ in _PHASE_DIAGNOSTICS.values()) | {"unknown"}
+_KNOWN_NEXT_CHECKS = frozenset(next_check for _, next_check in _PHASE_DIAGNOSTICS.values())
+
+
+def _unknown_diagnostic():
+    return {
+        "code": _UNKNOWN,
+        "phase": _UNKNOWN,
+        "authority_use": _UNKNOWN,
+        "external_effect": _UNKNOWN,
+        "next_check": "existing_evidence_bundle",
+        "retry_allowed": False,
+    }
+
+
+def _sanitize_diagnostic(value):
+    if type(value) is not dict or set(value) != _DIAGNOSTIC_KEYS:
+        return _unknown_diagnostic()
+    if (
+        type(value["code"]) is not str
+        or value["code"] not in _KNOWN_CODES
+        or type(value["phase"]) is not str
+        or value["phase"] not in _KNOWN_PHASES
+        or type(value["authority_use"]) is not str
+        or value["authority_use"] not in {_NOT_ATTEMPTED, _UNKNOWN}
+        or type(value["external_effect"]) is not str
+        or value["external_effect"] not in {_NOT_ATTEMPTED, _UNKNOWN}
+        or type(value["next_check"]) is not str
+        or value["next_check"] not in _KNOWN_NEXT_CHECKS
+        or value["retry_allowed"] is not False
+    ):
+        return _unknown_diagnostic()
+    return {key: value[key] for key in (
+        "code", "phase", "authority_use", "external_effect", "next_check", "retry_allowed"
+    )}
+
+
+class _DiagnosticTracker:
+    """Per-invocation control-flow observation with no durable state."""
+
+    def __init__(self, phase):
+        self._phase = phase if phase in _KNOWN_PHASES else _UNKNOWN
+        self._entered_companion = False
+
+    def set(self, phase):
+        self._phase = phase if phase in _KNOWN_PHASES else _UNKNOWN
+
+    def enter_companion(self):
+        self._entered_companion = True
+        self.set("companion_execution")
+
+    def diagnostic(self):
+        if self._phase not in _PHASE_DIAGNOSTICS:
+            return _unknown_diagnostic()
+        code, next_check = _PHASE_DIAGNOSTICS[self._phase]
+        if self._entered_companion:
+            authority_use = external_effect = _UNKNOWN
+            if self._phase not in {"receipt_build", "result_export"}:
+                next_check = "authority_and_attempt_records"
+        else:
+            authority_use = external_effect = _NOT_ATTEMPTED
+        return _sanitize_diagnostic({
+            "code": code,
+            "phase": self._phase,
+            "authority_use": authority_use,
+            "external_effect": external_effect,
+            "next_check": next_check,
+            "retry_allowed": False,
+        })
+
+
 class SessionError(ValueError):
     """Finite, sanitized adapter error; never permission to retry an action."""
+
+    def __init__(self, *args, _diagnostic=None):
+        super().__init__(*args)
+        self._diagnostic = _sanitize_diagnostic(_diagnostic)
+
+    @property
+    def diagnostic(self):
+        return dict(self._diagnostic)
 
 
 def _detach(value):
@@ -29,8 +127,9 @@ def _detach(value):
 
 
 class _GuardedTransport:
-    def __init__(self, owner):
+    def __init__(self, owner, tracker=None):
         self.owner = owner
+        self.tracker = tracker
 
     def get_pull_request(self, repository, pull_request):
         owner = self.owner
@@ -39,19 +138,31 @@ class _GuardedTransport:
             [owner._parameters["repository"], owner._parameters["pull_request"]]
         ):
             raise SessionError("transport parameters differ")
-        return owner._transport.get_pull_request(repository, pull_request)
+        if self.tracker is not None:
+            self.tracker.set("preflight_transport")
+        result = owner._transport.get_pull_request(repository, pull_request)
+        if self.tracker is not None:
+            self.tracker.set("preflight_returned")
+        return result
 
     def merge_pull_request(self, **parameters):
         owner = self.owner
         # Companion has consumed by this point. A failure here is caught by
         # companion and recorded as one uncertain attempt, with no actual PUT.
+        if self.tracker is not None:
+            self.tracker.set("mutation_guard")
         owner._guard()
         expected = {key: owner._parameters[key] for key in (
             "repository", "pull_request", "expected_head_sha", "merge_method"
         )}
         if canonical_json_bytes(parameters) != canonical_json_bytes(expected):
             raise SessionError("transport parameters differ")
-        return owner._transport.merge_pull_request(**parameters)
+        if self.tracker is not None:
+            self.tracker.set("mutation_transport")
+        result = owner._transport.merge_pull_request(**parameters)
+        if self.tracker is not None:
+            self.tracker.set("mutation_returned")
+        return result
 
 
 class MergeReviewSession:
@@ -140,6 +251,7 @@ class MergeReviewSession:
 
     def review(self, response) -> str:
         self._claim("pending", "reviewing")
+        tracker = _DiagnosticTracker("review_validation")
         try:
             retained = _detach(response)
             checked = validate_review_response(self._action, self._request, retained,
@@ -147,6 +259,7 @@ class MergeReviewSession:
             with self._lock:
                 if self._canceled:
                     raise SessionError("session canceled")
+            tracker.set("decision_record")
             decision = record_action_decision(self._authority_path, self._action,
                                               checked["decision"], checked["action_id"],
                                               checked["action_sha256"])
@@ -157,30 +270,34 @@ class MergeReviewSession:
             return checked["decision"]
         except Exception:
             self._fail()
-            raise SessionError("session failed") from None
+            raise SessionError("session failed", _diagnostic=tracker.diagnostic()) from None
 
     def execute(self, parameters) -> dict:
         self._claim("approved", "executing")
+        tracker = _DiagnosticTracker("execution_validation")
         try:
             if canonical_json_bytes(parameters) != canonical_json_bytes(self._parameters):
                 raise SessionError("execution parameters differ")
             self._guard()
+            tracker.enter_companion()
             result = execute_action_merge_pr(self._authority_path, self._attempts_path,
                                              self._action, self._decision["event_id"],
-                                             _GuardedTransport(self))
+                                             _GuardedTransport(self, tracker))
+            tracker.set("receipt_build")
             receipt = build_external_action_receipt(
                 result["attempt_started"], result["attempt_finished"],
                 expected_action_id=self._request["action"]["action_id"],
                 expected_action_sha256=self._request["action_sha256"],
                 expected_consume_event_id=result["consume_event"]["event_id"],
                 executor_ref=self._executor_ref)
+            tracker.set("result_export")
             with self._lock:
                 self._state = "finished"
             return _detach({**result, "request": self._request, "response": self._response,
                             "decision": self._decision, "receipt": receipt, "verification": None})
         except Exception:
             self._fail()
-            raise SessionError("session failed") from None
+            raise SessionError("session failed", _diagnostic=tracker.diagnostic()) from None
 
     def cancel(self) -> None:
         self._check_pid()
