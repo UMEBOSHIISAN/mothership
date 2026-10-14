@@ -3,6 +3,25 @@
 Mothership reduces accidental authority and packaging drift by making boundaries inspectable. It is not a sandbox,
 secret manager, formal proof, or security certification.
 
+## Component scope
+
+This document distinguishes the Core package from optional packages and the host
+that composes them. Installing an adapter does not put every host tool under
+Mothership authority.
+
+| Component | Provides | Boundary retained by the caller |
+| --- | --- | --- |
+| Core (`mothership-control-plane`) | Exact action issuance, caller-attested decisions, ledger-local consume, pure record validation | Human identity, trusted ledger history, host isolation |
+| Optional GitHub companion (`mothership-github`) | Preflight, durable consume before at most one merge request, attempt records, Receipt projection, opt-in read-back producer | Credentials and transport configuration; external truth is not authenticated by record validation |
+| Optional adapters (`mothership-adapters`) | Retained review/execution sessions for the selected route, offline evidence inspection, explicit bounded readback entry | Host context assertions, other tools and alternate credential paths |
+| Host deployment | Selects exposed tools, credentials, callbacks and execution boundaries | Identifying managed and unmanaged operation paths; preventing alternate paths where required |
+
+The Agents SDK adapter retains existing tools alongside its managed tool. A host
+that also exposes a merge-capable credential through another tool has another
+operation path; it is not automatically governed by this adapter. Local work
+permission is not external-action approval. These are deployment responsibilities,
+not a claim that the optional integrations provide whole-host enforcement.
+
 ## Assets and trust zones
 
 | Zone | Treatment |
@@ -66,8 +85,8 @@ Router and observation fixtures keep `authority_effect: false` and `execution_ef
 
 ## Boundary record contracts
 
-The current source contains three strict, closed contracts for a future
-external-action workflow. Their implementation is limited to pure schema
+The Core exposes three strict, closed boundary record contracts. Their
+validation implementation is limited to pure schema
 validation and exact receipt/verification binding:
 
 - `consequence-proposal.v0` is non-authorizing and non-executing. It is limited
@@ -92,10 +111,13 @@ promote a receipt into verification, authorize a retry, or create authority.
 Schema validation proves only closed record shape and the declared
 action/receipt binding. It does not authenticate an executor or verifier,
 operationally isolate an executor, or enforce a verifier's read-only behavior.
-The package ships no executor, verifier producer, network mutation, or live
-external-action end-to-end path. A future executor must re-check mutable
-external preconditions immediately before mutation; the current package does
-not perform that check.
+The Core package ships no executor, verifier producer, or network mutation.
+The optional GitHub companion supplies a bounded executor and an opt-in read-back
+producer; its preflight checks do not eliminate external-state races. The optional
+adapters compose those facilities only for their selected operation path.
+Record validation remains distinct from executing or independently observing an
+operation. See the [composition guide](composition.md) and
+[host adapter guide](host-adapters.md).
 
 Policy eligibility, identity, role, and human-ceremony data are evidence
 references only. Mothership does not authenticate human identity, implement
@@ -167,6 +189,34 @@ Actual external effects require a separately configured bounded executor. That e
 preconditions, use only the consumed exact action, and produce receipt and verification evidence. Authority consumption
 does not authorize retries: a failed or ambiguous execution requires a newly attested exact action rather than
 automatic retry or fallback.
+
+## Session diagnostics and incomplete evidence
+
+Python `SessionError.diagnostic` is a finite, sanitized observation of the failing
+call. It does not read ledgers, authenticate records, certify an external effect,
+or authorize a retry. The last observed phase can precede the actual failure:
+`preflight_returned` also covers later consume/start failures, and
+`mutation_returned` can precede a failed finish write. A returned transport value
+is not proof that the external operation succeeded.
+
+`authority_use` refers only to consume, not decision recording. Before entering
+the companion, `not_attempted BY THIS CALL` describes that invocation's consume
+and mutation path, not previous calls or effects from host callbacks/other tools.
+After companion entry both authority use and external effect remain `unknown`;
+a write can fail after persisting data. Owner/phase errors also remain unknown.
+Use the existing authority and attempt records to investigate; absence of a record
+is not proof of absence of an operation. Exception text, credentials, paths and
+input values are not included in this diagnostic mapping. The original exception
+messages and the owner/JavaScript error protocol are unchanged; automatic
+forwarding across those host boundaries is not claimed.
+
+The [Session diagnostic guide](host-adapters.md#session-failures-and-existing-evidence)
+explains the fixed next-check categories. Existing `inspect --human` can display
+missing finish/Receipt/Verification in an incomplete bundle. Existing `readback`
+still requires complete execution evidence missing only Verification. Do not
+invent a finish or Receipt to satisfy that prerequisite, reconsume an approval,
+or reexecute an uncertain operation. A new incomplete-attempt observation path
+is not provided by these diagnostics.
 
 ## Installation boundary
 
