@@ -197,16 +197,6 @@ approvals or external transports. They do not test timing; existing
 fixed clock for expiry and host-context binding. No caller-controlled runtime
 clock, model checker, event store, or retry policy is added.
 
-The design background is the separation of request identity and changed intent
-in [AWS's idempotent API discussion](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/),
-and the risk of repeating external updates during replay in
-[Fowler's Event Sourcing discussion](https://martinfowler.com/eaaDev/EventSourcing.html).
-Here the adopted pieces are validation and read-only inspection tests;
-idempotent effect retries and an Event Sourcing architecture are not adopted.
-[Lamport's Specifying Systems](https://lamport.azurewebsites.net/tla/book.html)
-provides background for explicit state/ordering reasoning, while these tests
-remain ordinary implementation regressions.
-
 ## Application and host handoff obligations
 
 These obligations identify the owner of each boundary. They are not new Core
