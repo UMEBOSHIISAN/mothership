@@ -13,21 +13,21 @@ route is documented separately below.
 
 ## Install the source candidate in one checkout
 
-The readback and inspect-sidecar functionality from [PR #45](https://github.com/UMEBOSHIISAN/mothership/pull/45)
-is merged into main and remains unreleased. To reproduce that PR's reviewed
-runtime, pin revision
-`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`. Review the source and current
-target before using it, record both revisions, and keep the checkout detached.
-This reproduces the recorded runtime; later main changes are not included in the pin.
-This is a documentation recipe and does not claim that the packages are
-installed or that a live host has been qualified. Start in a new directory:
+### Try the current candidate
+
+For the features documented in this guide, use the unreleased source candidate
+at `bd6a2e83da9ae75ee38cf1914e4017971063a90d` (PR #49 merged on 2026-10-15).
+This revision includes readback/inspect-sidecar, explicit JavaScript callback
+modes, and Python `SessionError.diagnostic`. It is a fixed snapshot, not a
+promise to include later main changes. Review the source before use and record
+the exact revision. Start in a new directory:
 
 ```sh
-git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-readback
-cd mothership-readback
-git fetch origin 91f474ed9ba96f5c00925d44f3dd84739d41cdc7
+git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-candidate
+cd mothership-candidate
+git fetch origin bd6a2e83da9ae75ee38cf1914e4017971063a90d
 git rev-parse --verify FETCH_HEAD
-git checkout --detach FETCH_HEAD
+git checkout --detach bd6a2e83da9ae75ee38cf1914e4017971063a90d
 git rev-parse --verify HEAD
 
 python3 -m venv .venv
@@ -37,6 +37,32 @@ python -m pip install \
   -e packages/mothership-github \
   -e packages/mothership-adapters
 ```
+
+Check that both printed revisions equal the selected full SHA. This recipe does
+not claim that a package release or live host has been qualified. Python 3.12 or
+later is required; all three packages must come from this same checkout.
+
+### Reproduce the PR #45 runtime
+
+To reproduce the historical readback/inspect-sidecar runtime reviewed for
+[PR #45](https://github.com/UMEBOSHIISAN/mothership/pull/45), keep its original pin
+`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`. It excludes the later callback-mode
+change and Session diagnostics. Use the documentation at that revision when
+reproducing historical behavior; do not apply later API examples to it.
+Start in a separate new directory:
+
+```sh
+git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-readback
+cd mothership-readback
+git fetch origin 91f474ed9ba96f5c00925d44f3dd84739d41cdc7
+git rev-parse --verify FETCH_HEAD
+git checkout --detach 91f474ed9ba96f5c00925d44f3dd84739d41cdc7
+git rev-parse --verify HEAD
+```
+
+Check that both printed revisions equal the historical full SHA, then run the
+same venv and three-package install commands above in this historical checkout.
+Keep historical test evidence separate from current-candidate evidence.
 
 The three editable installs are from the same checkout. Optional SDK extras are
 opt-in; select only the extras required by the routes you use. The following
@@ -130,9 +156,9 @@ to the existing contract. There is no retry, restart, or reconsume path.
 
 ## Session failures and existing evidence
 
-The local diagnostic API described here is an additive source change. The pinned
-PR #45 revision above does not contain it; use a checkout containing this change
-and record that revision. It is not a released-package or live-host qualification.
+The Python diagnostic API is included in the [current candidate](#try-the-current-candidate)
+pinned above. The historical PR #45 revision does not contain it. Record the
+selected revision; this is not a released-package or live-host qualification.
 
 Python callers can read `SessionError.diagnostic` without exposing callback or
 ledger exception text. It is a detached mapping: changing the returned mapping
