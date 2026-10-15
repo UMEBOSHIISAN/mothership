@@ -196,15 +196,16 @@ class ReadmeContractTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "PURPOSE",
-                "責務分担",
-                "HISTORICAL BASELINE: v0.4.2",
-                "現在のMothership Core",
-                "現在の参照profile",
-                "公開結果の一例",
+                "結果の読み方",
                 "クイックスタート",
                 "現在の制約",
+                "現在の参照profile",
+                "責務分担",
+                "PURPOSE",
+                "現在のMothership Core",
                 "詳細ドキュメント",
+                "HISTORICAL BASELINE: v0.4.2",
+                "公開結果の一例",
                 "License",
             ),
             headings,
@@ -217,15 +218,16 @@ class ReadmeContractTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "PURPOSE",
-                "Responsibility split",
-                "HISTORICAL BASELINE: v0.4.2",
-                "How the current Mothership Core works",
-                "Current reference profile",
-                "One public result",
+                "Read a result",
                 "Quick start",
                 "Current limitations",
+                "Current reference profile",
+                "Responsibility split",
+                "PURPOSE",
+                "How the current Mothership Core works",
                 "Documentation",
+                "HISTORICAL BASELINE: v0.4.2",
+                "One public result",
                 "License",
             ),
             english_headings,
@@ -273,7 +275,7 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("No external permission conversion or auto bridge", english_map)
         self.assertNotIn("やる / 確認 / しない", japanese_map)
         self.assertNotIn("Will do / confirm / will not do", english_map)
-        purpose = self.text.split("## PURPOSE", 1)[1].split("## 責務分担", 1)[0]
+        purpose = self.text.split("## PURPOSE", 1)[1].split("\n## ", 1)[0]
         self.assertNotIn("github.merge_pr", purpose)
         self.assertNotIn("医療製品", self.text)
 
@@ -618,13 +620,17 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
             "# Mothership",
             'src="assets/mothership-banner.png"',
             "人間が全部を抱えず、AIにも全部を明け渡さない。",
-            "## PURPOSE",
-            "## 責務分担",
-            "## HISTORICAL BASELINE: v0.4.2",
+            "## 結果の読み方",
+            "## クイックスタート",
+            "## 現在の制約",
             "## 現在の参照profile",
+            "## 責務分担",
+            "## PURPOSE",
+            "## 現在のMothership Core",
+            "## 詳細ドキュメント",
+            "## HISTORICAL BASELINE: v0.4.2",
             "## 公開結果の一例",
             f"]({E2E_EVIDENCE_LINK})",
-            "## クイックスタート",
         )
         for value in ordered:
             self.assertIn(value, normalized)
