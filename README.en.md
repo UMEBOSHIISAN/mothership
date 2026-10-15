@@ -47,13 +47,19 @@ included to show the reading boundary; it is not an actual operation or
 external proof.
 
 ```text
+provided records (caller-reported)
 approval: recorded (approve)
-authority use: recorded
-receipt: SUCCESS
+authority use: recorded (consume event in provided records)
+receipt: SUCCESS (executor report; independent confirmation is separate)
 verification: missing
+missing: verification
 conclusion: executor-reported success only
+inspection scope (structural only)
+provenance: caller-attested
 source: source-unverified
-external effect verified: false
+authority: false (this inspection grants no execution permission)
+source authenticated: false
+external effect verified: false (this inspection does not observe external state)
 next read-only check: inspect an existing independent Verification record for this action, if one exists
 recovery: no re-execution; no reconsume
 ```
