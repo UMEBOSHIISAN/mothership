@@ -280,8 +280,13 @@ class EvidenceTests(EvidenceFixture):
         )
         self.assertNotIn("readback guidance:", summary)
         self.assertIn("source: source-unverified", lines)
-        self.assertIn("authority: false", lines)
-        self.assertIn("external effect verified: false", lines)
+        self.assertIn(
+            "authority: false (this inspection grants no execution permission)", lines
+        )
+        self.assertIn(
+            "external effect verified: false (this inspection does not observe external state)",
+            lines,
+        )
 
     def test_human_summary_rejects_sidecar_binding_and_shape_mismatches(self) -> None:
         state = {
@@ -455,16 +460,27 @@ class EvidenceTests(EvidenceFixture):
         summary = formatter(self.full())
 
         self.assertIn("approval: recorded", summary)
-        self.assertIn("authority use: recorded", summary)
-        self.assertIn("receipt: SUCCESS", summary)
+        self.assertIn("authority use: recorded (consume event in provided records)", summary)
+        self.assertIn(
+            "receipt: SUCCESS (executor report; independent confirmation is separate)",
+            summary,
+        )
         self.assertIn("verification: missing", summary)
         self.assertIn("missing: verification", summary)
         self.assertIn("conclusion: executor-reported success only", summary)
         self.assertIn("provenance: caller-attested", summary)
         self.assertIn("source: source-unverified", summary)
-        self.assertIn("authority: false", summary)
+        self.assertIn(
+            "authority: false (this inspection grants no execution permission)",
+            summary,
+        )
         self.assertIn("source authenticated: false", summary)
-        self.assertIn("external effect verified: false", summary)
+        self.assertIn(
+            "external effect verified: false (this inspection does not observe external state)",
+            summary,
+        )
+        self.assertIn("provided records (caller-reported)", summary)
+        self.assertIn("inspection scope (structural only)", summary)
         self.assertIn(
             "record basis: status and conclusion are caller-reported records; source authentication unavailable",
             summary,
@@ -473,7 +489,10 @@ class EvidenceTests(EvidenceFixture):
             "absence claim: missing decision, authority-use, or Verification records do not prove that those events were absent",
             summary,
         )
-        self.assertIn("next read-only check:", summary)
+        self.assertIn(
+            "next read-only check: inspect an existing independent Verification record for this action, if one exists",
+            summary,
+        )
         self.assertIn("no re-execution", summary)
         self.assertIn("no reconsume", summary)
 
@@ -632,6 +651,76 @@ class EvidenceTests(EvidenceFixture):
         self.assertNotIn("approved", missing_decision)
         self.assertNotIn("cancelled", missing_decision)
         self.assertNotIn("no effect", missing_decision)
+
+    def test_human_summary_guides_recorded_rejection_without_verification_search(self) -> None:
+        rejected_authority_path = self.authority_dir / "rejected-guidance-events.jsonl"
+        rejected_decision = action_authority_ledger.record_action_decision(
+            rejected_authority_path,
+            self.action,
+            "reject",
+            self.action.action["action_id"],
+            self.action.action_sha256,
+        )
+        rejected_response = copy.deepcopy(self.response)
+        rejected_response["decision"] = "reject"
+
+        summary = evidence_module.summarize_evidence(
+            self.full(
+                response=rejected_response,
+                decision=rejected_decision,
+                consume=None,
+                started=None,
+                finished=None,
+            )
+        )
+
+        self.assertIn("provided records (caller-reported)", summary)
+        self.assertIn("inspection scope (structural only)", summary)
+        self.assertIn("conclusion: rejection recorded for this request", summary)
+        self.assertIn(
+            "rejection scope: post-execution Verification is not a completion requirement for a reject decision; this is not proof of global event absence",
+            summary,
+        )
+        self.assertIn(
+            "next read-only check: review the recorded rejection; no independent Verification search is needed for this request",
+            summary,
+        )
+        self.assertNotIn(
+            "next read-only check: inspect an existing independent Verification record",
+            summary,
+        )
+
+    def test_human_summary_guides_incomplete_execution_to_source_records(self) -> None:
+        bundle = self.full(finished=None)
+        before_projection = evidence_module.inspect_evidence(bundle)
+        before_authority = self.authority_path.read_bytes()
+        before_receipt = self.receipt_path.read_bytes()
+
+        summary = evidence_module.summarize_evidence(bundle)
+
+        self.assertIn("provided records (caller-reported)", summary)
+        self.assertIn("inspection scope (structural only)", summary)
+        self.assertIn("conclusion: execution records incomplete; outcome unknown", summary)
+        self.assertIn("authority use: recorded (consume event in provided records)", summary)
+        self.assertIn(
+            "authority: false (this inspection grants no execution permission)",
+            summary,
+        )
+        self.assertIn(
+            "external effect verified: false (this inspection does not observe external state)",
+            summary,
+        )
+        self.assertIn(
+            "next read-only check: inspect existing authority and attempt records before seeking independent Verification",
+            summary,
+        )
+        self.assertNotIn(
+            "next read-only check: inspect an existing independent Verification record",
+            summary,
+        )
+        self.assertEqual(before_projection, evidence_module.inspect_evidence(bundle))
+        self.assertEqual(before_authority, self.authority_path.read_bytes())
+        self.assertEqual(before_receipt, self.receipt_path.read_bytes())
 
     def test_human_summary_has_no_ledger_side_effect(self) -> None:
         formatter = getattr(evidence_module, "summarize_evidence", None)

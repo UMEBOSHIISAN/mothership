@@ -12,6 +12,10 @@ from unittest.mock import patch
 
 from mothership_adapters.session import MergeReviewSession, SessionError
 from orchestration.lib import action_authority
+from mothership_adapters.evidence import (
+    EvidenceError, export_evidence, inspect_evidence, summarize_evidence,
+)
+from mothership_github import executor
 
 
 PARAMETERS = dict(repository="example/repo", pull_request=7, expected_head_sha="a" * 40,
@@ -609,3 +613,120 @@ class SessionTests(unittest.TestCase):
                     session.execute(PARAMETERS)
                 self.assertEqual(1, len(transport.gets))
                 self.assertEqual([], transport.puts)
+
+
+class SessionEvidenceAcceptanceTests(unittest.TestCase):
+    def setUp(self):
+        # Reuse the real Session/temporary-ledger fixture, not its test methods.
+        self.fixture = SessionTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.request = self.fixture.session.request
+        self.response = response(self.request)
+
+    def retained_bundle(self):
+        # These are the two explicit paths retained by this one synthetic host.
+        # No directory scan, newest-file choice or diagnostic-based correlation.
+        authority = self.fixture.rows("authority.jsonl")
+        attempts = self.fixture.rows("attempts.jsonl")
+
+        def one(rows, event_type):
+            matches = [row for row in rows if row["event_type"] == event_type]
+            self.assertLessEqual(len(matches), 1, "ambiguous source records")
+            return matches[0] if matches else None
+
+        return export_evidence(
+            self.request,
+            response=self.response,
+            decision=one(authority, "authority_action_approval"),
+            consume=one(authority, "authority_action_consume"),
+            started=one(attempts, "attempt_started"),
+            finished=one(attempts, "attempt_finished"),
+            executor_ref=REF,
+        )
+
+    def test_retained_rejection_does_not_create_post_execution_homework(self):
+        self.response["decision"] = "reject"
+        self.fixture.session.review(self.response)
+        bundle = self.retained_bundle()
+        text = summarize_evidence(bundle)
+        self.assertIn("conclusion: rejection recorded for this request", text)
+        self.assertNotIn("inspect an existing independent Verification", text)
+        self.assertIsNone(bundle["consume"])
+        self.assertEqual(([], []), (self.fixture.transport.gets, self.fixture.transport.puts))
+
+    def test_success_record_remains_distinct_from_independent_verification(self):
+        self.fixture.session.review(self.response)
+        self.fixture.session.execute(PARAMETERS)
+        bundle = self.retained_bundle()
+        text = summarize_evidence(bundle)
+        self.assertIn("receipt: SUCCESS", text)
+        self.assertIn("verification: missing", text)
+        self.assertIn("conclusion: executor-reported success only", text)
+        self.assertIn("external effect verified: false", text)
+        self.assertEqual(1, len(self.fixture.transport.puts))
+
+    def test_same_call_finish_failure_keeps_diagnostic_and_records_distinct(self):
+        self.fixture.session.review(self.response)
+        with patch.object(executor, "record_attempt_finished", side_effect=OSError("private")):
+            with self.assertRaises(SessionError) as raised:
+                self.fixture.session.execute(PARAMETERS)
+        # The caught error belongs to that call. No diagnostic is loaded or joined.
+        diagnostic = raised.exception.diagnostic
+        bundle = self.retained_bundle()
+        text = summarize_evidence(bundle)
+        self.assertEqual("mutation_returned", diagnostic["phase"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertFalse(diagnostic["retry_allowed"])
+        self.assertIn("authority use: recorded", text)
+        self.assertIn("conclusion: execution records incomplete; outcome unknown", text)
+        self.assertIn("existing authority and attempt records", text)
+        self.assertNotIn("inspect an existing independent Verification", text)
+        self.assertIsNone(bundle["receipt"])
+        self.assertEqual(["finished", "verification"], bundle["missing"])
+        self.assertNotIn("private", json.dumps(diagnostic))
+        self.assertNotIn("diagnostic", bundle)
+        self.assertEqual(1, len(self.fixture.transport.puts))
+
+    def test_consume_persisted_before_error_is_not_reported_as_unsaved(self):
+        self.fixture.session.review(self.response)
+        consume = executor.consume_action
+
+        def persisted_then_error(*args, **kwargs):
+            consume(*args, **kwargs)
+            raise OSError("private persisted write failure")
+
+        with patch.object(executor, "consume_action", side_effect=persisted_then_error):
+            with self.assertRaises(SessionError) as raised:
+                self.fixture.session.execute(PARAMETERS)
+        bundle = self.retained_bundle()
+        self.assertEqual("unknown", raised.exception.diagnostic["authority_use"])
+        self.assertIsNotNone(bundle["consume"])
+        self.assertIsNone(bundle["started"])
+        self.assertIsNone(bundle["receipt"])
+        text = summarize_evidence(bundle)
+        self.assertIn("authority use: recorded", text)
+        self.assertIn("existing authority and attempt records", text)
+        self.assertEqual([], self.fixture.transport.puts)
+        self.assertEqual(2, len(self.fixture.rows("authority.jsonl")))
+
+    def test_foreign_request_cannot_adopt_retained_records(self):
+        self.fixture.session.review(self.response)
+        original = self.retained_bundle()
+        foreign = self.fixture.make_session().request
+        self.assertNotEqual(foreign["action"]["action_id"], self.request["action"]["action_id"])
+        with self.assertRaises(EvidenceError):
+            export_evidence(foreign, response=self.response,
+                            decision=original["decision"], executor_ref=REF)
+
+    def test_saved_evidence_never_supplies_a_missing_same_call_diagnostic(self):
+        self.fixture.session.review(self.response)
+        bundle = self.retained_bundle()
+        before = copy.deepcopy(bundle)
+        checked = inspect_evidence(bundle)
+        text = summarize_evidence(bundle)
+        self.assertNotIn("diagnostic", checked)
+        self.assertNotIn("phase:", text)
+        self.assertEqual(before, bundle)
+        self.assertIsNone(bundle["receipt"])
+        self.assertEqual([], self.fixture.transport.puts)

@@ -169,12 +169,28 @@ states and execution results remain unchanged.
 import json
 from mothership_adapters.session import SessionError
 
+retained_request = session.request  # Keep the request before this invocation.
 try:
     result = session.execute(parameters)  # The host's one approved invocation.
 except SessionError as error:
+    print("same-call diagnostic (caller observation):",
+          retained_request["request_id"],
+          retained_request["request_sha256"],
+          retained_request["action"]["action_id"],
+          retained_request["action_sha256"])
     print(json.dumps(error.diagnostic, sort_keys=True))
+    print("Diagnostic unknown fields describe this call's observation; "
+          "they do not override retained source records.")
+    print("A failed phase code does not establish the remote outcome.")
     # Keep the existing records for inspection; do not execute again here.
 ```
+
+The caller knows this relationship because it retained the request and caught
+the error from that invocation in the same handler. The diagnostic mapping has
+no action or request ID of its own. Printing the identifiers does not create a
+durable binding or authenticate the observation. Do not attach a saved
+diagnostic to a bundle by matching filenames, dates or phases. If that same-call
+context or diagnostic was not retained, report it as unavailable.
 
 The mapping contains `code`, `phase`, `authority_use`, `external_effect`,
 `next_check`, and `retry_allowed` (always false). Codes and phases come from a
@@ -215,6 +231,20 @@ mothership-evidence inspect --human < existing-bundle.json
 This command requires that existing file. Diagnostics do not save or assemble a
 bundle and do not read a ledger themselves. Preserve original records and bind
 any exported bundle using the existing [evidence route](#read-only-evidence-routes).
+The host may supply records it retained, or read its explicitly retained source
+paths, to `export_evidence(retained_request, ...)`. Supply only available rows
+for that request; the exporter validates their relationships. It does not locate
+records, choose a newest file, restore the session, or bind an arbitrary
+diagnostic to the bundle. Keep the same-call diagnostic display separate from
+the provided-record summary and structural inspection limits. A decision or
+consume write can persist before an exception: use the actual source records
+rather than treating the exception as proof that nothing was saved.
+If export or inspection rejects the supplied records or sidecar, produce no
+operation summary. A caller can still display its separately retained expected
+request as caller context, clearly stating that the rejected input has not been
+bound to it. Next, compare the explicitly supplied record/sidecar IDs and hashes
+with that retained request. If the caller context is unavailable too, leave the
+operation identity unknown; do not infer it from rejected input or repair records.
 A missing finish remains missing: inspection can explain the missing Receipt and
 Verification, but `readback` still accepts only complete execution evidence with
 `missing == ["verification"]`. Do not insert a finish, mint a Receipt, retry a

@@ -927,14 +927,30 @@ def summarize_evidence(
             approval_text = "recorded (approve)"
         else:
             approval_text = "rejected (decision recorded)"
-        authority_text = "recorded" if consume is not None else "missing"
-        receipt_status = "missing" if receipt is None else str(receipt["status"])
+        rejection_recorded = decision is not None and decision["decision"] == "reject"
+        authority_text = (
+            "recorded (consume event in provided records)"
+            if consume is not None
+            else "missing"
+        )
+        if receipt is None:
+            receipt_status = "missing"
+        elif receipt["status"] == "SUCCESS":
+            receipt_status = (
+                "SUCCESS (executor report; independent confirmation is separate)"
+            )
+        else:
+            receipt_status = str(receipt["status"])
         verification_status = (
             "missing" if verification is None else str(verification["status"])
         )
 
-        if verification is None and receipt is not None and receipt["status"] == "SUCCESS":
+        if rejection_recorded:
+            conclusion = "rejection recorded for this request"
+        elif verification is None and receipt is not None and receipt["status"] == "SUCCESS":
             conclusion = "executor-reported success only"
+        elif verification is None and receipt is None:
+            conclusion = "execution records incomplete; outcome unknown"
         elif verification is None:
             conclusion = "evidence incomplete"
         elif verification["status"] == "MISMATCH":
@@ -956,7 +972,15 @@ def summarize_evidence(
             f"expected_base={parameters['expected_base']}; merge_method={parameters['merge_method']}"
         )
 
-        if verification is None:
+        if rejection_recorded:
+            next_check = (
+                "review the recorded rejection; no independent Verification search is needed for this request"
+            )
+        elif receipt is None:
+            next_check = (
+                "inspect existing authority and attempt records before seeking independent Verification"
+            )
+        elif verification is None:
             next_check = (
                 "inspect an existing independent Verification record for this action, "
                 "if one exists"
@@ -975,12 +999,20 @@ def summarize_evidence(
         lines = [
             f"bundle: {checked['bundle_sha256']}",
             target_text,
+            "provided records (caller-reported)",
             f"approval: {approval_text}",
             f"authority use: {authority_text}",
             f"receipt: {receipt_status}",
             f"verification: {verification_status}",
             f"missing: {missing_text}",
             f"conclusion: {conclusion}",
+            *(
+                [
+                    "rejection scope: post-execution Verification is not a completion requirement for a reject decision; this is not proof of global event absence"
+                ]
+                if rejection_recorded
+                else []
+            ),
             f"structured reason: {reason}",
             *(
                 [
@@ -1009,11 +1041,12 @@ def summarize_evidence(
                 if readback is not None
                 else []
             ),
+            "inspection scope (structural only)",
             "provenance: caller-attested",
             "source: source-unverified",
-            "authority: false",
+            "authority: false (this inspection grants no execution permission)",
             "source authenticated: false",
-            "external effect verified: false",
+            "external effect verified: false (this inspection does not observe external state)",
             "record basis: status and conclusion are caller-reported records; source authentication unavailable",
             "absence claim: missing decision, authority-use, or Verification records do not prove that those events were absent",
             f"next read-only check: {next_check}",
