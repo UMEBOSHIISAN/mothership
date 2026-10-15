@@ -158,6 +158,45 @@ adapter guide](host-adapters.md). The source candidate has eight bounded routes
 with recorded local checks. Their qualification is route-specific; no row claims full gateway coverage,
 credentials, a live GitHub effect, or an automatic runtime bridge.
 
+## Delivery replies and one-use authority
+
+Keep delivery, review, authority use, execution reports, and independent
+Verification separate when connecting a host. Mothership does not implement a
+delivery ACK record, a retrying delivery service, or a durable owner restart.
+The existing owner protocol binds `result`/`error` replies to one command; the
+reply envelope does not promote its payload into another kind of evidence.
+For example, a reply to `prepare` carries a review request, not approval. A
+reply to `execute` can carry an executor SUCCESS Receipt, while Verification
+is still absent.
+
+When an execution reply is lost, retain the uncertainty and inspect existing
+records. Do not recover delivery by invoking the action again. Reading an
+exported bundle is a data-only operation: the inspector keeps
+`authority=false`, `source-unverified`, and `external_effect_verified=false`.
+These fields qualify the inspection, even when it reports internally
+consistent decision, consume, and Receipt records. Missing records do not
+prove that the corresponding events never occurred.
+
+The owner regressions in
+[`test_owner.py`](../packages/mothership-adapters/tests/test_owner.py) compose
+the existing Core, companion, and evidence functions at this boundary:
+
+| Bounded trace | Variants | Required observation |
+| --- | --- | --- |
+| Drain an execution reply as simulated application-delivery loss; inspect retained records; send another `execute` with the same owner/request/action IDs | SUCCESS or UNKNOWN, each with identical or changed PR parameters: four traces | One GET callback and one merge callback, one approval and consume, one start/finish pair; read-only inspections leave records unchanged; replay stops without another callback or Verification |
+| Reply to an execution context callback with the next sequence number but stale correlation or an unsupported ACK frame | Old `reply_to`, wrong request ID, or `ack`: three traces | A terminal sanitized error before consume, attempt recording, GET, or merge; the existing approval record stays unchanged |
+
+The second trace currently surfaces a `session` error because Session sanitizes
+nested callback failures; it does not expose the underlying protocol exception.
+The ACK case is a negative input, not a supported message or new approval form.
+These seven cases are bounded regression traces, not exhaustive state-space
+exploration, a formal proof, or cross-repository delivery acceptance. They use
+synthetic callback payloads and temporary fixture records, never production
+approvals or external transports. They do not test timing; existing
+[`test_action_review.py`](../tests/test_action_review.py) tests already use a
+fixed clock for expiry and host-context binding. No caller-controlled runtime
+clock, model checker, event store, or retry policy is added.
+
 ## Application and host handoff obligations
 
 These obligations identify the owner of each boundary. They are not new Core

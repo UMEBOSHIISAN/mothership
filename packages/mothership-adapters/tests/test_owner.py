@@ -10,6 +10,9 @@ import tempfile
 import time
 import unittest
 
+from mothership_adapters import evidence as evidence_module
+from mothership_adapters.evidence import export_evidence, inspect_evidence
+
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_ROOT = ROOT / "packages" / "mothership-adapters"
@@ -79,6 +82,8 @@ class ChildDriver:
         self.parent_seq = 0
         self.request_id = None
         self.action_id = None
+        self.get_callbacks = 0
+        self.merge_callbacks = 0
 
     def close(self):
         if self.process.stdin is not None and not self.process.stdin.closed:
@@ -112,18 +117,32 @@ class ChildDriver:
         raw = self.process.stdout.readline(65537)
         if not raw:
             raise AssertionError(f"child EOF; stderr={self.process.stderr.read().decode(errors='replace')}")
-        return json.loads(raw)
+        value = json.loads(raw)
+        if value.get("type") == "get":
+            self.get_callbacks += 1
+        elif value.get("type") == "merge":
+            self.merge_callbacks += 1
+        return value
 
-    def reply_callback(self, callback, payload):
+    def reply_callback(
+        self,
+        callback,
+        payload,
+        *,
+        frame_type="result",
+        request_id=None,
+        action_id=None,
+        reply_to=None,
+    ):
         self.parent_seq += 1
         response = _frame(
             self.owner_id,
-            "result",
+            frame_type,
             self.parent_seq,
-            callback["request_id"],
-            callback["action_id"],
+            callback["request_id"] if request_id is None else request_id,
+            callback["action_id"] if action_id is None else action_id,
             payload,
-            reply_to=callback["seq"],
+            reply_to=callback["seq"] if reply_to is None else reply_to,
         )
         self.process.stdin.write(
             (json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n").encode()
@@ -162,8 +181,9 @@ class ChildDriver:
         result = self.read()
         self.assert_frame(result, "result", 4, 3, self.action_id)
         assert result["payload"] == "approve"
+        return response
 
-    def execute_success(self, *, drift=False):
+    def execute_result(self, *, drift=False, merge_error=False):
         self.send("execute", copy.deepcopy(PARAMETERS))
         callback = self.read()
         self.assert_frame(callback, "context", 5, None, self.action_id)
@@ -199,14 +219,20 @@ class ChildDriver:
             self.reply_callback(callback, copy.deepcopy(CONTEXT))
         merge = self.read()
         self.assert_frame(merge, "merge", 9, None, self.action_id)
-        self.reply_callback(merge, {
-            "http_status": 200,
-            "merged": True,
-            "merge_commit_sha": "b" * 40,
-        })
+        if merge_error:
+            self.reply_callback(merge, {"code": "transport"}, frame_type="error")
+        else:
+            self.reply_callback(merge, {
+                "http_status": 200,
+                "merged": True,
+                "merge_commit_sha": "b" * 40,
+            })
         result = self.read()
         self.assert_frame(result, "result", 10, 5, self.action_id)
         return result["payload"]
+
+    def execute_success(self, *, drift=False):
+        return self.execute_result(drift=drift)
 
     def assert_frame(self, value, frame_type, seq, reply_to, action_id):
         if value.get("type") != frame_type:
@@ -251,6 +277,171 @@ class OwnerProtocolTests(unittest.TestCase):
         result = self.driver.execute_success(drift=True)
         self.assertEqual("reconciliation_required", result["status"])
         self.assertEqual("UNKNOWN", result["receipt"]["status"])
+
+    def test_result_delivery_loss_recovery_and_replay_matrix(self):
+        cases = (
+            ("success_exact", False, False, "SUCCESS"),
+            ("success_changed", False, True, "SUCCESS"),
+            ("unknown_exact", True, False, "UNKNOWN"),
+            ("unknown_changed", True, True, "UNKNOWN"),
+        )
+        for name, merge_error, changed_replay, expected_receipt in cases:
+            with self.subTest(case=name):
+                driver = ChildDriver()
+                self.driver = driver
+                try:
+                    driver.send(
+                        "prepare",
+                        {"parameters": PARAMETERS, "executor_ref": EXECUTOR_REF},
+                        request_id=None,
+                        action_id=None,
+                    )
+                    request = driver.finish_prepare()
+                    approval_response = driver.approve(request)
+
+                    # The harness drains the reply without delivering it to the
+                    # simulated application. Recovery uses retained review data
+                    # and fixture records, never another execution.
+                    _ = driver.execute_result(merge_error=merge_error)
+                    authority_bytes = driver.authority.read_bytes()
+                    attempts_bytes = driver.attempts.read_bytes()
+                    authority_rows = [
+                        json.loads(line) for line in authority_bytes.splitlines()
+                    ]
+                    attempt_rows = [
+                        json.loads(line) for line in attempts_bytes.splitlines()
+                    ]
+                    self.assertEqual(
+                        ["authority_action_approval", "authority_action_consume"],
+                        [row["event_type"] for row in authority_rows],
+                    )
+                    self.assertEqual(
+                        ["attempt_started", "attempt_finished"],
+                        [row["event_type"] for row in attempt_rows],
+                    )
+                    self.assertEqual(1, driver.get_callbacks)
+                    self.assertEqual(1, driver.merge_callbacks)
+
+                    recovered = export_evidence(
+                        request,
+                        response=approval_response,
+                        decision=authority_rows[0],
+                        consume=authority_rows[1],
+                        started=attempt_rows[0],
+                        finished=attempt_rows[1],
+                        executor_ref=EXECUTOR_REF,
+                    )
+                    for _reading in range(3):
+                        exported = export_evidence(
+                            request,
+                            response=approval_response,
+                            decision=authority_rows[0],
+                            consume=authority_rows[1],
+                            started=attempt_rows[0],
+                            finished=attempt_rows[1],
+                            executor_ref=EXECUTOR_REF,
+                        )
+                        self.assertEqual(recovered, exported)
+                        inspection = inspect_evidence(exported)
+                        summary = evidence_module.summarize_evidence(exported)
+                        self.assertEqual(expected_receipt, inspection["receipt_status"])
+                        self.assertEqual(["verification"], inspection["missing"])
+                        self.assertIsNone(inspection["verification_status"])
+                        self.assertEqual("source-unverified", inspection["source_status"])
+                        self.assertFalse(inspection["authority"])
+                        self.assertFalse(inspection["external_effect_verified"])
+                        self.assertIsNone(exported["verification"])
+                        self.assertIn(f"receipt: {expected_receipt}", summary)
+                        self.assertIn("missing: verification", summary)
+                        self.assertIn("source: source-unverified", summary)
+                        self.assertIn("authority: false", summary)
+                        self.assertIn("external effect verified: false", summary)
+
+                    self.assertEqual(authority_bytes, driver.authority.read_bytes())
+                    self.assertEqual(attempts_bytes, driver.attempts.read_bytes())
+                    replay_parameters = copy.deepcopy(PARAMETERS)
+                    if changed_replay:
+                        replay_parameters["pull_request"] = 8
+                    driver.send("execute", replay_parameters)
+                    replay_error = driver.read()
+                    driver.assert_frame(
+                        replay_error, "error", 11, 11, driver.action_id
+                    )
+                    self.assertEqual({"code": "phase"}, replay_error["payload"])
+                    driver.process.wait(timeout=5)
+                    self.assertEqual(2, driver.process.returncode)
+                    self.assertEqual(b"", driver.process.stdout.read())
+                    self.assertEqual(1, driver.get_callbacks)
+                    self.assertEqual(1, driver.merge_callbacks)
+                    self.assertEqual(authority_bytes, driver.authority.read_bytes())
+                    self.assertEqual(attempts_bytes, driver.attempts.read_bytes())
+                    self.assertEqual(2, len(authority_rows))
+                    self.assertEqual(2, len(attempt_rows))
+                    self.assertEqual(
+                        {request["action"]["action_id"]},
+                        {
+                            authority_rows[0]["action"]["action_id"],
+                            authority_rows[1]["action_id"],
+                            attempt_rows[0]["action_id"],
+                            attempt_rows[1]["action_id"],
+                        },
+                    )
+                finally:
+                    driver.close()
+                    self.driver = None
+
+    def test_stale_callback_replies_fail_before_consume_matrix(self):
+        cases = (
+            ("stale_reply_to", {"reply_to": "stale"}),
+            ("wrong_request_id", {"request_id": "request-stale"}),
+            ("unsupported_ack_frame", {"frame_type": "ack"}),
+        )
+        for name, overrides in cases:
+            with self.subTest(case=name):
+                driver = ChildDriver()
+                self.driver = driver
+                try:
+                    driver.send(
+                        "prepare",
+                        {"parameters": PARAMETERS, "executor_ref": EXECUTOR_REF},
+                        request_id=None,
+                        action_id=None,
+                    )
+                    request = driver.finish_prepare()
+                    driver.approve(request)
+                    authority_bytes = driver.authority.read_bytes()
+                    driver.send("execute", copy.deepcopy(PARAMETERS))
+                    callback = driver.read()
+                    driver.assert_frame(callback, "context", 5, None, driver.action_id)
+                    reply_overrides = dict(overrides)
+                    if "reply_to" in reply_overrides:
+                        # The context callback during review used owner sequence 3.
+                        reply_overrides["reply_to"] = 3
+                    driver.reply_callback(
+                        callback,
+                        copy.deepcopy(CONTEXT),
+                        **reply_overrides,
+                    )
+                    error = driver.read()
+                    driver.assert_frame(error, "error", 6, 5, driver.action_id)
+                    self.assertEqual({"code": "session"}, error["payload"])
+                    driver.process.wait(timeout=5)
+                    self.assertEqual(2, driver.process.returncode)
+                    self.assertEqual(b"", driver.process.stdout.read())
+                    self.assertEqual(0, driver.get_callbacks)
+                    self.assertEqual(0, driver.merge_callbacks)
+                    self.assertEqual(authority_bytes, driver.authority.read_bytes())
+                    self.assertEqual(
+                        ["authority_action_approval"],
+                        [
+                            json.loads(line)["event_type"]
+                            for line in authority_bytes.splitlines()
+                        ],
+                    )
+                    self.assertFalse(driver.attempts.exists())
+                finally:
+                    driver.close()
+                    self.driver = None
 
     def test_reject_does_not_request_transport_and_cancel_is_terminal(self):
         self.driver = ChildDriver()

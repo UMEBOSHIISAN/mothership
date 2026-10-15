@@ -1,9 +1,6 @@
 # Mothership
 
-> 未リリースのソース候補（Core 0.5.0.dev0、optional companion 0.3.0.dev0、
-> optional adapters 0.1.0.dev0）。
-> これはこのソース候補であり、公開済みv0.4.2や実運用の証拠ではありません。
-> [候補の変更と制約](docs/option-a-candidate.md)。
+> 未リリースのソース候補です。公開済みv0.4.2や実運用の証拠ではありません。
 
 [English](README.en.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -11,9 +8,6 @@
 <p align="center">
   <img src="assets/mothership-banner.png" alt="海流を進む版画調のMothershipクジラ" width="100%">
 </p>
-
-公開済みv0.4.2（歴史的な公開ベースライン）はdocs-onlyのリリースでした。このソース候補は
-そのAuthority Coreのruntime契約を保持し、文書・画像と未リリース候補のportable review APIを追加しています。
 
 > 使うAIが変わっても、仕事の主導権は手元に。
 >
@@ -29,8 +23,84 @@ Mothershipは、人間とAIが仕事を分け合うために、任せる操作�
 実行環境を活用し、この受け渡しと結果の読み取りに集中します。
 [類似OSS・標準との責務比較（2026-10-13）](docs/ecosystem-position.md)に、重なる機能と制約を整理しています。
 
-現在は、GitHub PRのマージを最初の参照例として、操作の固定、判断との照合、
-同じ信頼されたローカル台帳履歴内での一回限りの取り出しを提供しています。
+現在の参照対象はGitHub PRのマージ（`github.merge_pr`）です。管理するのは構成した操作経路です。
+引き継ぐのは判断材料と操作の記録です。liveな `MergeReviewSession` はプロセスに所属し、
+コピー・復元できません。記録の共有が、別の担当への実行権限の移送を意味することはありません。
+
+## 結果の読み方
+
+たとえば、`example/repo` のPR #7について、承認・consume・実行成功の記録があり、
+独立確認の記録はまだないとします。現行の `inspect --human` に合成bundleを渡した出力の抜粋です。
+実際のGitHub操作や出所認証を示すものではありません。
+
+```text
+provided records (caller-reported)
+approval: recorded (approve)
+authority use: recorded (consume event in provided records)
+receipt: SUCCESS (executor report; independent confirmation is separate)
+verification: missing
+missing: verification
+conclusion: executor-reported success only
+inspection scope (structural only)
+provenance: caller-attested
+source: source-unverified
+authority: false (this inspection grants no execution permission)
+source authenticated: false
+external effect verified: false (this inspection does not observe external state)
+next read-only check: inspect an existing independent Verification record for this action, if one exists
+recovery: no re-execution; no reconsume
+```
+
+このbundleでは「実行側から成功報告あり、独立確認の記録は未提供」と読めます。
+記録がないことは、独立確認が行われなかった証拠ではありません。
+`SUCCESS`だけで確認済みと扱わず、対応する既存の独立確認記録があれば、その対応を確認します。
+記録同士の整合性を調べることと、記録の発生元や現在の外部状態を認証することは分けて扱います。
+実際の公開結果は、後半の[PR #18の一例](#公開結果の一例)に分けています。
+
+## クイックスタート
+
+### 保存済みの結果を読む
+
+最初の読み取り経路は、呼出し元が保持・exportした既存の記録をターミナルで読む方法です。
+Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要です。
+[host adapter guideの現行候補setup](docs/host-adapters.md#try-the-current-candidate)で、
+使う版を固定して3パッケージを導入してください。
+
+コマンド: `mothership-evidence inspect --human < existing-bundle.json`
+
+`existing-bundle.json`は、呼出し元がすでに保持・exportしたevidence bundleです。
+このコマンドがファイルや実行記録を生成するわけではありません。
+閲覧はオフラインで、承認・実行・権限の再使用を行いません。欠けている記録は欠落のまま扱います。
+sidecarの照合や明示的なreadbackは、[詳しい読み取り手順](#結果閲覧と明示的なreadback)を参照してください。
+
+### Coreの境界をオフラインで試す
+
+Python 3.12以上とソースcheckoutを使い、[clone手順](docs/installation.md#clone-first-install)で取得した
+リポジトリのルートで実行してください。次の手順はCoreだけを導入するオフライン例です。
+上の結果閲覧には、別途adaptersを含む3パッケージのsetupが必要です。
+
+<!-- quickstart:start -->
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
+python examples/authority_core_walkthrough.py
+mothership verify
+```
+<!-- quickstart:end -->
+
+`python examples/authority_core_walkthrough.py`は、外部通信や認証情報を使わず、
+操作の固定、表示の導出、合成した承認記録、一度だけのconsume、二度目の取り出し拒否を確認します。
+これは人間の承認ceremonyや本人認証ではありません。GitHubを変更せず、executorや確認系も起動しません。
+
+`mothership verify`は、同梱resource inventory、schema、registry、fixture、digestを
+オフラインで検査します。host、外部環境、インストール済みの全コードの安全性を検査するものではありません。
+
+`mothership demo`はlegacy 0.2のsyntheticなprotocol-composition demoです。
+Authority Coreの証明でも、agent実行、人間の承認、実タスク完了の証拠でもありません。
+現在のAuthority Coreを体験する入口ではありません。
+
+## 現在の制約
 
 AIチャットアプリや完成済みの業務システムではありません。
 モデル実行、本人認証、業務システムへの接続、実行・結果確認の処理は別途構成します。
@@ -41,20 +111,40 @@ AIチャットアプリや完成済みの業務システムではありません
 [integration catalog](docs/integrations.md)、実装方法をまとめた
 [host adapter guide](docs/host-adapters.md) を追加しています。
 
-## PURPOSE
+| 項目 | source candidateで実装していること | 実装・認証していないこと |
+| --- | --- | --- |
+| identity | caller-attested decisionを保持 | 人間の本人確認は行いません |
+| decision event | 同じactionへ複数のdecision eventを記録できる | 一つのterminal decision、supersede、revoke |
+| consume | 同じaction IDは同じ台帳履歴内で一度だけconsumeできる | コピー・復元した台帳をまたぐglobal replay防止 |
+| action scope | `github.merge_pr`の5つのexact parameterを固定 | base commit SHAのbind、任意operation |
+| expiry | CoreのTTLを検査し、review requestでは期限もdigestへbind | action digestへの期限bind、host側の失効fence |
+| portable review | action・expiry・host contextをrequest/responseへcanonicalにbind | 実際のeffect境界、lease/revocation、永続resume |
+| execution | 別executor向けdata、companionのattempt/Receipt adapter | Core内のexecutor、credential、retry、daemon、callback |
+| verification | Receipt/Verificationのshapeとbinding、read-back producer | verifier、人間identity、外部真実、read-only認証 |
+| package check | 同梱inventoryとdigestを検査 | host、全インストールコード、外部安全性 |
+| public result | PR #18のbounded result | generic safety、production readiness、private trace再現性 |
 
-人間とAIが仕事を分け合うには、「できる」と「やってよい」を分ける必要があります。
-Mothershipは、AIを止めることではなく、人間が具体的な仕事を安心して任せられるように、
-その受け渡しを曖昧にしないことを目指します。
+本実装は、本番運用または規制対象の高リスク用途への適合を認証するものではありません。
+一回限りの再利用拒否は、ひとつの信頼されたローカル台帳履歴に限られます。
 
-| 区別 | 意味 |
-| --- | --- |
-| Capability | AIやツールに何ができるか |
-| Authority | そのうち何をしてよいか |
-| Decision | 人間が今回どこまで任せると決めたか |
-| Execution | 現実にどの操作が行われたか |
+## 現在の参照profile
 
-安全性は製品カテゴリーではなく、これらを混ぜずに扱うための成立条件です。
+最初のcurrent reference profileは `github.merge_pr` です。
+これはMothershipの用途全体ではなく、5つの実行パラメータの固定、判断との照合、
+台帳記録、一回限りのconsume境界を具体化した最初の実装例です。
+
+現在固定する値:
+
+- repository
+- pull request number
+- expected head SHA
+- expected base branch name
+- merge method
+
+base commit SHAは結び付けられません。`expires_at`はaction digestに含まれませんが、portable review requestの
+digestには期限とhost contextが含まれます。request digestは署名ではなく相関値です。
+統合側は毎回新しい `action_id` を発行し、表示した発行情報と期限へ応答を対応付け、
+遅延または再利用された応答を拒否してください。
 
 ## 責務分担
 
@@ -72,28 +162,63 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。
 transportと実際のeffect境界は別途構成し、VerificationはReceiptとは別の記録として扱います。
 
-## HISTORICAL BASELINE: v0.4.2
+## PURPOSE
 
-公開済みv0.4.2（歴史的な公開ベースライン）が提供したのは、ひとつの対応済み外部操作を固定し、
-caller-attestedな人間の判断と照合し、ローカル台帳へ記録して一度だけ取り出す境界です。
+人間とAIが仕事を分け合うには、「できる」と「やってよい」を分ける必要があります。
+Mothershipは、AIを止めることではなく、人間が具体的な仕事を安心して任せられるように、
+その受け渡しを曖昧にしないことを目指します。
 
-実装済み:
+| 区別 | 意味 |
+| --- | --- |
+| Capability | AIやツールに何ができるか |
+| Authority | そのうち何をしてよいか |
+| Decision | 人間が今回どこまで任せると決めたか |
+| Execution | 現実にどの操作が行われたか |
 
-- 対応済み操作パラメータの検証と `FrozenAction` への固定
-- approve / rejectとaction ID・digestの照合
-- decision eventのローカル台帳への記録
-- 同じ信頼されたローカル台帳履歴での一回限りのconsume
-- executorのReceiptと別経路Verificationを分けるclosed contract
+安全性は製品カテゴリーではなく、これらを混ぜずに扱うための成立条件です。
 
-v0.4.2当時に含まなかったもの:
+## 現在のMothership Core
 
-- UME-HARNESSとのruntime bridge
-- 汎用executor、verifier producer、credential manager、retry、daemon
-- human identity authentication
-- 任意operationや自動実行
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/mothership-flow-poster.png">
+    <source media="(max-width: 600px)" srcset="assets/readme/ja/mothership-flow-poster.png">
+    <img src="assets/readme/ja/mothership-flow.gif"
+         alt="8つのbounded routeがCoreの正確な操作を判断の一度の使用へ結び付け、GitHub companionの実行報告をReceiptへ変換する。独立確認は別経路。"
+         width="100%">
+  </picture>
+</p>
 
-proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません。
-Mothershipは、対応済みの実行パラメータを別に受け取り、それを先にfreezeします。
+これは未リリースのソース候補の仕組みの図解です。8つのhost/evidence routeから共有するreview request、Core、
+任意companion、receipt adapter、別経路の独立確認を区別しています。local checksの説明であり、GIFそのものは実行証拠ではありません。
+動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
+
+対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
+action IDとdigestへ照合し、判断eventを記録します。同じaction IDのconsumeは、
+ひとつの信頼されたローカル台帳履歴内で一度だけです。
+
+### 権限の取り出しと、仕事の完了は別
+
+<p align="center">
+  <img src="assets/readme/ja/record-boundaries.svg"
+       alt="権限の使用、companionとadapterによるReceipt、独立Verificationを分けた図。UNKNOWNを保持し、finish欠落を拒否する。" width="840">
+</p>
+
+Mothershipは実行報告と独立確認の記録を分けて検証します。
+任意adapterはterminal attempt pairをReceiptへ変換し、companionのopt-in read-back producerは別のVerificationを作ります。
+UNKNOWNを保持します。
+finish欠落は拒否します。ReceiptのSUCCESSだけでは独立確認になりません。
+
+## 詳細ドキュメント
+
+### コードツアー
+
+- [`orchestration/lib/action_authority.py`](orchestration/lib/action_authority.py) — 操作の固定と判断の照合
+- [ledger implementation](orchestration/lib/action_authority_ledger.py) — 台帳への追記と一回限りの使用
+- [external-action contracts](orchestration/lib/external_action.py) — 結果報告と独立確認の記録形式
+- [`tests/test_action_authority.py`](tests/test_action_authority.py) — Authority Coreの境界テスト
+- [ledger tests](tests/test_action_authority_ledger.py) — 再利用と台帳履歴のテスト
+- [external-action tests](tests/test_external_action_contracts.py) — 外部操作の記録形式のテスト
 
 ### current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
 
@@ -149,88 +274,9 @@ plainなdetached action mappingと結び付いたReceiptをcaller-attestedな記
 adaptersの `mothership-evidence readback` は、この保存済み入口を明示的に選ぶCLIです。
 `export`、`inspect`、`inspect --human`、MCPはofflineのままです。
 
-## 現在のMothership Core
+[候補の変更と制約](docs/option-a-candidate.md)。
 
-<p align="center">
-  <picture>
-    <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/mothership-flow-poster.png">
-    <source media="(max-width: 600px)" srcset="assets/readme/ja/mothership-flow-poster.png">
-    <img src="assets/readme/ja/mothership-flow.gif"
-         alt="8つのbounded routeがCoreの正確な操作を判断の一度の使用へ結び付け、GitHub companionの実行報告をReceiptへ変換する。独立確認は別経路。"
-         width="100%">
-  </picture>
-</p>
-
-これは未リリースのソース候補の仕組みの図解です。8つのhost/evidence routeから共有するreview request、Core、
-任意companion、receipt adapter、別経路の独立確認を区別しています。local checksの説明であり、GIFそのものは実行証拠ではありません。
-動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
-
-対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
-action IDとdigestへ照合し、判断eventを記録します。同じaction IDのconsumeは、
-ひとつの信頼されたローカル台帳履歴内で一度だけです。
-
-### 権限の取り出しと、仕事の完了は別
-
-<p align="center">
-  <img src="assets/readme/ja/record-boundaries.svg"
-       alt="権限の使用、companionとadapterによるReceipt、独立Verificationを分けた図。UNKNOWNを保持し、finish欠落を拒否する。" width="840">
-</p>
-
-Mothershipは実行報告と独立確認の記録を分けて検証します。
-任意adapterはterminal attempt pairをReceiptへ変換し、companionのopt-in read-back producerは別のVerificationを作ります。
-UNKNOWNを保持します。
-finish欠落は拒否します。ReceiptのSUCCESSだけでは独立確認になりません。
-
-## 現在の参照profile
-
-最初のcurrent reference profileは `github.merge_pr` です。
-これはMothershipの用途全体ではなく、5つの実行パラメータの固定、判断との照合、
-台帳記録、一回限りのconsume境界を具体化した最初の実装例です。
-
-現在固定する値:
-
-- repository
-- pull request number
-- expected head SHA
-- expected base branch name
-- merge method
-
-base commit SHAは結び付けられません。`expires_at`はaction digestに含まれませんが、portable review requestの
-digestには期限とhost contextが含まれます。request digestは署名ではなく相関値です。
-統合側は毎回新しい `action_id` を発行し、表示した発行情報と期限へ応答を対応付け、
-遅延または再利用された応答を拒否してください。
-
-## 公開結果の一例
-
-[PR #18の公開結果](docs/evidence/github-merge-pr-e2e-20260903/README.md)は、
-隔離されたcanary baseに対するひとつの `github.merge_pr` を記録した一例です。
-公開GitHubのread-backから、対象head SHA、merge commit、親、対象差分量を確認できます。
-
-<p align="center">
-  <img src="assets/readme/ja/pr18-public-result.svg"
-       alt="PR #18を隔離用ブランチへ統合した公開結果。PR元コミット、統合後コミット、1ファイル5行、公開本線が対象外であることを示す。"
-       width="720">
-</p>
-
-これはPR #18に限った公開結果です。非公開の全履歴を公開物だけで再現できること、
-汎用的な安全性、本番運用への適合は主張しません。
-
-**v0.4.2での変更点（歴史的な公開ベースライン）**
-
-README画像の生成用依存関係をPillow 11.3.0から12.3.0へ更新しました。
-日英のGIFと静止ポスターを再生成し、`SHA256SUMS`を更新しています。
-図の意味、Authority Coreの機能、実行権限の扱いは変わりません。
-Pillowは画像生成時だけ必要で、Mothershipの実行時依存関係には追加されません。
-オフラインのAuthority Core walkthrough（下記）を追加しました。
-runtimeのAuthority Core挙動、承認受理条件、対応操作profileはv0.4.1から変更していません。
-
-**0.5.0.dev0 source candidateでの追加**
-
-`build_review_request()` と `validate_review_response()` を使う純粋なportable review seamを追加しました。
-responseはhostが保持したoriginal requestとlive `FrozenAction`へ照合され、期限切れやhost contextの変更は
-approve / rejectの前に停止します。これは実行時の失効fence、永続resume、host adapter、人間の本人確認を提供しません。
-
-## クイックスタート
+### 導入する版と検証範囲
 
 Python 3.12以上と、このリポジトリのソースcheckoutが必要です。
 まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
@@ -241,29 +287,7 @@ Coreとcompanionだけのruntimeを固定して既存のオフライン例を実
 参照してください。readback / inspect-sidecarのレビュー済みruntimeを固定して試す場合は、
 [host adapter guideの固定setup](docs/host-adapters.md#install-the-source-candidate-in-one-checkout)を
 使ってください。固定したruntimeと現在のcheckoutのrevisionを、それぞれ記録してください。
-下記のwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
-v0.4.2のwheelにも含まれません（source checkout専用の実行例です）。
 
-<!-- quickstart:start -->
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install .
-python examples/authority_core_walkthrough.py
-mothership verify
-```
-<!-- quickstart:end -->
-
-`python examples/authority_core_walkthrough.py`は、外部通信や認証情報を使わず、
-操作の固定、表示の導出、合成した承認記録、一度だけのconsume、二度目の取り出し拒否を確認します。
-これは人間の承認ceremonyや本人認証ではありません。GitHubを変更せず、executorや確認系も起動しません。
-
-`mothership verify`は、同梱resource inventory、schema、registry、fixture、digestを
-オフラインで検査します。host、外部環境、インストール済みの全コードの安全性を検査するものではありません。
-
-`mothership demo`はlegacy 0.2のsyntheticなprotocol-composition demoです。
-Authority Coreの証明でも、agent実行、人間の承認、実タスク完了の証拠でもありません。
-現在のAuthority Coreを体験する入口ではありません。
 
 ### GitHubのPRを1件扱う入口
 
@@ -278,7 +302,7 @@ exact actionへの承認、一度だけの実行まで進められます。`--ve
 初回のPR取得に失敗した場合は、HTTP statusや通信・応答検証の分類を秘密情報なしで表示します。
 診断分類と保存範囲は[参照consumerの説明](examples/github_merge_reference.md#diagnose-an-initial-preflight-stop)を確認してください。
 
-### 作業の結果を読み取る
+### 結果閲覧と明示的なreadback
 
 任意のadaptersを同じcheckoutから導入した場合は、手元にあるevidence bundleを
 `mothership-evidence inspect --human`の標準入力へ渡すと、承認の記録、権限使用の記録、
@@ -312,35 +336,6 @@ stdoutとstderrを分離し、`2>&1`で結合しないでください。exit sta
 両方のファイルを破棄し、0かつcanonical hash照合に成功した場合だけ結果を保持します。
 [導入・合成bundleの例](docs/host-adapters.md#read-only-evidence-routes)。
 
-## 現在の制約
-
-| 項目 | source candidateで実装していること | 実装・認証していないこと |
-| --- | --- | --- |
-| identity | caller-attested decisionを保持 | 人間の本人確認は行いません |
-| decision event | 同じactionへ複数のdecision eventを記録できる | 一つのterminal decision、supersede、revoke |
-| consume | 同じaction IDは同じ台帳履歴内で一度だけconsumeできる | コピー・復元した台帳をまたぐglobal replay防止 |
-| action scope | `github.merge_pr`の5つのexact parameterを固定 | base commit SHAのbind、任意operation |
-| expiry | CoreのTTLを検査し、review requestでは期限もdigestへbind | action digestへの期限bind、host側の失効fence |
-| portable review | action・expiry・host contextをrequest/responseへcanonicalにbind | 実際のeffect境界、lease/revocation、永続resume |
-| execution | 別executor向けdata、companionのattempt/Receipt adapter | Core内のexecutor、credential、retry、daemon、callback |
-| verification | Receipt/Verificationのshapeとbinding、read-back producer | verifier、人間identity、外部真実、read-only認証 |
-| package check | 同梱inventoryとdigestを検査 | host、全インストールコード、外部安全性 |
-| public result | PR #18のbounded result | generic safety、production readiness、private trace再現性 |
-
-本実装は、本番運用または規制対象の高リスク用途への適合を認証するものではありません。
-一回限りの再利用拒否は、ひとつの信頼されたローカル台帳履歴に限られます。
-
-## 詳細ドキュメント
-
-### コードツアー
-
-- [`orchestration/lib/action_authority.py`](orchestration/lib/action_authority.py) — 操作の固定と判断の照合
-- [ledger implementation](orchestration/lib/action_authority_ledger.py) — 台帳への追記と一回限りの使用
-- [external-action contracts](orchestration/lib/external_action.py) — 結果報告と独立確認の記録形式
-- [`tests/test_action_authority.py`](tests/test_action_authority.py) — Authority Coreの境界テスト
-- [ledger tests](tests/test_action_authority_ledger.py) — 再利用と台帳履歴のテスト
-- [external-action tests](tests/test_external_action_contracts.py) — 外部操作の記録形式のテスト
-
 ### 背景と互換性
 
 この境界は、承認時に見た対象と実行時の対象がずれた運用事故、および未確認のtool failureを
@@ -361,6 +356,67 @@ Frontdoor、WGM、Router、Secretaryのprotocolはlegacy 0.2互換と履歴の�
 - [Host adapter guide](docs/host-adapters.md)
 - [0.2互換protocolの履歴](docs/legacy/compatibility-0.2.md)
 - [English README](README.en.md)
+
+## HISTORICAL BASELINE: v0.4.2
+
+公開済みv0.4.2（歴史的な公開ベースライン）はdocs-onlyのリリースでした。このソース候補は
+そのAuthority Coreのruntime契約を保持し、文書・画像と未リリース候補のportable review APIを追加しています。
+
+公開済みv0.4.2（歴史的な公開ベースライン）が提供したのは、ひとつの対応済み外部操作を固定し、
+caller-attestedな人間の判断と照合し、ローカル台帳へ記録して一度だけ取り出す境界です。
+
+実装済み:
+
+- 対応済み操作パラメータの検証と `FrozenAction` への固定
+- approve / rejectとaction ID・digestの照合
+- decision eventのローカル台帳への記録
+- 同じ信頼されたローカル台帳履歴での一回限りのconsume
+- executorのReceiptと別経路Verificationを分けるclosed contract
+
+v0.4.2当時に含まなかったもの:
+
+- UME-HARNESSとのruntime bridge
+- 汎用executor、verifier producer、credential manager、retry、daemon
+- human identity authentication
+- 任意operationや自動実行
+
+proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません。
+Mothershipは、対応済みの実行パラメータを別に受け取り、それを先にfreezeします。
+
+**v0.4.2での変更点（歴史的な公開ベースライン）**
+
+README画像の生成用依存関係をPillow 11.3.0から12.3.0へ更新しました。
+日英のGIFと静止ポスターを再生成し、`SHA256SUMS`を更新しています。
+図の意味、Authority Coreの機能、実行権限の扱いは変わりません。
+Pillowは画像生成時だけ必要で、Mothershipの実行時依存関係には追加されません。
+オフラインのAuthority Core walkthroughを追加しました。
+runtimeのAuthority Core挙動、承認受理条件、対応操作profileはv0.4.1から変更していません。
+
+**0.5.0.dev0 source candidateでの追加**
+
+`build_review_request()` と `validate_review_response()` を使う純粋なportable review seamを追加しました。
+responseはhostが保持したoriginal requestとlive `FrozenAction`へ照合され、期限切れやhost contextの変更は
+approve / rejectの前に停止します。これは実行時の失効fence、永続resume、host adapter、人間の本人確認を提供しません。
+
+### source checkoutの実行例
+
+Coreのwalkthroughはv0.4.1公開後に追加された例で、v0.4.1タグやwheelには含まれません。
+v0.4.2のwheelにも含まれません（source checkout専用の実行例です）。
+
+## 公開結果の一例
+
+[PR #18の公開結果](docs/evidence/github-merge-pr-e2e-20260903/README.md)は、
+隔離されたcanary baseに対するひとつの `github.merge_pr` を記録した一例です。
+公開GitHubのread-backから、対象head SHA、merge commit、親、対象差分量を確認できます。
+
+<p align="center">
+  <img src="assets/readme/ja/pr18-public-result.svg"
+       alt="PR #18を隔離用ブランチへ統合した公開結果。PR元コミット、統合後コミット、1ファイル5行、公開本線が対象外であることを示す。"
+       width="720">
+</p>
+
+これはPR #18に限った公開結果です。非公開の全履歴を公開物だけで再現できること、
+汎用的な安全性、本番運用への適合は主張しません。
 
 ## License
 
