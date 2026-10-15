@@ -287,6 +287,23 @@ The owner checks callback parameters against the retained action and uses a
 30-second bounded command deadline. A child failure after consume is
 unresolved; the caller must not restart or replay it.
 
+Owner `result` and `error` frames correlate a reply with one command through
+`seq`, `reply_to`, and the retained owner/request/action IDs. The payload still
+has the meaning of that command: `prepare` returns a review request, `review`
+returns a caller-attested decision, and `execute` returns an execution report
+with its Receipt. Receiving a reply is not a separate grant of authority or
+independent Verification. There is no standalone ACK message or durable owner
+resume protocol.
+
+If the final execution reply is lost, do not resend `execute`, including with
+the same IDs or changed parameters. Inspect records already retained by the
+caller; an absent reply does not establish whether an effect occurred. Repeated
+offline export/inspection of retained records neither recreates the live owner
+nor spends authority. Missing Verification remains missing. The
+[bounded delivery traces](composition.md#delivery-replies-and-one-use-authority)
+exercise this connection with synthetic callbacks and temporary fixture records.
+They do not qualify a Hermes delivery path or an actual host deployment.
+
 The selected OpenClaw route registers one typed `mothership_merge_pr` tool and
 one `beforeToolCall` seam. The hook retains the exact tool-call ID and
 parameters, returns an allow-once/deny review checkpoint, and closes the owner
