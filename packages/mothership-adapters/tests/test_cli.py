@@ -20,6 +20,69 @@ from mothership_github import public_observation
 
 
 class AdapterEvidenceCLITests(EvidenceFixture):
+    def test_output_failure_does_not_leak_a_success_into_the_next_inspection(self) -> None:
+        complete = self.full()
+        incomplete = self.full(finished=None)
+        before_files = (self.authority_path.read_bytes(), self.receipt_path.read_bytes())
+
+        class FailingWriter(io.StringIO):
+            def __init__(self, failure):
+                super().__init__()
+                self.failure = failure
+
+            def write(self, text):
+                if self.failure == "write":
+                    super().write(text[:8])
+                    raise OSError("PRIVATE_SYNTHETIC_SAVE_FAILURE")
+                if self.failure == "short":
+                    return super().write(text[:-1])
+                return super().write(text)
+
+            def flush(self):
+                if self.failure == "flush":
+                    raise OSError("PRIVATE_SYNTHETIC_SAVE_FAILURE")
+                super().flush()
+
+        for argv in (["inspect"], ["inspect", "--human"]):
+            for failure in ("write", "short", "flush"):
+                with self.subTest(argv=argv, failure=failure):
+                    stdin = io.TextIOWrapper(io.BytesIO(json.dumps(complete).encode()), encoding="utf-8")
+                    stdout, stderr = FailingWriter(failure), io.StringIO()
+                    with mock.patch("sys.stdin", stdin), mock.patch("sys.stdout", stdout), mock.patch("sys.stderr", stderr):
+                        self.assertEqual(2, evidence_cli_main(argv))
+                    self.assertNotIn("PRIVATE_SYNTHETIC_SAVE_FAILURE", stdout.getvalue() + stderr.getvalue())
+                    code, output, error = self._run(argv, incomplete)
+                    self.assertEqual((0, ""), (code, error))
+                    if "--human" in argv:
+                        self.assertIn("receipt: missing", output)
+                        self.assertIn("verification: missing", output)
+                    else:
+                        result = json.loads(output)
+                        self.assertIsNone(result["receipt_status"])
+                        self.assertIsNone(result["verification_status"])
+                        self.assertEqual(["finished", "verification"], result["missing"])
+                        self.assertIs(False, result["external_effect_verified"])
+        self.assertEqual(before_files, (self.authority_path.read_bytes(), self.receipt_path.read_bytes()))
+
+    def test_missing_original_sidecar_is_not_replaced_by_a_previous_trial(self) -> None:
+        bundle, sidecar = self._readback_artifacts()
+        root = pathlib.Path(self.temp.name)
+        path = root / "readback.json"
+        path.write_bytes(json.dumps(sidecar).encode())
+        before = {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        self.assertEqual(0, self._run_inspect_with_sidecar(bundle, path)[0])
+        code, output, error = self._run_inspect_with_sidecar(bundle, root / "absent.json")
+        self.assertEqual(2, code)
+        self.assertEqual("", output)
+        self.assertEqual("invalid bounded evidence input\n", error)
+        code, output, error = self._run(["inspect"], bundle)
+        self.assertEqual((0, ""), (code, error))
+        result = json.loads(output)
+        self.assertEqual("UNKNOWN", result["verification_status"])
+        self.assertEqual("source-unverified", result["source_status"])
+        self.assertIs(False, result["external_effect_verified"])
+        self.assertEqual(before, {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()})
+
     def _run_inspect_with_sidecar(
         self, bundle: dict[str, object], sidecar_path: pathlib.Path, *extra: str
     ) -> tuple[int, str, str]:
