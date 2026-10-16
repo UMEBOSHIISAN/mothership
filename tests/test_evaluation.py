@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import hashlib
 import io
 import json
@@ -22,6 +23,83 @@ RUNNER = ROOT / "tools/run_evaluation.py"
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_mutation_cases_leave_source_fixture_and_instructions_unchanged(self) -> None:
+        corpus = run_evaluation._load_corpus()
+        before_corpus = copy.deepcopy(corpus)
+        paths = [CORPUS, RESULT, *run_evaluation.GOLDEN.glob("*.json")]
+        before_files = {path: path.read_bytes() for path in paths}
+        for case in corpus["cases"]:
+            with self.subTest(case=case["id"]):
+                source = run_evaluation._load_json(run_evaluation.GOLDEN / case["fixture"])
+                before_source = copy.deepcopy(source)
+                result = run_evaluation._mutate(source, case["mutation"])
+                # Modifying the returned trial must not poison the cached source.
+                result["synthetic-contamination"] = True
+                self.assertEqual(before_source, source)
+                self.assertEqual(before_corpus, corpus)
+        self.assertEqual(before_files, {path: path.read_bytes() for path in paths})
+
+    def test_protocol_measurement_repeats_independently_of_case_order(self) -> None:
+        corpus = run_evaluation._load_corpus()
+        before = copy.deepcopy(corpus)
+        expected = {
+            "valid_cases": 4, "valid_accepted": 4,
+            "invalid_cases": 20, "invalid_rejected": 20,
+            "cases_passed": 24, "cases_total": 24,
+        }
+        cases = corpus["cases"]
+        for order in (cases, list(reversed(cases)), cases[::2] + cases[1::2]):
+            trial = {**corpus, "cases": order}
+            for repeat in range(2):
+                with self.subTest(order=order[0]["id"], repeat=repeat):
+                    self.assertEqual(expected, run_evaluation._protocol_measurement(trial))
+                    self.assertEqual(before, corpus)
+
+    def test_scoring_exception_does_not_contaminate_the_next_measurement(self) -> None:
+        corpus = run_evaluation._load_corpus()
+        before = copy.deepcopy(corpus)
+        paths = [CORPUS, *run_evaluation.GOLDEN.glob("*.json")]
+        before_files = {path: path.read_bytes() for path in paths}
+        validate = run_evaluation.validate_protocol
+        calls = 0
+
+        def fail_midway(kind, document):
+            nonlocal calls
+            calls += 1
+            if calls == 3:
+                raise RuntimeError("synthetic scoring interruption")
+            return validate(kind, document)
+
+        with mock.patch.object(run_evaluation, "validate_protocol", side_effect=fail_midway):
+            with self.assertRaisesRegex(RuntimeError, "synthetic scoring interruption"):
+                run_evaluation._protocol_measurement(corpus)
+        self.assertEqual(before, corpus)
+        self.assertEqual(before_files, {path: path.read_bytes() for path in paths})
+        self.assertEqual(
+            {"valid_cases": 4, "valid_accepted": 4, "invalid_cases": 20,
+             "invalid_rejected": 20, "cases_passed": 24, "cases_total": 24},
+            run_evaluation._protocol_measurement(corpus),
+        )
+
+    def test_unavailable_corpus_cannot_reuse_a_previous_success(self) -> None:
+        # A completed prior measurement must not stand in for unreadable input.
+        run_evaluation._protocol_measurement(run_evaluation._load_corpus())
+        with tempfile.TemporaryDirectory() as directory:
+            output = io.BytesIO()
+            stdout = io.TextIOWrapper(output, encoding="utf-8")
+            stderr = io.StringIO()
+            with (
+                mock.patch.object(run_evaluation, "CORPUS", Path(directory) / "absent.json"),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(stderr),
+            ):
+                code = run_evaluation.main()
+            stdout.flush()
+            self.assertEqual(1, code)
+            self.assertEqual(b"", output.getvalue())
+            self.assertEqual("evaluation failed closed\n", stderr.getvalue())
+        self.assertEqual(24, run_evaluation._protocol_measurement(run_evaluation._load_corpus())["cases_passed"])
+
     def _run(self, cwd: Path) -> subprocess.CompletedProcess[bytes]:
         environment = {
             "HOME": str(cwd),

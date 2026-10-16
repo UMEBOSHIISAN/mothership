@@ -9,10 +9,11 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 from mothership.action_authority import freeze_action
 from mothership.action_review import build_review_request
-from mothership.contracts import canonical_json_bytes, canonical_json_sha256
+from mothership.contracts import ContractError, canonical_json_bytes, canonical_json_sha256
 from mothership_github import receipts
 from orchestration.lib import action_authority_ledger
 
@@ -202,6 +203,106 @@ class EvidenceFixture(unittest.TestCase):
 
 
 class EvidenceTests(EvidenceFixture):
+    def test_export_and_inspection_preserve_nested_inputs_and_fixture_files(self) -> None:
+        bundle, sidecar = self._readback_artifacts()
+        inputs = {
+            "request": self.request, "response": self.response,
+            "decision": self.decision, "consume": self.consume,
+            "started": self.started, "finished": self.finished,
+            "executor_ref": copy.deepcopy(EXECUTOR_REF),
+            "verification": bundle["verification"],
+        }
+        root = pathlib.Path(self.temp.name)
+        for name, value in (("bundle.json", bundle), ("sidecar.json", sidecar)):
+            (root / name).write_bytes(canonical_json_bytes(value))
+        before_inputs = copy.deepcopy((inputs, bundle, sidecar))
+        before_files = {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+        exported = export_evidence(**inputs)
+        projection = inspect_evidence(bundle)
+        evidence_module.summarize_evidence(bundle, readback_evidence=sidecar)
+        # A caller may edit outputs; that must not alter retained evidence.
+        exported["request"]["host_context"]["scope"].append("synthetic-poison")
+        projection["missing"].append("synthetic-poison")
+
+        self.assertEqual(before_inputs, (inputs, bundle, sidecar))
+        self.assertEqual(before_files, {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()})
+        self.assertEqual([], inspect_evidence(bundle)["missing"])
+
+    def test_inspection_repeats_independently_of_other_trial_order(self) -> None:
+        cases = (
+            (self.full(verification=self.verification(status="CONFIRMED", summary="synthetic positive control")), "SUCCESS", "CONFIRMED", []),
+            (self.full(finished=None), None, None, ["finished", "verification"]),
+            (self.full(verification=self.verification(status="UNKNOWN", summary="synthetic unavailable observation")), "SUCCESS", "UNKNOWN", []),
+            (self.full(verification=self.verification(status="MISMATCH", summary="synthetic mismatch")), "SUCCESS", "MISMATCH", []),
+            (self.full(consume=None, started=None, finished=None), None, None, ["consume", "started", "finished", "verification"]),
+        )
+        before = copy.deepcopy(cases)
+        texts: dict[int, str] = {}
+        for order in (range(len(cases)), reversed(range(len(cases)))):
+            for index in order:
+                bundle, receipt_status, verification_status, missing = cases[index]
+                for repeat in range(2):
+                    with self.subTest(case=index, repeat=repeat):
+                        result = inspect_evidence(bundle)
+                        self.assertEqual(receipt_status, result["receipt_status"])
+                        self.assertEqual(verification_status, result["verification_status"])
+                        self.assertEqual(missing, result["missing"])
+                        self.assertEqual("source-unverified", result["source_status"])
+                        for flag in ("authority", "source_authenticated", "external_effect_verified"):
+                            self.assertIs(False, result[flag])
+                        text = evidence_module.summarize_evidence(bundle)
+                        if index in texts:
+                            self.assertEqual(texts[index], text)
+                        texts[index] = text
+        self.assertEqual(before, cases)
+
+    def test_mid_validation_exception_leaves_the_next_inspection_clean(self) -> None:
+        bundle = self.full(verification=self.verification(status="CONFIRMED", summary="synthetic positive control"))
+        before = copy.deepcopy(bundle)
+        before_files = (self.authority_path.read_bytes(), self.receipt_path.read_bytes())
+        with mock.patch.object(
+            evidence_module, "validate_receipt_verification_binding",
+            side_effect=ContractError("synthetic binding interruption"),
+        ):
+            with self.assertRaises(EvidenceError):
+                inspect_evidence(bundle)
+        self.assertEqual(before, bundle)
+        self.assertEqual(before_files, (self.authority_path.read_bytes(), self.receipt_path.read_bytes()))
+        result = inspect_evidence(bundle)
+        self.assertEqual("CONFIRMED", result["verification_status"])
+        self.assertIs(False, result["external_effect_verified"])
+        incomplete = inspect_evidence(self.full(finished=None))
+        self.assertIsNone(incomplete["receipt_status"])
+        self.assertEqual(["finished", "verification"], incomplete["missing"])
+
+    def test_rejected_substitution_does_not_contaminate_the_next_inspection(self) -> None:
+        bundle, sidecar = self._readback_artifacts()
+        before = copy.deepcopy((bundle, sidecar))
+        expected = evidence_module.summarize_evidence(bundle, readback_evidence=sidecar)
+        swapped = copy.deepcopy(sidecar)
+        swapped["action_id"] = "act-foreign-trial"
+        foreign_bundle, foreign_sidecar = self._rebind_readback_sidecar(bundle, swapped)
+        changed_content = copy.deepcopy(sidecar)
+        changed_content["reason"] = "merge_confirmed"
+        changed_row = copy.deepcopy(bundle)
+        changed_row["verification"]["observed_state"]["summary"] = "different schema-valid observation"
+        # Rehashing the envelope must not bypass source-row reconstruction.
+        changed_row["bundle_sha256"] = canonical_json_sha256(
+            {k: v for k, v in changed_row.items() if k != "bundle_sha256"}
+        )
+        for name, candidate, original in (
+            ("foreign-action-even-after-rehash", foreign_bundle, foreign_sidecar),
+            ("sidecar-content-hash-mismatch", bundle, changed_content),
+            ("source-row-hash-mismatch", changed_row, sidecar),
+        ):
+            with self.subTest(substitution=name):
+                with self.assertRaises(EvidenceError):
+                    evidence_module.summarize_evidence(candidate, readback_evidence=original)
+                self.assertEqual(expected, evidence_module.summarize_evidence(bundle, readback_evidence=sidecar))
+                self.assertEqual("UNKNOWN", inspect_evidence(bundle)["verification_status"])
+        self.assertEqual(before, (bundle, sidecar))
+
     def test_human_summary_without_sidecar_and_explicit_none_match(self) -> None:
         bundle, _sidecar = self._readback_artifacts()
         implicit = evidence_module.summarize_evidence(bundle)
