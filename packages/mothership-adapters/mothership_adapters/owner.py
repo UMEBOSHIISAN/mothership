@@ -16,10 +16,11 @@ import re
 import sys
 from typing import Any
 
-from .session import MergeReviewSession
+from .session import MergeReviewSession, SessionError
 
 
 SCHEMA_VERSION = "mothership-owner.v0"
+DIAGNOSTIC_SCHEMA_VERSION = "mothership-owner.v1"
 MAX_FRAME_BYTES = 65_536
 MAX_DEPTH = 16
 MAX_NODES = 2_048
@@ -214,10 +215,10 @@ def _callback_payload(frame_type: str, payload: object) -> object:
     return value
 
 
-def _validate_frame(value: object, owner_id: str) -> dict[str, Any]:
+def _validate_frame(value: object, owner_id: str, schema_version: str = SCHEMA_VERSION) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _FRAME_KEYS:
         raise _OwnerError("protocol")
-    if value["schema_version"] != SCHEMA_VERSION or value["owner_id"] != owner_id:
+    if value["schema_version"] != schema_version or value["owner_id"] != owner_id:
         raise _OwnerError("nonce")
     if type(value["type"]) is not str or value["type"] not in _TYPES:
         raise _OwnerError("protocol")
@@ -272,7 +273,8 @@ def _validate_frame(value: object, owner_id: str) -> dict[str, Any]:
 
 
 class _OwnerProcess:
-    def __init__(self, owner_id: str, parent_pid: int, authority_path: Path, attempts_path: Path):
+    def __init__(self, owner_id: str, parent_pid: int, authority_path: Path, attempts_path: Path,
+                 *, session_diagnostics: bool = False):
         if type(owner_id) is not str or not owner_id or "\n" in owner_id:
             raise _OwnerError("nonce")
         if type(parent_pid) is not int or parent_pid <= 0:
@@ -283,6 +285,7 @@ class _OwnerProcess:
         self.parent_pid = parent_pid
         self.authority_path = authority_path
         self.attempts_path = attempts_path
+        self.schema_version = DIAGNOSTIC_SCHEMA_VERSION if session_diagnostics else SCHEMA_VERSION
         self.in_seq = 1
         self.out_seq = 1
         self.session: MergeReviewSession | None = None
@@ -299,7 +302,7 @@ class _OwnerProcess:
         self._check_parent()
         _check_bounds(payload)
         frame = {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": self.schema_version,
             "type": frame_type,
             "seq": self.out_seq,
             "reply_to": reply_to,
@@ -338,7 +341,7 @@ class _OwnerProcess:
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError, RecursionError):
             raise _OwnerError("malformed") from None
         _check_bounds(value)
-        frame = _validate_frame(value, self.owner_id)
+        frame = _validate_frame(value, self.owner_id, self.schema_version)
         if frame["seq"] != self.in_seq:
             raise _OwnerError("sequence")
         self.in_seq += 1
@@ -443,6 +446,15 @@ class _OwnerProcess:
                 except Exception:
                     pass
                 return 2
+            except SessionError as error:
+                try:
+                    payload = {"code": "session"}
+                    if self.schema_version == DIAGNOSTIC_SCHEMA_VERSION:
+                        payload["diagnostic"] = error.diagnostic
+                    self._write("error", payload, reply_to=frame["seq"] if frame is not None else None)
+                except Exception:
+                    pass
+                return 2
             except Exception:
                 try:
                     self._write("error", {"code": "session"}, reply_to=frame["seq"] if frame is not None else None)
@@ -457,6 +469,7 @@ def _arguments(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--parent-pid", required=True, type=int)
     parser.add_argument("--authority-path", required=True)
     parser.add_argument("--attempts-path", required=True)
+    parser.add_argument("--session-diagnostics", action="store_true")
     try:
         return parser.parse_args(argv)
     except SystemExit:
@@ -471,6 +484,7 @@ def main(argv: list[str] | None = None) -> int:
             args.parent_pid,
             Path(args.authority_path),
             Path(args.attempts_path),
+            session_diagnostics=args.session_diagnostics,
         )
         return owner.run()
     except _OwnerError:

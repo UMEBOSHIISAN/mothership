@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { TextDecoder } from "node:util";
 
 const SCHEMA_VERSION = "mothership-owner.v0";
+const DIAGNOSTIC_SCHEMA_VERSION = "mothership-owner.v1";
 const MAX_FRAME_BYTES = 65_536;
 const MAX_DEPTH = 16;
 const MAX_NODES = 2_048;
@@ -25,11 +26,19 @@ const ERROR_CODES = new Set([
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 export class OwnerClientError extends Error {
-  constructor(code) {
+  #diagnostic;
+
+  constructor(code, diagnostic = null) {
     const safeCode = ERROR_CODES.has(code) ? code : "internal";
     super(`owner ${safeCode}`);
     this.name = "OwnerClientError";
     this.code = safeCode;
+    if (diagnostic !== null && safeCode !== "session") fail("protocol");
+    this.#diagnostic = diagnostic === null ? null : sessionDiagnosticValue(diagnostic);
+  }
+
+  get diagnostic() {
+    return this.#diagnostic === null ? null : { ...this.#diagnostic };
   }
 }
 
@@ -40,6 +49,37 @@ function fail(code) {
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     && Object.getPrototypeOf(value) === Object.prototype;
+}
+
+// Closed tuples emitted by the existing Python Session tracker. A diagnostic
+// describes this call's observations, never durable consumption or remote truth.
+function sessionDiagnosticValue(value) {
+  const data = exactObject(value, [
+    "code", "phase", "authority_use", "external_effect", "next_check", "retry_allowed",
+  ]);
+  const earlyChecks = new Map([
+    ["review_validation", "review_request"],
+    ["decision_record", "authority_records"],
+    ["execution_validation", "review_request_and_existing_records"],
+  ]);
+  const companionPhases = new Set([
+    "companion_execution", "preflight_transport", "preflight_returned",
+    "mutation_guard", "mutation_transport", "mutation_returned",
+  ]);
+  let effect = "unknown";
+  let nextCheck;
+  if (earlyChecks.has(data.phase)) {
+    effect = "not_attempted BY THIS CALL";
+    nextCheck = earlyChecks.get(data.phase);
+  } else if (companionPhases.has(data.phase)) {
+    nextCheck = "authority_and_attempt_records";
+  } else if (["unknown", "receipt_build", "result_export"].includes(data.phase)) {
+    nextCheck = "existing_evidence_bundle";
+  } else fail("protocol");
+  const code = data.phase === "unknown" ? "unknown" : `${data.phase}_failed`;
+  if (data.code !== code || data.authority_use !== effect || data.external_effect !== effect
+      || data.next_check !== nextCheck || data.retry_allowed !== false) fail("protocol");
+  return { ...data };
 }
 
 function checkBounds(value) {
@@ -316,7 +356,7 @@ function parseJsonWithDuplicateCheck(raw) {
   }
 }
 
-function parseFrame(buffer, ownerId) {
+function parseFrame(buffer, ownerId, schemaVersion) {
   if (buffer.length > MAX_FRAME_BYTES || buffer[buffer.length - 1] !== 0x0a) fail("oversized");
   let raw;
   try {
@@ -328,7 +368,7 @@ function parseFrame(buffer, ownerId) {
   checkBounds(value);
   if (!isPlainObject(value) || Object.keys(value).length !== FRAME_KEYS.size
       || !Object.keys(value).every((key) => FRAME_KEYS.has(key))) fail("protocol");
-  if (value.schema_version !== SCHEMA_VERSION || value.owner_id !== ownerId) fail("nonce");
+  if (value.schema_version !== schemaVersion || value.owner_id !== ownerId) fail("nonce");
   if (typeof value.type !== "string" || !TYPES.has(value.type)) fail("protocol");
   if (!Number.isSafeInteger(value.seq) || value.seq <= 0) fail("sequence");
   if (value.reply_to !== null && (!Number.isSafeInteger(value.reply_to) || value.reply_to <= 0)) fail("reply");
@@ -358,8 +398,14 @@ function parseFrame(buffer, ownerId) {
     if (value.reply_to === null) fail("reply");
   } else if (value.type === "error") {
     if (value.reply_to === null) fail("reply");
-    const data = exactObject(value.payload, ["code"]);
+    const withDiagnostic = schemaVersion === DIAGNOSTIC_SCHEMA_VERSION
+      && isPlainObject(value.payload) && Object.hasOwn(value.payload, "diagnostic");
+    const data = exactObject(value.payload, withDiagnostic ? ["code", "diagnostic"] : ["code"]);
     if (typeof data.code !== "string" || !ERROR_CODES.has(data.code)) fail("protocol");
+    if (withDiagnostic) {
+      if (data.code !== "session") fail("protocol");
+      sessionDiagnosticValue(data.diagnostic);
+    }
   }
   return value;
 }
@@ -383,6 +429,8 @@ export class MergeOwnerClient {
       ? options
       : { pythonExecutable: options, authorityPath, attemptsPath, contextProvider, transport };
     const { pythonExecutable, authorityPath: authority, attemptsPath: attempts, contextProvider: context, transport: callbacks } = config;
+    const sessionDiagnostics = config.sessionDiagnostics === undefined ? false : config.sessionDiagnostics;
+    if (typeof sessionDiagnostics !== "boolean") fail("parameters");
     if (typeof pythonExecutable !== "string" || pythonExecutable.length === 0
         || typeof authority !== "string" || authority.length === 0
         || typeof attempts !== "string" || attempts.length === 0
@@ -394,6 +442,7 @@ export class MergeOwnerClient {
     const getPullRequestMode = callbackMode(callbacks.getPullRequestMode);
     const mergePullRequestMode = callbackMode(callbacks.mergePullRequestMode);
     this._ownerId = randomUUID();
+    this._schemaVersion = sessionDiagnostics ? DIAGNOSTIC_SCHEMA_VERSION : SCHEMA_VERSION;
     this._pythonExecutable = pythonExecutable;
     this._authorityPath = authority;
     this._attemptsPath = attempts;
@@ -422,7 +471,8 @@ export class MergeOwnerClient {
       this._child = spawn(
         pythonExecutable,
         ["-m", "mothership_adapters.owner", "--owner-id", this._ownerId,
-          "--parent-pid", String(process.pid), "--authority-path", authority, "--attempts-path", attempts],
+          "--parent-pid", String(process.pid), "--authority-path", authority, "--attempts-path", attempts,
+          ...(sessionDiagnostics ? ["--session-diagnostics"] : [])],
         { shell: false, env: process.env, stdio: ["pipe", "pipe", "pipe"] },
       );
       this._childPid = this._child.pid ?? null;
@@ -475,7 +525,7 @@ export class MergeOwnerClient {
   _send(type, payload, requestId = this._requestId, actionId = this._actionId, replyTo = null) {
     if (this._closed || this._child === null || this._exitObserved || this._child.stdin.destroyed) fail("closed");
     const frame = {
-      schema_version: SCHEMA_VERSION,
+      schema_version: this._schemaVersion,
       type,
       seq: this._parentSeq,
       reply_to: replyTo,
@@ -548,7 +598,7 @@ export class MergeOwnerClient {
       const line = this._buffer.subarray(0, newline + 1);
       this._buffer = this._buffer.subarray(newline + 1);
       try {
-        const frame = parseFrame(line, this._ownerId);
+        const frame = parseFrame(line, this._ownerId, this._schemaVersion);
         if (frame.seq !== this._childSeq) fail("sequence");
         this._childSeq += 1;
         void this._handleFrame(frame).catch((error) => this._fatal(error.code ?? "protocol"));
@@ -621,7 +671,7 @@ export class MergeOwnerClient {
       this._pending = null;
       clearTimeout(pending.timer);
       this._phase = pending.type === "execute" ? "failed" : "failed";
-      pending.reject(new OwnerClientError(frame.payload.code));
+      pending.reject(new OwnerClientError(frame.payload.code, frame.payload.diagnostic ?? null));
       return;
     }
     const validatedPayload = detach(frame.payload);

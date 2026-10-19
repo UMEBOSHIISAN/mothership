@@ -73,6 +73,12 @@ Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要で�
 閲覧はオフラインで、承認・実行・権限の再使用を行いません。欠けている記録は欠落のまま扱います。
 sidecarの照合や明示的なreadbackは、[詳しい読み取り手順](#結果閲覧と明示的なreadback)を参照してください。
 
+更新した同一checkoutのPython ownerとNode clientでは、`sessionDiagnostics: true`を
+明示すると、停止段階・不明点・次の確認先をNode側でも読めます。
+[合成ターミナル例と互換性](docs/host-adapters.md#node-session-diagnostics)を参照してください。
+既定は従来のエラー形式です。過去の固定revisionにはこの追加はなく、OpenClaw／Lobsterの
+画面への転送や実運用の受入を示すものではありません。
+
 ### Coreの境界をオフラインで試す
 
 Python 3.12以上とソースcheckoutを使い、[clone手順](docs/installation.md#clone-first-install)で取得した

@@ -207,8 +207,19 @@ a write can fail after persisting data. Owner/phase errors also remain unknown.
 Use the existing authority and attempt records to investigate; absence of a record
 is not proof of absence of an operation. Exception text, credentials, paths and
 input values are not included in this diagnostic mapping. The original exception
-messages and the owner/JavaScript error protocol are unchanged; automatic
-forwarding across those host boundaries is not claimed.
+messages remain unchanged. The owner/JavaScript protocol defaults to its strict
+code-only v0 errors. An explicit `sessionDiagnostics: true` selects the paired
+v1 protocol and forwards only actual `SessionError` diagnostics. It uses strict
+six-field tuples and the existing owner/sequence/reply/request/action checks;
+there is no negotiation, downgrade, restart or replay. Parent callback errors
+remain code-only, and parent-supplied diagnostics are rejected. Session itself
+can wrap such a rejection as its own UNKNOWN diagnostic. Native process/pipe
+failures without a matched Session diagnostic expose `null`, never an invented
+phase. `OwnerClientError.diagnostic` is detached on each read. This observation
+is not persisted evidence, authenticated provenance, authority or external
+confirmation. The opt-in requires updated files from the same checkout; older
+pinned setup revisions do not include it. OpenClaw/Lobster wrappers still use
+generic errors, so full-host forwarding or live acceptance is not claimed.
 
 The [Session diagnostic guide](host-adapters.md#session-failures-and-existing-evidence)
 explains the fixed next-check categories. Existing `inspect --human` can display

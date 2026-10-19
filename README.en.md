@@ -84,6 +84,13 @@ Reading retained results requires the Core, companion, and adapters from that
 same-checkout setup. It is opt-in and does not by itself qualify a live host or
 external effect.
 
+The updated Python owner and Node client from the same checkout can explicitly
+forward stop diagnostics with `sessionDiagnostics: true`. See the
+[synthetic terminal example and compatibility rules](docs/host-adapters.md#node-session-diagnostics).
+The default remains the legacy error format. Older pinned revisions do not
+include this addition; it does not qualify OpenClaw/Lobster UI forwarding or
+live operation.
+
 ### Try the Core boundary offline
 
 Use Python 3.12 or newer and a source checkout of this repository. Follow the
