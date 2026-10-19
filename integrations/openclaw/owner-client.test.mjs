@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { MergeOwnerClient, OwnerClientError } from "./owner-client.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -31,6 +33,7 @@ const CONTEXT = {
   scope: ["github.merge_pr"],
 };
 const EXECUTOR_REF = { ref_id: "executor:node-owner-test", sha256: "c".repeat(64) };
+const execFileAsync = promisify(execFile);
 
 function makeClient(temp, options = {}) {
   const {
@@ -81,6 +84,7 @@ function makeClient(temp, options = {}) {
     attemptsPath: resolve(temp, "attempts.jsonl"),
     contextProvider,
     transport: callbacks,
+    ...(Object.hasOwn(options, "sessionDiagnostics") ? { sessionDiagnostics: options.sessionDiagnostics } : {}),
   });
 }
 
@@ -193,6 +197,321 @@ async function assertRejectsWithoutStall(promise, codes = ["protocol"]) {
     error instanceof OwnerClientError && codes.includes(error.code)
   ));
 }
+
+const PREFLIGHT_DIAGNOSTIC = {
+  code: "preflight_transport_failed", phase: "preflight_transport",
+  authority_use: "unknown", external_effect: "unknown",
+  next_check: "authority_and_attempt_records", retry_allowed: false,
+};
+
+test("real child diagnostic is opt-in and detached after one failed GET", async () => {
+  for (const enabled of [false, true]) {
+    const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-"));
+    let gets = 0;
+    let puts = 0;
+    const client = makeClient(temp, {
+      sessionDiagnostics: enabled,
+      getPullRequest: async () => { gets++; throw new Error("secret-token /synthetic/callback"); },
+      mergePullRequest: async () => { puts++; return mergeResult(); },
+    });
+    try {
+      await assert.rejects(() => approveAndExecute(client), (error) => {
+        assert.ok(error instanceof OwnerClientError);
+        assert.equal(error.code, "session");
+        assert.deepEqual(error.diagnostic, enabled ? PREFLIGHT_DIAGNOSTIC : null);
+        if (enabled) {
+          const detached = error.diagnostic;
+          detached.phase = "changed";
+          assert.deepEqual(error.diagnostic, PREFLIGHT_DIAGNOSTIC);
+        }
+        assert.doesNotMatch(JSON.stringify(error), /secret-token|synthetic\/callback/);
+        return true;
+      });
+      await assert.rejects(() => client.execute(PARAMETERS));
+      assert.equal(gets, 1);
+      assert.equal(puts, 0);
+      assert.equal((await readdir(temp)).includes("attempts.jsonl"), false);
+    } finally {
+      await client.close();
+      await rm(temp, { recursive: true, force: true });
+    }
+  }
+});
+
+test("real child diagnostic keeps context drift scoped before companion", async () => {
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-context-"));
+  let gets = 0;
+  let puts = 0;
+  const current = structuredClone(CONTEXT);
+  const client = new MergeOwnerClient({
+    pythonExecutable: PYTHON, sessionDiagnostics: true,
+    authorityPath: resolve(temp, "authority.jsonl"), attemptsPath: resolve(temp, "attempts.jsonl"),
+    contextProvider: async () => structuredClone(current),
+    transport: {
+      getPullRequest: async () => { gets++; return getResult(); },
+      mergePullRequest: async () => { puts++; return mergeResult(); },
+    },
+  });
+  try {
+    const request = await client.prepare(PARAMETERS, EXECUTOR_REF);
+    current.actor_id = "private-changed-actor";
+    await assert.rejects(() => client.review({
+      schema_version: "authority-action-review-response.v0", decision: "approve",
+      request_id: request.request_id, request_sha256: request.request_sha256,
+      action_id: request.action.action_id, action_sha256: request.action_sha256,
+    }), (error) => {
+      assert.deepEqual(error.diagnostic, {
+        code: "review_validation_failed", phase: "review_validation",
+        authority_use: "not_attempted BY THIS CALL", external_effect: "not_attempted BY THIS CALL",
+        next_check: "review_request", retry_allowed: false,
+      });
+      assert.doesNotMatch(JSON.stringify(error), /private-changed-actor/);
+      return true;
+    });
+    assert.equal(gets, 0);
+    assert.equal(puts, 0);
+    assert.deepEqual(await readdir(temp), []);
+  } finally {
+    await client.close();
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("real child diagnostic preserves missing finish after one synthetic merge", async () => {
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-finish-"));
+  const attempts = resolve(temp, "attempts.jsonl");
+  let puts = 0;
+  let startedBytes;
+  const client = makeClient(temp, {
+    sessionDiagnostics: true,
+    mergePullRequest: async () => {
+      puts++;
+      startedBytes = await readFile(attempts, "utf8");
+      await chmod(attempts, 0o400);
+      return mergeResult();
+    },
+  });
+  try {
+    await assert.rejects(() => approveAndExecute(client), (error) => {
+      assert.deepEqual(error.diagnostic, {
+        code: "mutation_returned_failed", phase: "mutation_returned",
+        authority_use: "unknown", external_effect: "unknown",
+        next_check: "authority_and_attempt_records", retry_allowed: false,
+      });
+      return true;
+    });
+    assert.equal(puts, 1);
+    assert.equal(await readFile(attempts, "utf8"), startedBytes);
+    assert.equal(startedBytes.trim().split("\n").length, 1);
+    assert.equal(JSON.parse(startedBytes.trim()).event_type, "attempt_started");
+    const authorityBytes = await readFile(resolve(temp, "authority.jsonl"), "utf8");
+    assert.equal(authorityBytes.trim().split("\n").map(JSON.parse)
+      .filter((row) => row.event_type === "authority_action_consume").length, 1);
+    await assert.rejects(() => client.execute(PARAMETERS));
+    assert.equal(puts, 1);
+    assert.equal(await readFile(attempts, "utf8"), startedBytes);
+    assert.equal(await readFile(resolve(temp, "authority.jsonl"), "utf8"), authorityBytes);
+  } finally {
+    await client.close();
+    await chmod(attempts, 0o600).catch(() => {});
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+const BAD_DIAGNOSTICS = [
+  { ...PREFLIGHT_DIAGNOSTIC, token: "secret" },
+  { ...PREFLIGHT_DIAGNOSTIC, phase: "success" },
+  { ...PREFLIGHT_DIAGNOSTIC, retry_allowed: true },
+  { ...PREFLIGHT_DIAGNOSTIC, retry_allowed: 0 },
+  { ...PREFLIGHT_DIAGNOSTIC, code: "review_validation_failed" },
+  { ...PREFLIGHT_DIAGNOSTIC, next_check: "review_request" },
+  { ...PREFLIGHT_DIAGNOSTIC, authority_use: "not_attempted BY THIS CALL" },
+  { ...PREFLIGHT_DIAGNOSTIC, external_effect: "SUCCESS" },
+  null, [], "secret",
+  Object.fromEntries(Object.entries(PREFLIGHT_DIAGNOSTIC).filter(([key]) => key !== "phase")),
+];
+
+for (const [index, invalid] of BAD_DIAGNOSTICS.entries()) {
+  test(`diagnostic malformed tuple ${index} rejects without caller observation`, async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-invalid-"));
+    const client = makeClient(temp, { sessionDiagnostics: true });
+    try {
+      const pending = installPending(client, "execute");
+      const frame = { ...resultFrame(client, pending, { code: "session", diagnostic: invalid }),
+        schema_version: "mothership-owner.v1", type: "error" };
+      client._onData(Buffer.from(`${JSON.stringify(frame)}\n`));
+      await assert.rejects(pending.promise, (error) => {
+        assert.equal(error.code, "protocol");
+        assert.equal(error.diagnostic, null);
+        return true;
+      });
+    } finally {
+      await client.close();
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+}
+
+for (const [field, changed, code] of [
+  ["schema_version", "mothership-owner.v0", "nonce"],
+  ["owner_id", "another-owner", "nonce"],
+  ["seq", 2, "sequence"],
+  ["reply_to", 2, "reply"],
+  ["request_id", "another-request", "protocol"],
+  ["action_id", "another-action", "protocol"],
+]) {
+  test(`diagnostic foreign ${field} never reaches pending call`, async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-foreign-"));
+    const client = makeClient(temp, { sessionDiagnostics: true });
+    try {
+      client._requestId = "expected-request";
+      client._actionId = "expected-action";
+      const pending = installPending(client, "execute");
+      const frame = { ...resultFrame(client, pending, { code: "session", diagnostic: PREFLIGHT_DIAGNOSTIC }),
+        schema_version: "mothership-owner.v1", type: "error", [field]: changed };
+      client._onData(Buffer.from(`${JSON.stringify(frame)}\n`));
+      await assert.rejects(pending.promise, (error) => {
+        assert.equal(error.code, code);
+        assert.equal(error.diagnostic, null);
+        return true;
+      });
+    } finally {
+      await client.close();
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+}
+
+test("terminal diagnostic example explains three stopped calls without live effects", async () => {
+  for (const [mode, phase, gets, merges] of [
+    ["review", "review_validation", 0, 0],
+    ["preflight", "preflight_transport", 1, 0],
+    ["finish", "mutation_returned", 1, 1],
+  ]) {
+    const { stdout, stderr } = await execFileAsync(process.execPath,
+      [resolve(ROOT, "examples/owner_diagnostic_terminal.mjs"), mode],
+      { cwd: ROOT, env: { ...process.env, PYTHON_EXECUTABLE: PYTHON } });
+    assert.equal(stderr, "");
+    assert.match(stdout, /synthetic local example; no network or live GitHub operation/);
+    assert.ok(stdout.includes(`last observed phase: ${phase}\n`));
+    assert.ok(stdout.includes(`callbacks: GET=${gets}, merge=${merges} (synthetic only)\n`));
+    assert.match(stdout, /next read-only check: existing /);
+    assert.match(stdout, /recovery: no re-execution; no reconsume/);
+    assert.doesNotMatch(stdout, /private-callback|Traceback|\/private\/|SUCCESS/);
+    if (mode !== "review") assert.match(stdout, /external effect: unknown/);
+  }
+});
+
+test("diagnostic opt-in keeps successful results and one-use behavior", async () => {
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-success-"));
+  let puts = 0;
+  const client = makeClient(temp, { sessionDiagnostics: true,
+    mergePullRequest: async () => { puts++; return mergeResult(); } });
+  try {
+    const result = await approveAndExecute(client);
+    assert.equal(result.receipt.status, "SUCCESS");
+    assert.equal(result.verification, null);
+    assert.equal(puts, 1);
+    await assert.rejects(() => client.execute(PARAMETERS));
+    assert.equal(puts, 1);
+  } finally {
+    await client.close();
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("diagnostic opt-in native pipe loss has no invented Python observation", async () => {
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-loss-"));
+  let puts = 0;
+  let client;
+  client = makeClient(temp, { sessionDiagnostics: true,
+    getPullRequest: async () => {
+      client._child.stdin.emit("error", new Error("secret-pipe-error"));
+      return getResult();
+    },
+    mergePullRequest: async () => { puts++; return mergeResult(); },
+  });
+  try {
+    await assert.rejects(() => approveAndExecute(client), (error) => {
+      assert.equal(error.code, "eof");
+      assert.equal(error.diagnostic, null);
+      assert.doesNotMatch(JSON.stringify(error), /secret-pipe-error/);
+      return true;
+    });
+    await assert.rejects(() => client.execute(PARAMETERS));
+    assert.equal(puts, 0);
+  } finally {
+    await client.close();
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("diagnostic mode validates options and code-only compatibility", async () => {
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-compat-"));
+  try {
+    for (const value of [null, 0, "true", {}, []]) {
+      let created;
+      try {
+        assert.throws(() => { created = makeClient(temp, { sessionDiagnostics: value }); },
+          (error) => error.code === "parameters" && error.diagnostic === null);
+      } finally { if (created !== undefined) await created.close(); }
+    }
+    for (const [enabled, code, payload, want] of [
+      [true, "phase", {}, "phase"],
+      [true, "phase", { diagnostic: PREFLIGHT_DIAGNOSTIC }, "protocol"],
+      [false, "session", { diagnostic: PREFLIGHT_DIAGNOSTIC }, "protocol"],
+    ]) {
+      const client = makeClient(temp, { sessionDiagnostics: enabled });
+      try {
+        const pending = installPending(client, "execute");
+        const frame = { ...resultFrame(client, pending, { code, ...payload }), type: "error",
+          schema_version: enabled ? "mothership-owner.v1" : "mothership-owner.v0" };
+        client._onData(Buffer.from(`${JSON.stringify(frame)}\n`));
+        await assert.rejects(pending.promise, (error) => {
+          assert.equal(error.code, want);
+          assert.equal(error.diagnostic, null);
+          return true;
+        });
+      } finally { await client.close(); }
+    }
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
+
+test("diagnostic parser accepts the finite Session phase tuples", async () => {
+  const early = "not_attempted BY THIS CALL";
+  const rows = [
+    ["unknown", "unknown", "existing_evidence_bundle"],
+    ["review_validation", early, "review_request"],
+    ["decision_record", early, "authority_records"],
+    ["execution_validation", early, "review_request_and_existing_records"],
+    ["companion_execution", "unknown", "authority_and_attempt_records"],
+    ["preflight_transport", "unknown", "authority_and_attempt_records"],
+    ["preflight_returned", "unknown", "authority_and_attempt_records"],
+    ["mutation_guard", "unknown", "authority_and_attempt_records"],
+    ["mutation_transport", "unknown", "authority_and_attempt_records"],
+    ["mutation_returned", "unknown", "authority_and_attempt_records"],
+    ["receipt_build", "unknown", "existing_evidence_bundle"],
+    ["result_export", "unknown", "existing_evidence_bundle"],
+  ];
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-phases-"));
+  try {
+    for (const [phase, effect, nextCheck] of rows) {
+      const client = makeClient(temp, { sessionDiagnostics: true });
+      try {
+        const diagnostic = { code: phase === "unknown" ? "unknown" : `${phase}_failed`, phase,
+          authority_use: effect, external_effect: effect, next_check: nextCheck, retry_allowed: false };
+        const pending = installPending(client, "execute");
+        const frame = { ...resultFrame(client, pending, { code: "session", diagnostic }),
+          schema_version: "mothership-owner.v1", type: "error" };
+        client._onData(Buffer.from(`${JSON.stringify(frame)}\n`));
+        await assert.rejects(pending.promise, (error) => {
+          assert.deepEqual(error.diagnostic, diagnostic);
+          return true;
+        });
+      } finally { await client.close(); }
+    }
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
 
 for (const [shape, modeOptions] of [
   ["trailing-default", { omitModes: true }],

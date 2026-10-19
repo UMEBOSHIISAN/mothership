@@ -50,10 +50,11 @@ def _frame(owner_id, frame_type, seq, request_id, action_id, payload, reply_to=N
 
 
 class ChildDriver:
-    def __init__(self, *, parent_pid: int | None = None):
+    def __init__(self, *, parent_pid: int | None = None, session_diagnostics=False):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
         self.owner_id = "owner-test-nonce"
+        self.schema = "mothership-owner.v1" if session_diagnostics else "mothership-owner.v0"
         self.authority = root / "authority.jsonl"
         self.attempts = root / "attempts.jsonl"
         env = os.environ.copy()
@@ -72,6 +73,7 @@ class ChildDriver:
                 str(self.authority),
                 "--attempts-path",
                 str(self.attempts),
+                *(["--session-diagnostics"] if session_diagnostics else []),
             ],
             cwd=ROOT,
             env=env,
@@ -107,6 +109,7 @@ class ChildDriver:
             self.action_id if action_id is None else action_id,
             payload,
         )
+        frame["schema_version"] = self.schema
         self.process.stdin.write(
             (json.dumps(frame, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode()
         )
@@ -144,6 +147,7 @@ class ChildDriver:
             payload,
             reply_to=callback["seq"] if reply_to is None else reply_to,
         )
+        response["schema_version"] = self.schema
         self.process.stdin.write(
             (json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n").encode()
         )
@@ -241,7 +245,7 @@ class ChildDriver:
             "schema_version", "type", "seq", "reply_to", "owner_id",
             "request_id", "action_id", "payload",
         } == set(value)
-        assert value["schema_version"] == "mothership-owner.v0"
+        assert value["schema_version"] == self.schema
         assert value["type"] == frame_type
         assert value["seq"] == seq
         assert value["reply_to"] == reply_to
@@ -255,6 +259,62 @@ class OwnerProtocolTests(unittest.TestCase):
         driver = getattr(self, "driver", None)
         if driver is not None:
             driver.close()
+
+    def test_opt_in_diagnostic_is_from_the_matched_session_failure(self):
+        self.driver = ChildDriver(session_diagnostics=True)
+        driver = self.driver
+        driver.send("prepare", {"parameters": PARAMETERS, "executor_ref": EXECUTOR_REF})
+        request = driver.finish_prepare()
+        driver.approve(request)
+        driver.send("execute", copy.deepcopy(PARAMETERS))
+        driver.reply_callback(driver.read(), copy.deepcopy(CONTEXT))
+        driver.reply_callback(driver.read(), copy.deepcopy(CONTEXT))
+        callback = driver.read()
+        self.assertEqual("get", callback["type"])
+        driver.reply_callback(callback, {"code": "transport"}, frame_type="error")
+        error = driver.read()
+        self.assertEqual("mothership-owner.v1", error["schema_version"])
+        self.assertEqual(driver.request_id, error["request_id"])
+        self.assertEqual(driver.action_id, error["action_id"])
+        self.assertEqual(5, error["reply_to"])
+        self.assertEqual({"code": "session", "diagnostic": {
+            "code": "preflight_transport_failed", "phase": "preflight_transport",
+            "authority_use": "unknown", "external_effect": "unknown",
+            "next_check": "authority_and_attempt_records", "retry_allowed": False,
+        }}, error["payload"])
+        self.assertEqual(0, driver.merge_callbacks)
+        self.assertFalse(driver.attempts.exists())
+
+    def test_opt_in_does_not_accept_parent_supplied_diagnostics(self):
+        self.driver = ChildDriver(session_diagnostics=True)
+        driver = self.driver
+        driver.send("prepare", {"parameters": PARAMETERS, "executor_ref": EXECUTOR_REF})
+        callback = driver.read()
+        driver.reply_callback(callback, {"code": "session", "diagnostic": {"phase": "parent-secret"}}, frame_type="error")
+        error = driver.read()
+        # Session construction wraps the rejected callback as its own unknown
+        # SessionError; the untrusted parent's diagnostic is never forwarded.
+        self.assertEqual({"code": "session", "diagnostic": {
+            "code": "unknown", "phase": "unknown", "authority_use": "unknown",
+            "external_effect": "unknown", "next_check": "existing_evidence_bundle",
+            "retry_allowed": False,
+        }}, error["payload"])
+        self.assertFalse(driver.authority.exists())
+        self.assertFalse(driver.attempts.exists())
+
+    def test_protocol_version_mismatch_fails_without_a_diagnostic_or_records(self):
+        for diagnostics in (False, True):
+            with self.subTest(diagnostics=diagnostics):
+                driver = ChildDriver(session_diagnostics=diagnostics)
+                self.driver = driver
+                driver.schema = "mothership-owner.v0" if diagnostics else "mothership-owner.v1"
+                driver.send("prepare", {"parameters": PARAMETERS, "executor_ref": EXECUTOR_REF})
+                error = driver.read()
+                self.assertEqual({"code": "nonce"}, error["payload"])
+                self.assertFalse(driver.authority.exists())
+                self.assertFalse(driver.attempts.exists())
+                driver.close()
+                self.driver = None
 
     def test_real_child_success_uses_one_session_and_exact_callback_shapes(self):
         self.driver = ChildDriver()

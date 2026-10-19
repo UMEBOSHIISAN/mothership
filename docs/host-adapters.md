@@ -218,8 +218,10 @@ The fixed `next_check` values select these read-only categories:
 `review_request`, `authority_records`, `review_request_and_existing_records`,
 `authority_and_attempt_records`, or `existing_evidence_bundle`. They are guidance,
 not executable commands or permission to create replacement evidence. The
-owner/JavaScript protocol still reports its existing generic error; this Python
-mapping is not automatically forwarded through every host adapter.
+owner/JavaScript protocol defaults to its existing generic error. The updated
+paired client/owner can explicitly forward this mapping as described under
+[Node Session diagnostics](#node-session-diagnostics). This is not automatic
+forwarding through every host adapter.
 
 If an evidence bundle has already been retained or exported through the existing
 validated exporter, inspect it offline:
@@ -332,6 +334,75 @@ offline export/inspection of retained records neither recreates the live owner
 nor spends authority. Missing Verification remains missing. The
 [bounded delivery traces](composition.md#delivery-replies-and-one-use-authority)
 exercise this connection with synthetic callbacks and temporary fixture records.
+
+### Node Session diagnostics
+
+This unreleased addition requires the updated `owner-client.mjs` and Python
+owner from this same checkout. The fixed setup revisions earlier in this guide
+predate this opt-in; they do not gain it by installing their pinned packages.
+
+The object constructor accepts `sessionDiagnostics: true`. Omitting it, passing
+`undefined`/`false`, or using the positional constructor retains
+`mothership-owner.v0` and its strict code-only errors. Other values, including
+`null`, fail before child creation. The opt-in launches the same single owner
+with the fixed `--session-diagnostics` flag and uses `mothership-owner.v1` for
+every frame. There is no version negotiation, restart, downgrade or fallback.
+An old client with the updated owner continues using v0. An opt-in client with
+an old owner fails at launch/protocol handling; do not retry with another mode.
+
+Only an actual Python `SessionError` adds the six-field diagnostic to a v1
+`{code: "session", diagnostic: ...}` reply. Other owner errors remain code-only.
+Parent callback errors must remain code-only in either version. A malformed
+callback rejected inside Session can become Session's own sanitized UNKNOWN
+diagnostic; a diagnostic supplied by the parent is never adopted. The client
+validates the closed diagnostic tuples and existing schema/owner/seq/reply/
+request/action correspondence before exposing the matched error.
+
+```js
+const owner = new MergeOwnerClient({
+  pythonExecutable, authorityPath, attemptsPath, contextProvider, transport,
+  sessionDiagnostics: true,
+});
+try {
+  // Use this retained owner's normal prepare/review/execute flow.
+} catch (error) {
+  // OwnerClientError.diagnostic is a detached mapping or null.
+  // Retain it with this call's context; never use it to authorize a retry.
+} finally {
+  await owner.close();
+}
+```
+
+`OwnerClientError.diagnostic` returns a detached mapping on every read, or
+`null` when no Session diagnostic was received. Native EOF/EPIPE, child loss,
+timeouts, parameter errors and invalid wire diagnostics do not acquire an
+invented Python phase. Both `null` and a valid UNKNOWN diagnostic leave the
+external result unconfirmed. Correlation is not source authentication or durable
+evidence binding. Keep this same-call observation separate from any supplied
+bundle's `inspect --human` output; it does not create a Receipt or Verification.
+
+Run the real-child terminal example from this updated checkout with Python
+3.12+ and Node 22+:
+
+```sh
+PYTHONPATH=.:packages/mothership-github:packages/mothership-adapters \
+  PYTHON_EXECUTABLE=python3 node examples/owner_diagnostic_terminal.mjs finish
+```
+
+Use `review` for context drift before approval recording, `preflight` for a
+synthetic GET failure after companion entry, or `finish` (the default) for a
+synthetic finish-save refusal after one merge callback. All callbacks are
+synthetic, with no credentials, network or live GitHub operation. The example
+does create synthetic review/consume records in temporary fixture ledgers. In
+`finish`, it changes only that temporary attempts file's mode from 0600 to 0400,
+so the existing writer refuses to append; it never fills in a missing finish.
+The child is closed and temporary files removed in `finally`.
+
+The display separates the last observed phase, unknown effects, next existing
+records to inspect and no re-execution/reconsume. A returned synthetic transport
+value is not confirmation of a remote result. OpenClaw/Lobster wrappers still
+map their errors to generic messages: this example accepts the direct Node
+client/terminal path only, not deployed wrappers or a selected daily host.
 They do not qualify a Hermes delivery path or an actual host deployment.
 
 The selected OpenClaw route registers one typed `mothership_merge_pr` tool and
