@@ -19,6 +19,270 @@ from mothership.contracts import canonical_json_sha256
 from mothership_github import public_observation
 
 
+class SavedResultCLITests(EvidenceFixture):
+    """Read existing consumer records; never synthesize authority for a reader."""
+
+    def saved_rows(self, *, status="CONFIRMED"):
+        state = {"pull_request": {
+            "repository": "UMEBOSHIISAN/mothership", "number": 5,
+            "state": "closed", "merged": True,
+            "merged_at": self.finished["recorded_at"],
+            "head_sha": self.request["action"]["execution_parameters"]["expected_head_sha"],
+            "base_ref": "main", "merge_commit_sha": "c" * 40,
+        }, "commit": {"sha": "c" * 40, "parents": ["d" * 40,
+            self.request["action"]["execution_parameters"]["expected_head_sha"]]}}
+        bundle, sidecar = self._readback_artifacts(
+            status=status, reason="merge_confirmed" if status == "CONFIRMED" else "ambiguous_merge_time",
+            state=state,
+        )
+        paths = {"authority": "/not-to-open/authority.jsonl", "attempts": "/not-to-open/attempts.jsonl"}
+        return [
+            {"event": "frozen_action", "action": copy.deepcopy(self.request["action"]),
+             "action_sha256": self.request["action_sha256"], "expires_at": self.request["expires_at"]},
+            {"event": "execution_result", "status": "success", "mutation_attempted": True,
+             **self.finished["observation"], "paths": paths},
+            {"event": "verification_result", "execution_status": "success", "status": status,
+             "source_pair": {"started": copy.deepcopy(self.started), "finished": copy.deepcopy(self.finished)},
+             "receipt": bundle["receipt"], "verification": bundle["verification"],
+             "evidence": sidecar, "paths": copy.deepcopy(paths)},
+        ]
+
+    @staticmethod
+    def encode_rows(rows):
+        return b"".join((json.dumps(row, ensure_ascii=True) + "\n").encode() for row in rows)
+
+    def run_saved(self, raw, *, human=True, output=None):
+        stdin = io.TextIOWrapper(io.BytesIO(raw), encoding="utf-8")
+        stdout = io.StringIO() if output is None else output
+        stderr = io.StringIO()
+        with mock.patch("sys.stdin", stdin), mock.patch("sys.stdout", stdout), mock.patch("sys.stderr", stderr):
+            try:
+                code = evidence_cli_main(["inspect-result", *(["--human"] if human else [])])
+            except SystemExit as error:
+                code = int(error.code)
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def test_saved_confirmed_records_separate_report_observation_and_missing_authority(self):
+        raw = self.encode_rows(self.saved_rows())
+        code, text, error = self.run_saved(raw)
+        self.assertEqual(0, code, error)
+        for expected in ("consumer execution report: success", "receipt: SUCCESS",
+                         "verification: CONFIRMED", "approval: not supplied",
+                         "authority use: not supplied", "source-unverified",
+                         "external effect verified: false", "no re-execution; no reconsume"):
+            self.assertIn(expected, text)
+        self.assertNotIn("/not-to-open", text)
+        self.assertIn("unlabelled execution summary", text)
+
+    def test_real_consumer_saved_file_round_trip_is_offline_and_unchanged(self):
+        from examples.reference_result_handoff import synthetic_saved_result
+
+        with mock.patch("socket.socket", side_effect=AssertionError("network forbidden")):
+            raw = synthetic_saved_result()
+            before = bytes(raw)
+            code, text, error = self.run_saved(raw)
+        self.assertEqual(0, code, error)
+        self.assertEqual(before, raw)
+        self.assertIn("repository=example/repo; pull_request=7", text)
+        self.assertIn("consumer execution report: success", text)
+        self.assertIn("receipt: SUCCESS", text)
+        self.assertIn("verification: UNKNOWN", text)
+        self.assertIn("unmerged_pr", text)
+
+    def test_failed_receipt_and_confirmed_observation_are_independent(self):
+        from mothership_github.external_action import build_external_action_receipt
+
+        rows = self.saved_rows()
+        finished = rows[2]["source_pair"]["finished"]
+        finished["outcome"] = "failure"
+        finished["observation"] = {"http_status": 409, "merged": False, "merge_commit_sha": None}
+        rows[1].update(status="failure", **finished["observation"])
+        receipt = build_external_action_receipt(
+            rows[2]["source_pair"]["started"], finished,
+            expected_action_id=rows[0]["action"]["action_id"],
+            expected_action_sha256=rows[0]["action_sha256"],
+            expected_consume_event_id=self.consume["event_id"],
+            executor_ref=rows[2]["receipt"]["executor_ref"],
+        )
+        rows[2].update(execution_status="failure", receipt=receipt)
+        rows[2]["verification"]["receipt_ref"]["sha256"] = canonical_json_sha256(receipt)
+        code, text, error = self.run_saved(self.encode_rows(rows))
+        self.assertEqual(0, code, error)
+        self.assertIn("consumer execution report: failure", text)
+        self.assertIn("receipt: FAILED", text)
+        self.assertIn("verification: CONFIRMED", text)
+        self.assertNotIn("execution succeeded", text)
+
+    def test_actual_missing_finish_save_remains_unknown_without_reading_ledger(self):
+        from examples import reference_result_handoff as example
+
+        root = pathlib.Path(self.temp.name).resolve() / "consumer"
+        root.mkdir(mode=0o700)
+        output = example._Terminal()
+        with mock.patch("mothership_github.receipts.record_attempt_finished", side_effect=OSError("fixture finish save")), \
+             mock.patch("socket.socket", side_effect=AssertionError("network forbidden")):
+            code = example.reference.main(
+                ["--repo", "example/repo", "--pr", "7", "--ledger-dir", str(root),
+                 "--verify-result", "--save-result"],
+                transport=example._SyntheticTransport(), input_stream=example._FixtureApproval(output),
+                output_stream=output, readback_opener=example._synthetic_readback,
+            )
+        self.assertEqual(1, code)
+        before = {p.name: p.read_bytes() for p in root.iterdir()}
+        code, text, error = self.run_saved(before["result.jsonl"])
+        self.assertEqual(0, code, error)
+        self.assertIn("consumer execution report: reconciliation_required", text)
+        self.assertIn("receipt: not supplied", text)
+        self.assertIn("verification: not supplied", text)
+        self.assertIn("outcome unknown", text)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in root.iterdir()})
+
+    def test_old_record_dates_are_read_without_becoming_current_authority_or_truth(self):
+        rows = self.saved_rows()
+        rows[0]["expires_at"] = "2001-01-01T00:00:00Z"
+        code, text, error = self.run_saved(self.encode_rows(rows))
+        self.assertEqual(0, code, error)
+        self.assertIn("do not establish successful process exit or record freshness", text)
+        self.assertIn("authority: false", text)
+        self.assertIn("not proof of this attempt's causation or current state", text)
+
+    def test_closed_shapes_scalars_and_contradictory_facts_reject(self):
+        corruptions = [
+            lambda r: r[0].update(extra="private sentinel"),
+            lambda r: r[0].update(expires_at="not-UTC"),
+            lambda r: r[1].update(http_status=True),
+            lambda r: r[1].update(merged=1),
+            lambda r: r[1].update(status="success", merged=False),
+            lambda r: r[1].update(status="failure"),
+            lambda r: r[1].update(mutation_attempted="unknown"),
+            lambda r: r[1]["paths"].update(other="not a supported field"),
+            lambda r: r[2].update(reason="not supported with complete records"),
+            lambda r: r[2].update(source_pair=None),
+            lambda r: r[2].update(receipt=None),
+            lambda r: r[2]["verification"].update(status="UNKNOWN"),
+        ]
+        for corrupt in corruptions:
+            rows = self.saved_rows()
+            corrupt(rows)
+            code, text, error = self.run_saved(self.encode_rows(rows))
+            self.assertEqual((2, ""), (code, text))
+            self.assertEqual("invalid bounded evidence input\n", error)
+
+    def test_clean_prefixes_leave_outcomes_unknown_and_do_not_invent_records(self):
+        rows = self.saved_rows()
+        for length in (0, 1, 2):
+            with self.subTest(length=length):
+                code, text, error = self.run_saved(self.encode_rows(rows[:length]))
+                self.assertEqual(0, code, error)
+                self.assertIn("verification: not supplied", text)
+                self.assertIn("receipt: not supplied", text)
+                self.assertIn("outcome unknown", text)
+                self.assertNotIn("cancelled", text)
+                self.assertNotIn("no operation occurred", text)
+        code, text, error = self.run_saved(self.encode_rows(rows[:2]))
+        self.assertIn("consumer execution report: success", text)
+        self.assertIn("not a bound completion record", text)
+
+    def test_receipt_unavailable_does_not_reconstruct_missing_finish_or_receipt(self):
+        rows = self.saved_rows()
+        rows[2].update(status="unavailable", reason="receipt_unavailable",
+                       source_pair=None, receipt=None, verification=None, evidence=None)
+        code, text, error = self.run_saved(self.encode_rows(rows))
+        self.assertEqual(0, code, error)
+        self.assertIn("receipt: not supplied", text)
+        self.assertIn("receipt_unavailable", text)
+        self.assertIn("existing authority and attempt records", text)
+        self.assertIn("outcome unknown", text)
+
+    def test_unknown_and_verification_unavailable_stay_unconfirmed(self):
+        rows = self.saved_rows(status="UNKNOWN")
+        code, text, error = self.run_saved(self.encode_rows(rows))
+        self.assertEqual(0, code, error)
+        self.assertIn("verification: UNKNOWN", text)
+        self.assertIn("ambiguous_merge_time", text)
+        rows[2].update(status="unavailable", reason="verification_unavailable", verification=None, evidence=None)
+        code, text, error = self.run_saved(self.encode_rows(rows))
+        self.assertEqual(0, code, error)
+        self.assertIn("receipt: SUCCESS", text)
+        self.assertIn("verification: not supplied", text)
+
+    def test_invalid_or_torn_jsonl_has_no_operation_summary(self):
+        rows = self.saved_rows()
+        valid = self.encode_rows(rows)
+        malformed = [valid[:-1], valid + b"garbage\n", valid + b"\n", b" \n", b"\xff\n",
+                     valid + b"{}\n", self.encode_rows(rows[::-1]),
+                     self.encode_rows([rows[0], rows[1], rows[1]]),
+                     b'{"event":"frozen_action","event":"frozen_action"}\n',
+                     b'{"event":"frozen_action","private":NaN}\n', b"x" * (MAX_ENCODED_BYTES + 1)]
+        for raw in malformed:
+            with self.subTest(raw=raw[:50]):
+                code, text, error = self.run_saved(raw)
+                self.assertEqual((2, ""), (code, text))
+                self.assertEqual("invalid bounded evidence input\n", error)
+
+    def test_hash_action_and_cross_record_tampering_reject_before_summary(self):
+        for corrupt in ("digest", "action", "receipt", "sidecar", "state", "status", "paths", "pair", "observation"):
+            rows = self.saved_rows()
+            if corrupt == "digest": rows[0]["action_sha256"] = "0" * 64
+            if corrupt == "action": rows[0]["action"]["action_id"] = "act-other-run"
+            if corrupt == "receipt": rows[2]["receipt"]["action_id"] = "act-other-run"
+            if corrupt == "sidecar": rows[2]["evidence"]["reason"] = "unmerged_pr"
+            if corrupt == "state": rows[2]["evidence"]["state"]["commit"]["parents"] = []
+            if corrupt == "status": rows[2]["execution_status"] = "failure"
+            if corrupt == "paths": rows[2]["paths"]["attempts"] = "/other-run/attempts.jsonl"
+            if corrupt == "pair": rows[2]["source_pair"]["started"]["action_id"] = "act-other-run"
+            if corrupt == "observation": rows[1]["merge_commit_sha"] = "a" * 40
+            with self.subTest(corrupt=corrupt):
+                code, text, error = self.run_saved(self.encode_rows(rows))
+                self.assertEqual((2, ""), (code, text))
+                self.assertEqual("invalid bounded evidence input\n", error)
+
+    def test_no_implicit_paths_authority_network_or_input_mutation(self):
+        raw = self.encode_rows(self.saved_rows())
+        paths = (self.authority_path, self.receipt_path)
+        before = [p.read_bytes() for p in paths]
+        real_open = os.open
+        schema_root = pathlib.Path(__file__).resolve().parents[3] / "evidence" / "contracts"
+
+        def resource_read_only(path, flags, *args, **kwargs):
+            target = pathlib.Path(path).resolve()
+            self.assertTrue(target.is_relative_to(schema_root), "only bundled schema reads are allowed")
+            self.assertEqual(0, flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND))
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch("socket.socket", side_effect=AssertionError("network forbidden")), \
+             mock.patch("os.open", side_effect=resource_read_only), \
+             mock.patch("orchestration.lib.action_authority.freeze_action", side_effect=AssertionError("issuance forbidden")), \
+             mock.patch("orchestration.lib.action_authority_ledger.consume_action", side_effect=AssertionError("consume forbidden")), \
+             mock.patch("mothership_github.executor.execute_action_merge_pr", side_effect=AssertionError("execution forbidden")):
+            code, text, error = self.run_saved(raw)
+        self.assertEqual(0, code, error)
+        self.assertEqual(before, [p.read_bytes() for p in paths])
+        self.assertIn("verification: CONFIRMED", text)
+
+    def test_repeated_reordered_and_failed_outputs_do_not_leak_state(self):
+        good = self.encode_rows(self.saved_rows())
+        partial = self.encode_rows(self.saved_rows()[:1])
+        first = self.run_saved(good)
+        self.run_saved(b"broken\n")
+        expected_partial = self.run_saved(partial)
+
+        class BrokenWriter(io.StringIO):
+            def write(self, text):
+                return super().write(text[:5])
+
+        self.assertEqual(2, self.run_saved(good, output=BrokenWriter())[0])
+        self.assertEqual(first, self.run_saved(good))
+        self.assertEqual(expected_partial, self.run_saved(partial))
+        self.assertNotIn("CONFIRMED", expected_partial[1])
+        code, text, error = self.run_saved(good, human=False)
+        self.assertEqual(0, code, error)
+        view = json.loads(text)
+        self.assertFalse(view["authority"])
+        self.assertFalse(view["external_effect_verified"])
+        self.assertNotIn("request", view)
+
+
 class AdapterEvidenceCLITests(EvidenceFixture):
     def test_output_failure_does_not_leak_a_success_into_the_next_inspection(self) -> None:
         complete = self.full()

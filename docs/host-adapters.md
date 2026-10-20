@@ -15,19 +15,21 @@ route is documented separately below.
 
 ### Try the current candidate
 
-For the features documented in this guide, use the unreleased source candidate
-at `bd6a2e83da9ae75ee38cf1914e4017971063a90d` (PR #49 merged on 2026-10-15).
+For the existing runtime through PR #55, use the unreleased source baseline
+at `6082bf84acaa28333a9f893b74157f90ec4c522f` (PR #55 merged on 2026-10-20 JST).
 This revision includes readback/inspect-sidecar, explicit JavaScript callback
-modes, and Python `SessionError.diagnostic`. It is a fixed snapshot, not a
-promise to include later main changes. Review the source before use and record
+modes, Python `SessionError.diagnostic`, and opt-in direct Node diagnostic forwarding.
+The saved-result reader introduced in this source change is **not** in that
+baseline; use the source-local candidate instructions below for that reader.
+This is a fixed snapshot, not a promise to include later changes. Review the source and record
 the exact revision. Start in a new directory:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-candidate
 cd mothership-candidate
-git fetch origin bd6a2e83da9ae75ee38cf1914e4017971063a90d
+git fetch origin 6082bf84acaa28333a9f893b74157f90ec4c522f
 git rev-parse --verify FETCH_HEAD
-git checkout --detach bd6a2e83da9ae75ee38cf1914e4017971063a90d
+git checkout --detach 6082bf84acaa28333a9f893b74157f90ec4c522f
 git rev-parse --verify HEAD
 
 python3 -m venv .venv
@@ -75,6 +77,85 @@ python -m pip install -e 'packages/mothership-adapters[agents,langgraph,mcp]'
 These extras pin `openai-agents==0.23.1`, `langgraph==1.2.12`, and
 `mcp==2.3.0`. Record the `FETCH_HEAD` and detached `HEAD` values alongside the
 test evidence; do not reconstruct a live session from an exported JSON request.
+
+## Saved reference results
+
+The reference consumer's `--verify-result --save-result` saves finite JSONL,
+not a `host-evidence-bundle.v0`. The offline `inspect-result` command reads that
+existing file directly. It does not manufacture a portable review request,
+approval, consume event or Receipt to make it fit `inspect`.
+
+### Reader source candidate from one checkout
+
+Use the reviewed source checkout **containing this reader change**, including
+`mothership_adapters/saved_result.py` and `examples/reference_result_handoff.py`.
+The baseline `6082bf8` above and the earlier PR #49 pin `bd6a2e8` do not include
+the reader. Select an exact source commit containing the reader and record
+`git rev-parse HEAD` before installing. For an uncommitted local candidate,
+retain its baseline plus the reviewed patch/file manifest as well. Do not label
+an ancestor pin as containing this reader or mix files from different revisions.
+
+In the root of that source candidate, install all three packages together
+(Python 3.12+; this offline reader requires no Node or optional SDK extras):
+
+```sh
+git rev-parse HEAD
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e . -e packages/mothership-github -e packages/mothership-adapters
+mothership-evidence inspect-result --help
+python -m examples.reference_result_handoff > synthetic-result.jsonl
+mothership-evidence inspect-result --human < synthetic-result.jsonl
+```
+
+Installation may resolve build tooling; the example and reader are offline.
+The example runs the **real reference consumer and saver** with synthetic
+transport, readback and fixture approval in temporary ledgers. It emits the
+saved JSONL on stdout and a synthetic-only notice on stderr. It neither contacts
+GitHub nor authenticates a human. The synthetic executor reports success while
+the supplied readback reports an unmerged PR: expect `receipt: SUCCESS` and
+`verification: UNKNOWN`, not a completed-operation claim. Keep stdout/stderr
+separate. Inspecting the resulting file does not create or consume authority.
+For a real file already saved by the consumer, replace only the redirected
+input with that explicitly selected `result.jsonl`; do not rerun an operation
+to create evidence for this reader.
+
+The command accepts an empty file or a complete ordered prefix of at most
+three saved events: `frozen_action`, `execution_result`, `verification_result`.
+Every nonempty input line must be a complete LF-terminated JSON object.
+Whole-input size, JSON depth/node/string bounds, duplicates, unknown fields,
+reordered events and inconsistent action/hash/record links are checked before
+any operation summary. Torn/invalid input returns exit `2` with no summary;
+do not silently drop its tail. Output failure also returns `2`; discard partial
+output. Exit `0` means readable valid records, including UNKNOWN, not successful
+execution. JSON output without `--human` exposes the same non-authorizing view.
+
+| Supplied records | Meaning and next check |
+| --- | --- |
+| Empty or frozen action only | Operation identity may be absent; outcome unknown. These records do not identify cancellation or prove no effect. Check explicitly retained source records. |
+| Execution summary only after action | Consumer-reported status; no bound Receipt/independent confirmation supplied. Check existing authority and attempt records. |
+| Receipt, no Verification | Executor report only; inspect an existing independent Verification if available. |
+| Receipt plus bound Verification/sidecar | Recorded independent observation, its status/reason/time and structural hash binding; not authenticated origin, causation or current external truth. Receipt/Verification statuses may differ. |
+| Unavailable Receipt/finish | Leave absent records absent; inspect existing authority/attempt records. No Receipt is constructed. |
+| Corrupt or mixed action/hash records | Reject without an operation summary. No repair or automatic external action. |
+
+This format never supplies the original review request, full approval or consume
+rows. The execution summary also lacks an action/run identifier and timestamp:
+its sequence alone cannot detect a same-shaped row replaced from another run.
+The reader states that limit and never treats that row as bound completion.
+It validates existing pair/Receipt/action and Verification/sidecar hashes when
+provided, but mutually consistent falsified records cannot be authenticated.
+It opens no input paths, discovers no records, and changes no input or ledger.
+Bundled schemas are still read by the existing validators. It performs no
+network, execution, consume, retry or observation, and does not prove freshness
+or successful process exit. The existing bundle `inspect`/MCP and explicit
+network-capable `readback` contracts are unchanged.
+
+Human usability acceptance remains separate: give success, unconfirmed and
+stopped saved cases to a person unfamiliar with the implementation, and record
+time to understand, author questions, mistaken completion claims and the next
+record they select. Synthetic/agent checks do not supply these human metrics.
+No daily-host activation or human-study completion is implied by this example.
 
 ## One retained session and synthetic transport
 
@@ -338,8 +419,9 @@ exercise this connection with synthetic callbacks and temporary fixture records.
 ### Node Session diagnostics
 
 This unreleased addition requires the updated `owner-client.mjs` and Python
-owner from this same checkout. The fixed setup revisions earlier in this guide
-predate this opt-in; they do not gain it by installing their pinned packages.
+owner from this same checkout. The PR #55 baseline pinned above includes this
+opt-in. Historical PR #49 and PR #45 revisions predate it; installing their
+pinned packages does not add later client/owner files.
 
 The object constructor accepts `sessionDiagnostics: true`. Omitting it, passing
 `undefined`/`false`, or using the positional constructor retains
