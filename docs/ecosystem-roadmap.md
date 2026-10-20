@@ -23,7 +23,16 @@ not promise dates, adoption, publication, deployment, or automatic integration.
 - Opt-in terminal-attempt conversion into Core Receipt, exact identity checks,
   canonical evidence binding and UNKNOWN preservation.
 - Offline local-ledger → companion → receipt → Core binding regression with fake
-  transport; no automatic runtime or independent-verifier producer.
+  transport; no automatic runtime bridge. The optional companion now supplies
+  a bounded opt-in readback producer, separate from offline inspection.
+- Retained host sessions, eight bounded host/evidence routes, and offline
+  `inspect --human` with explicit saved-sidecar binding checks.
+- Finite Session diagnostics with opt-in direct Node forwarding; deployed
+  wrapper and daily-host acceptance remain separate.
+- Source-candidate `inspect-result` reads the reference consumer's saved JSONL
+  without fabricated review/authority records. See the [one-checkout save-to-reader
+  walkthrough](host-adapters.md#saved-reference-results). Source authentication,
+  human usability metrics and current external truth are not established by it.
 
 See [composition and host obligations](composition.md) for continuation,
 delegation, observation, plugin and knowledge-lifecycle boundaries. These remain

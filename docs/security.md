@@ -229,6 +229,21 @@ invent a finish or Receipt to satisfy that prerequisite, reconsume an approval,
 or reexecute an uncertain operation. A new incomplete-attempt observation path
 is not provided by these diagnostics.
 
+## Saved reference-result inspection
+
+`mothership-evidence inspect-result` is a separate offline reader for the
+reference consumer's saved JSONL. It validates a finite ordered event prefix
+and supplied action/pair/Receipt/Verification/sidecar bindings before displaying
+an operation summary. It never reconstructs a portable request, approval,
+consume or absent Receipt. Input paths are opaque and never opened; only the
+existing bundled-schema reads are needed. Empty or partial saved evidence does
+not prove no effect. The execution-summary row lacks an action/run identifier,
+so a same-shaped substituted row cannot be identified from that row alone;
+it is never treated as bound completion. Consistent hashes are not source
+authentication, freshness or causation proof. The reader does not fetch,
+execute, consume, repair records or add authority. Existing bundle inspection
+and readback eligibility remain unchanged.
+
 ## Installation boundary
 
 Pip and Git are external tools with their own side effects and supply-chain risks. Review the source or wheel, verify

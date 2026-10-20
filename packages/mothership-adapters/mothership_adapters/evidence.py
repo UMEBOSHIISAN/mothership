@@ -788,13 +788,28 @@ def _validate_readback_projection(value: object, *, kind: str) -> dict[str, obje
 def _validate_readback_evidence(
     bundle: dict[str, object], value: object
 ) -> dict[str, object]:
+    return _validate_readback_for_action(
+        bundle["request"]["action"], bundle["request"]["action_sha256"],
+        bundle["verification"], value,
+    )
+
+
+def _validate_readback_for_action(
+    action: dict[str, object], action_sha256: str,
+    verification: object, value: object,
+) -> dict[str, object]:
+    """Check saved sidecar bindings against already validated action/Verification.
+
+    This pure check accepts recorded action data without inventing a portable
+    review request. Callers validate the Receipt/Verification contract first.
+    """
     detached, _ = _canonical(value)
     if type(detached) is not dict or set(detached) != _READBACK_KEYS:
         raise _invalid()
     if detached["version"] != _READBACK_VERSION:
         raise _invalid()
     action_id = _require_action_id(detached["action_id"])
-    action_sha256 = _require_digest(detached["action_sha256"])
+    sidecar_action_sha256 = _require_digest(detached["action_sha256"])
     if detached["transport"] not in {"default_tokenless", "injected"}:
         raise _invalid()
     observations = detached["observations"]
@@ -821,15 +836,13 @@ def _validate_readback_evidence(
     if type(reason) is not str or _READBACK_REASON.fullmatch(reason) is None:
         raise _invalid()
 
-    verification = bundle.get("verification")
     if type(verification) is not dict:
         raise _invalid()
-    action = bundle["request"]["action"]
     if (
         action_id != action["action_id"]
-        or action_sha256 != bundle["request"]["action_sha256"]
+        or sidecar_action_sha256 != action_sha256
         or action_id != verification["action_id"]
-        or action_sha256 != verification["action_sha256"]
+        or sidecar_action_sha256 != verification["action_sha256"]
     ):
         raise _invalid()
     evidence_refs = verification["evidence_refs"]

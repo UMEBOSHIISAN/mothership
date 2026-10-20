@@ -197,3 +197,23 @@ This is a local copy of consumer output, not a new authority ledger, resume
 format, authenticated audit store, or proof against alteration by the trusted
 OS user. Both terminal streams are still required; saving does not replace the
 manual approval ceremony or certify production suitability.
+
+### Read a saved result without repeating the operation
+
+With Core, companion and adapters from the same reader source checkout:
+
+```sh
+mothership-evidence inspect-result --human < result.jsonl
+```
+
+Select the existing file explicitly. This new offline reader accepts the
+consumer's JSONL directly; `inspect --human` continues requiring its distinct
+portable-review bundle. It separates the consumer summary, an already supplied
+Receipt, and recorded independent observation. Approval/consume rows absent
+from this saved format remain unprovided, and paths inside it are never opened.
+Empty files and clean event prefixes retain uncertainty; torn JSON lines or
+inconsistent action/hash records are rejected without a summary. Reading does
+not repair a file, create a missing Receipt, observe GitHub or authorize retry.
+The unlabelled execution-summary row alone cannot prove its run association,
+and hash consistency does not authenticate the producer or establish freshness.
+See the [same-checkout offline walkthrough and acceptance limits](../docs/host-adapters.md#saved-reference-results).

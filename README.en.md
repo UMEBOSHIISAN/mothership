@@ -84,6 +84,15 @@ Reading retained results requires the Core, companion, and adapters from that
 same-checkout setup. It is opt-in and does not by itself qualify a live host or
 external effect.
 
+The reference consumer's `--save-result` writes a different format: `result.jsonl`.
+In this reader source candidate, use
+`mothership-evidence inspect-result --human < result.jsonl`.
+It separates the supplied execution summary, Receipt and recorded independent
+observation; approval and consume are shown as not supplied by this format.
+It never invents a request or missing Receipt, or follows paths inside the input.
+See the [same-checkout offline save-to-reader example](docs/host-adapters.md#saved-reference-results).
+This addition is not in published distributions or the guide's older pinned revisions.
+
 The updated Python owner and Node client from the same checkout can explicitly
 forward stop diagnostics with `sessionDiagnostics: true`. See the
 [synthetic terminal example and compatibility rules](docs/host-adapters.md#node-session-diagnostics).

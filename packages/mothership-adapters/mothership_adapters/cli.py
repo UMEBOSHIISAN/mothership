@@ -29,14 +29,18 @@ def _invalid() -> EvidenceError:
     return EvidenceError("invalid bounded CLI input")
 
 
-def _read_stdin() -> object:
+def _read_stdin_bytes() -> bytes:
     try:
         raw = sys.stdin.buffer.read(MAX_ENCODED_BYTES + 1)
     except (AttributeError, OSError, ValueError):
         raise _invalid() from None
     if len(raw) > MAX_ENCODED_BYTES:
         raise _invalid()
-    return decode_json(raw)
+    return raw
+
+
+def _read_stdin() -> object:
+    return decode_json(_read_stdin_bytes())
 
 
 def _readback_evidence_file(path: str) -> object:
@@ -180,6 +184,10 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="read one bounded regular-file read-back sidecar for --human output",
     )
+    result_parser = subparsers.add_parser(
+        "inspect-result", help="offline inspection of saved reference-consumer result.jsonl from stdin",
+    )
+    result_parser.add_argument("--human", action="store_true", help="explain supplied saved-result records")
     return parser
 
 
@@ -197,6 +205,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             or len(sidecar_paths) != 1
         ):
             raise _invalid()
+        if args.command == "inspect-result":
+            from .saved_result import inspect_saved_result, summarize_saved_result
+
+            raw = _read_stdin_bytes()
+            if args.human:
+                _write_once(sys.stdout, summarize_saved_result(raw))
+            else:
+                _write_json(inspect_saved_result(raw))
+            return 0
         payload = _read_stdin()
         if args.command == "export":
             result = _export_from_envelope(payload)

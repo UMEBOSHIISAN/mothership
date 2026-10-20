@@ -73,6 +73,13 @@ Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要で�
 閲覧はオフラインで、承認・実行・権限の再使用を行いません。欠けている記録は欠落のまま扱います。
 sidecarの照合や明示的なreadbackは、[詳しい読み取り手順](#結果閲覧と明示的なreadback)を参照してください。
 
+参照consumerの`--save-result`で保存した`result.jsonl`は別形式です。このreaderのソース候補では、
+`mothership-evidence inspect-result --human < result.jsonl`で読みます。
+保存された実行報告・Receipt・独立観測を分け、承認やconsumeは「この保存形式には未提供」と表示します。
+requestや欠けたReceiptを後付けせず、入力内のpathも読み込みません。
+[同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。
+この追加は公開済み配布物や、ガイドの過去の固定revisionには含まれません。
+
 更新した同一checkoutのPython ownerとNode clientでは、`sessionDiagnostics: true`を
 明示すると、停止段階・不明点・次の確認先をNode側でも読めます。
 [合成ターミナル例と互換性](docs/host-adapters.md#node-session-diagnostics)を参照してください。
