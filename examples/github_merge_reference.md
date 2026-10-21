@@ -177,6 +177,18 @@ verification event includes the validated source pair, Receipt, Verification,
 and sanitized evidence already produced by the consumer. Their statuses and
 bindings are preserved; saving does not perform another observation or operation.
 
+With `--save-result`, every saved event carries
+`"saved_result_schema":"mothership.reference-result.v1"`. The frozen-action row
+retains its existing action, digest and expiry. Execution and verification rows
+also carry `action_id` and `action_sha256`, taken from the retained issued action,
+including exception, reconciliation and unavailable-verification output. The
+same versioned line is saved before it is displayed. Without `--save-result`,
+terminal event shapes remain unversioned. These fields associate records; they
+do not create an approval, consume event or missing Receipt.
+Use a reader from this same updated checkout. The PR #56 pinned reader rejects
+v1; existing unversioned files remain readable by the updated reader with their
+original limitations. See the [compatibility table](../docs/host-adapters.md#saved-result-format-compatibility).
+
 `--save-result` requires `--verify-result`. Without the save flag, no evidence
 file is created. The consumer exclusively creates a regular file with mode
 `0600` before requesting a token or calling the transport. An existing file,
@@ -214,6 +226,11 @@ from this saved format remain unprovided, and paths inside it are never opened.
 Empty files and clean event prefixes retain uncertainty; torn JSON lines or
 inconsistent action/hash records are rejected without a summary. Reading does
 not repair a file, create a missing Receipt, observe GitHub or authorize retry.
-The unlabelled execution-summary row alone cannot prove its run association,
-and hash consistency does not authenticate the producer or establish freshness.
+Legacy execution-summary rows remain unlabelled and positional only. V1 checks
+execution and verification row IDs/digests against the supplied frozen action,
+but a summary without a Receipt still leaves the outcome unknown. Missing IDs,
+unknown versions, mixed formats and mismatches are rejected; a failed v1 parse
+is never retried as legacy. Hash consistency does not authenticate the producer,
+establish freshness or prevent coherent forgery, same-action substitution, or
+complete rewriting into a valid legacy stream.
 See the [same-checkout offline walkthrough and acceptance limits](../docs/host-adapters.md#saved-reference-results).

@@ -77,6 +77,9 @@ sidecarの照合や明示的なreadbackは、[詳しい読み取り手順](#結�
 `mothership-evidence inspect-result --human < result.jsonl`で読みます。
 保存された実行報告・Receipt・独立観測を分け、承認やconsumeは「この保存形式には未提供」と表示します。
 requestや欠けたReceiptを後付けせず、入力内のpathも読み込みません。
+このcheckoutの新しい保存形式では、実行報告と確認結果に操作ID・digestを付け、別操作の報告が混ざれば拒否します。
+旧形式も読めますが、報告行は位置だけの対応です。IDの一致は出所認証や完了の証明ではありません。
+新形式には同じ更新版のreaderが必要です。[新旧形式の対応](docs/host-adapters.md#saved-result-format-compatibility)を確認してください。
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
 [同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。

@@ -24,12 +24,78 @@ from .evidence import (
 
 
 _EVENTS = ("frozen_action", "execution_result", "verification_result")
+_SAVED_RESULT_SCHEMA = "mothership.reference-result.v1"
+_V1_FIELDS = frozenset({"saved_result_schema", "action_id", "action_sha256"})
 _EXECUTION = frozenset({"event", "status", "mutation_attempted", "paths"})
 _FACTS = frozenset({"http_status", "merged", "merge_commit_sha"})
 _VERIFICATION = frozenset({
     "event", "execution_status", "status", "source_pair", "receipt",
     "verification", "evidence", "paths",
 })
+
+
+def _version(rows: list[dict[str, object]]) -> str:
+    """Select one closed row format before any row-specific validation."""
+
+    if not rows:
+        return "legacy"
+    first_has_marker = "saved_result_schema" in rows[0]
+    if first_has_marker:
+        if rows[0].get("saved_result_schema") != _SAVED_RESULT_SCHEMA:
+            raise _invalid()
+        version = "v1"
+    else:
+        version = "legacy"
+    for row in rows:
+        has_marker = "saved_result_schema" in row
+        if has_marker and row.get("saved_result_schema") != _SAVED_RESULT_SCHEMA:
+            raise _invalid()
+        if has_marker != (version == "v1"):
+            raise _invalid()
+    return version
+
+
+def _v1_identity(
+    row: dict[str, object], expected_action_id: object, expected_action_sha256: object
+) -> None:
+    if type(row.get("saved_result_schema")) is not str:
+        raise _invalid()
+    if type(row.get("action_id")) is not str or type(row.get("action_sha256")) is not str:
+        raise _invalid()
+    if row["action_id"] != expected_action_id or row["action_sha256"] != expected_action_sha256:
+        raise _invalid()
+
+
+def _without_v1_fields(row: dict[str, object]) -> dict[str, object]:
+    return {key: value for key, value in row.items() if key not in _V1_FIELDS}
+
+
+def _validate_v1_execution(
+    row: dict[str, object], expected_action_id: object, expected_action_sha256: object
+) -> None:
+    if set(row) not in {
+        _EXECUTION | _V1_FIELDS,
+        _EXECUTION | _FACTS | _V1_FIELDS,
+    }:
+        raise _invalid()
+    _v1_identity(row, expected_action_id, expected_action_sha256)
+    _execution(_without_v1_fields(row))
+
+
+def _validate_v1_verification(
+    frozen: dict[str, object],
+    execution: dict[str, object],
+    row: dict[str, object],
+    expected_action_id: object,
+    expected_action_sha256: object,
+) -> object:
+    if set(row) not in {
+        _VERIFICATION | _V1_FIELDS,
+        _VERIFICATION | {"reason"} | _V1_FIELDS,
+    }:
+        raise _invalid()
+    _v1_identity(row, expected_action_id, expected_action_sha256)
+    return _verification(frozen, execution, _without_v1_fields(row))
 
 
 def _rows(raw: bytes | str) -> tuple[bytes, list[dict[str, object]]]:
@@ -148,10 +214,14 @@ def inspect_saved_result(raw: bytes | str) -> dict[str, object]:
     """Validate all supplied saved events before returning a detached summary."""
     try:
         encoded, rows = _rows(raw)
+        version = _version(rows)
         action = execution = verification = sidecar = None
         if rows:
             frozen = rows[0]
-            if set(frozen) != {"event", "action", "action_sha256", "expires_at"}:
+            expected_frozen = {"event", "action", "action_sha256", "expires_at"}
+            if version == "v1":
+                expected_frozen.add("saved_result_schema")
+            if set(frozen) != expected_frozen:
                 raise _invalid()
             if action_sha256(frozen["action"]) != frozen["action_sha256"]:
                 raise _invalid()
@@ -160,13 +230,29 @@ def inspect_saved_result(raw: bytes | str) -> dict[str, object]:
             action = frozen["action"]
         if len(rows) >= 2:
             execution = rows[1]
-            _execution(execution)
+            if version == "v1":
+                _validate_v1_execution(execution, action["action_id"], rows[0]["action_sha256"])
+            else:
+                _execution(execution)
         if len(rows) == 3:
             verification = rows[2]
-            sidecar = _verification(rows[0], execution, verification)
+            if version == "v1":
+                sidecar = _validate_v1_verification(
+                    rows[0], execution, verification,
+                    action["action_id"], rows[0]["action_sha256"],
+                )
+            else:
+                sidecar = _verification(rows[0], execution, verification)
         receipt = None if verification is None else verification["receipt"]
         observed = None if verification is None else verification["verification"]
-        return {
+        binding = (
+            "action ID and digest match (structural only; source-unverified)"
+            if version == "v1" and execution is not None
+            else "not supplied"
+            if version == "v1"
+            else "positional only; no action/run ID in execution row"
+        )
+        view = {
             "format": "reference-result-jsonl", "input_sha256": hashlib.sha256(encoded).hexdigest(),
             "record_count": len(rows), "action": action,
             "execution_status": None if execution is None else execution["status"],
@@ -180,8 +266,11 @@ def inspect_saved_result(raw: bytes | str) -> dict[str, object]:
                 (["verification"] if observed is None else []),
             "provenance": "caller-attested", "source_status": "source-unverified",
             "authority": False, "source_authenticated": False, "external_effect_verified": False,
-            "execution_summary_binding": "positional only; no action/run ID in execution row",
+            "execution_summary_binding": binding,
         }
+        if version == "v1":
+            view["saved_result_schema"] = _SAVED_RESULT_SCHEMA
+        return view
     except EvidenceError:
         raise
     except (ContractError, KeyError, TypeError, ValueError, UnicodeError, RecursionError, OverflowError):
@@ -214,6 +303,13 @@ def summarize_saved_result(raw: bytes | str) -> str:
     else:
         conclusion = "independent observation " + verification + "; completion not established"
         next_check = _readback_guidance(view["readback_reason"])
+    binding = view["execution_summary_binding"]
+    if binding == "positional only; no action/run ID in execution row":
+        linkage = "execution linkage: unlabelled execution summary; sequence only, not authenticated run association"
+    elif binding == "not supplied":
+        linkage = "execution linkage: not supplied"
+    else:
+        linkage = "execution linkage: " + binding + "; not an authenticated run association"
     return "\n".join([
         f"saved result: {view['input_sha256']}", target,
         "provided records (caller-reported)",
@@ -225,7 +321,7 @@ def summarize_saved_result(raw: bytes | str) -> str:
         f"reason: {_escape_display_summary(view['readback_reason'] or view['verification_reason'])}",
         f"observed at (caller-reported): {view['observed_at'] or 'not supplied'}",
         "readback evidence hash binding: " + ("match (structural)" if verification else "not supplied"),
-        "execution linkage: unlabelled execution summary; sequence only, not authenticated run association",
+        linkage,
         "conclusion: " + conclusion,
         "inspection scope (structural only)", "provenance: caller-attested", "source: source-unverified",
         "authority: false", "source authenticated: false", "external effect verified: false",
