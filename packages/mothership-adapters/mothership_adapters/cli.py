@@ -16,6 +16,7 @@ from .evidence import (
     export_evidence,
     inspect_evidence,
     summarize_evidence,
+    _require_digest,
     _validate_bundle_shape,
 )
 
@@ -188,6 +189,13 @@ def build_parser() -> argparse.ArgumentParser:
         "inspect-result", help="offline inspection of saved reference-consumer result.jsonl from stdin",
     )
     result_parser.add_argument("--human", action="store_true", help="explain supplied saved-result records")
+    result_parser.add_argument(
+        "--expect-action-sha256",
+        action="append",
+        nargs="?",
+        metavar="DIGEST",
+        help="require the supplied saved result's already-validated action digest",
+    )
     return parser
 
 
@@ -208,11 +216,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "inspect-result":
             from .saved_result import inspect_saved_result, summarize_saved_result
 
+            expected_values = getattr(args, "expect_action_sha256", None)
+            if expected_values is not None:
+                if type(expected_values) is not list or len(expected_values) != 1:
+                    raise _invalid()
+                expected_action_sha256 = _require_digest(expected_values[0])
+            else:
+                expected_action_sha256 = None
             raw = _read_stdin_bytes()
             if args.human:
-                _write_once(sys.stdout, summarize_saved_result(raw))
+                _write_once(
+                    sys.stdout,
+                    summarize_saved_result(
+                        raw, expected_action_sha256=expected_action_sha256
+                    ),
+                )
             else:
-                _write_json(inspect_saved_result(raw))
+                _write_json(
+                    inspect_saved_result(
+                        raw, expected_action_sha256=expected_action_sha256
+                    )
+                )
             return 0
         payload = _read_stdin()
         if args.command == "export":

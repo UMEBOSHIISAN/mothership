@@ -218,6 +218,22 @@ With Core, companion and adapters from the same reader source checkout:
 mothership-evidence inspect-result --human < result.jsonl
 ```
 
+If you separately retained the action digest from the original task or review,
+set `expected_action_sha256` to that retained value and use the updated reader:
+
+```sh
+mothership-evidence inspect-result --human \
+  --expect-action-sha256 "$expected_action_sha256" < result.jsonl
+```
+
+The digest must not be extracted from this result file just to satisfy the
+check. A different action or absent action identity rejects without a summary;
+a match leaves all status and UNKNOWN meanings unchanged. This checks the
+selected action, not the source, freshness, same-action record substitution or
+external truth. It works with legacy and v1 input in the updated reader;
+older pinned readers do not support this option. See the
+[expected-operation check](../docs/host-adapters.md#check-the-expected-operation).
+
 Select the existing file explicitly. This new offline reader accepts the
 consumer's JSONL directly; `inspect --human` continues requiring its distinct
 portable-review bundle. It separates the consumer summary, an already supplied

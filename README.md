@@ -80,6 +80,12 @@ requestや欠けたReceiptを後付けせず、入力内のpathも読み込み�
 このcheckoutの新しい保存形式では、実行報告と確認結果に操作ID・digestを付け、別操作の報告が混ざれば拒否します。
 旧形式も読めますが、報告行は位置だけの対応です。IDの一致は出所認証や完了の証明ではありません。
 新形式には同じ更新版のreaderが必要です。[新旧形式の対応](docs/host-adapters.md#saved-result-format-compatibility)を確認してください。
+確認したい操作のdigestを依頼・レビュー時から別に保持している場合は、
+`inspect-result --human --expect-action-sha256 "$expected_action_sha256" < result.jsonl`
+で照合できます。別操作や操作情報のない入力は、説明を出さず拒否します。
+期待値を検査対象ファイル自身から取って済ませず、元の依頼に保持した値を使ってください。
+一致してもUNKNOWNはUNKNOWNのままで、出所・鮮度・同じ操作内の証拠差替えは保証しません。
+[期待する操作との照合](docs/host-adapters.md#check-the-expected-operation)を参照してください。
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
 [同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。

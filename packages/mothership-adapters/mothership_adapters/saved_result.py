@@ -19,7 +19,7 @@ from orchestration.lib.action_authority import action_sha256
 from .evidence import (
     EvidenceError, MAX_ENCODED_BYTES, _SHA40, _bounded_plain,
     _escape_display_summary, _invalid, _parse_utc, _readback_guidance,
-    _validate_readback_for_action, decode_json,
+    _require_digest, _validate_readback_for_action, decode_json,
 )
 
 
@@ -210,12 +210,17 @@ def _verification(frozen, execution, row):
     return _validate_readback_for_action(action, digest, verification, row["evidence"])
 
 
-def inspect_saved_result(raw: bytes | str) -> dict[str, object]:
+def inspect_saved_result(
+    raw: bytes | str, *, expected_action_sha256: object = None
+) -> dict[str, object]:
     """Validate all supplied saved events before returning a detached summary."""
     try:
+        if expected_action_sha256 is not None:
+            expected_action_sha256 = _require_digest(expected_action_sha256)
         encoded, rows = _rows(raw)
         version = _version(rows)
         action = execution = verification = sidecar = None
+        checked_action_sha256 = None
         if rows:
             frozen = rows[0]
             expected_frozen = {"event", "action", "action_sha256", "expires_at"}
@@ -228,6 +233,7 @@ def inspect_saved_result(raw: bytes | str) -> dict[str, object]:
             _parse_utc(frozen["expires_at"])
             # Each call has already decoded its own detached plain JSON rows.
             action = frozen["action"]
+            checked_action_sha256 = frozen["action_sha256"]
         if len(rows) >= 2:
             execution = rows[1]
             if version == "v1":
@@ -243,6 +249,10 @@ def inspect_saved_result(raw: bytes | str) -> dict[str, object]:
                 )
             else:
                 sidecar = _verification(rows[0], execution, verification)
+        if expected_action_sha256 is not None and (
+            action is None or checked_action_sha256 != expected_action_sha256
+        ):
+            raise _invalid()
         receipt = None if verification is None else verification["receipt"]
         observed = None if verification is None else verification["verification"]
         binding = (
@@ -277,9 +287,11 @@ def inspect_saved_result(raw: bytes | str) -> dict[str, object]:
         raise _invalid() from None
 
 
-def summarize_saved_result(raw: bytes | str) -> str:
+def summarize_saved_result(
+    raw: bytes | str, *, expected_action_sha256: object = None
+) -> str:
     """Explain recorded layers and missing evidence, without observing an effect."""
-    view = inspect_saved_result(raw)
+    view = inspect_saved_result(raw, expected_action_sha256=expected_action_sha256)
     action = view["action"]
     target = "target: unavailable in supplied input"
     if action is not None:
