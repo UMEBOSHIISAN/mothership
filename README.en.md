@@ -95,6 +95,12 @@ and verification reports, so reports labelled for another action are rejected.
 Legacy files remain readable with positional-only summary linkage. Matching IDs
 do not authenticate origin or prove completion. New output needs the matching
 updated reader; see the [format compatibility table](docs/host-adapters.md#saved-result-format-compatibility).
+If the recipient separately retained the intended action digest from the original
+task or review, use `inspect-result --human --expect-action-sha256 "$expected_action_sha256" < result.jsonl`.
+A different action or missing action identity is rejected without a summary.
+Use the previously retained value, not one extracted from the file being checked.
+A match preserves UNKNOWN and does not authenticate origin, freshness or records
+substituted within the same action. See [expected-operation checking](docs/host-adapters.md#check-the-expected-operation).
 The [six retained recipient cases and guide](examples/saved-results/README.en.md)
 let a recipient read synthetic saved inputs with a pinned reader, without running
 the producer. Check the separate answer key only after recording responses.

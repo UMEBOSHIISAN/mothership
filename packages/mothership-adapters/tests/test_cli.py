@@ -14,7 +14,8 @@ from unittest import mock
 from test_evidence import EvidenceFixture
 
 from mothership_adapters.cli import main as evidence_cli_main
-from mothership_adapters.evidence import MAX_ENCODED_BYTES
+from mothership_adapters.evidence import EvidenceError, MAX_ENCODED_BYTES
+from mothership_adapters.saved_result import inspect_saved_result, summarize_saved_result
 from mothership.contracts import canonical_json_sha256
 from mothership_github import public_observation
 from orchestration.lib.action_authority import action_sha256
@@ -66,13 +67,18 @@ class SavedResultCLITests(EvidenceFixture):
     def encode_rows(rows):
         return b"".join((json.dumps(row, ensure_ascii=True) + "\n").encode() for row in rows)
 
-    def run_saved(self, raw, *, human=True, output=None):
+    def run_saved(self, raw, *, human=True, output=None, expected_action_sha256=None, extra_args=()):
         stdin = io.TextIOWrapper(io.BytesIO(raw), encoding="utf-8")
         stdout = io.StringIO() if output is None else output
         stderr = io.StringIO()
+        argv = ["inspect-result", *extra_args]
+        if expected_action_sha256 is not None:
+            argv.extend(["--expect-action-sha256", expected_action_sha256])
+        if human:
+            argv.append("--human")
         with mock.patch("sys.stdin", stdin), mock.patch("sys.stdout", stdout), mock.patch("sys.stderr", stderr):
             try:
-                code = evidence_cli_main(["inspect-result", *(["--human"] if human else [])])
+                code = evidence_cli_main(argv)
             except SystemExit as error:
                 code = int(error.code)
         return code, stdout.getvalue(), stderr.getvalue()
@@ -121,7 +127,11 @@ class SavedResultCLITests(EvidenceFixture):
                     self.assertIn("next read-only check:", text)
                     self.assertIn("no re-execution; no reconsume", text)
                     self.assertNotIn("/not-to-open", text)
-                    code, projection, error = self.run_saved(raw_cases[name], human=False)
+                    code, projection, error = self.run_saved(
+                        raw_cases[name],
+                        human=False,
+                        expected_action_sha256=self.request["action_sha256"],
+                    )
                     self.assertEqual(0, code, error)
                     view = json.loads(projection)
                     self.assertEqual(statuses, tuple(view[key] for key in
@@ -452,6 +462,7 @@ class SavedResultCLITests(EvidenceFixture):
 
     def test_no_implicit_paths_authority_network_or_input_mutation(self):
         raw = self.encode_rows(self.saved_rows())
+        before_raw = bytes(raw)
         paths = (self.authority_path, self.receipt_path)
         before = [p.read_bytes() for p in paths]
         real_open = os.open
@@ -468,8 +479,11 @@ class SavedResultCLITests(EvidenceFixture):
              mock.patch("orchestration.lib.action_authority.freeze_action", side_effect=AssertionError("issuance forbidden")), \
              mock.patch("orchestration.lib.action_authority_ledger.consume_action", side_effect=AssertionError("consume forbidden")), \
              mock.patch("mothership_github.executor.execute_action_merge_pr", side_effect=AssertionError("execution forbidden")):
-            code, text, error = self.run_saved(raw)
+            code, text, error = self.run_saved(
+                raw, expected_action_sha256=self.request["action_sha256"]
+            )
         self.assertEqual(0, code, error)
+        self.assertEqual(before_raw, raw)
         self.assertEqual(before, [p.read_bytes() for p in paths])
         self.assertIn("verification: CONFIRMED", text)
 
@@ -494,6 +508,154 @@ class SavedResultCLITests(EvidenceFixture):
         self.assertFalse(view["authority"])
         self.assertFalse(view["external_effect_verified"])
         self.assertNotIn("request", view)
+
+    def test_expected_action_digest_preserves_legacy_and_v1_outputs_for_nonempty_prefixes(self):
+        expected = self.request["action_sha256"]
+        variants = (
+            ("legacy", self.saved_rows()),
+            ("v1", self.v1_rows(self.saved_rows())),
+        )
+        for version, rows in variants:
+            for length in (1, 2, 3):
+                raw = self.encode_rows(rows[:length])
+                with self.subTest(version=version, length=length, human=True):
+                    self.assertEqual(
+                        self.run_saved(raw),
+                        self.run_saved(raw, expected_action_sha256=expected),
+                    )
+                with self.subTest(version=version, length=length, human=False):
+                    self.assertEqual(
+                        self.run_saved(raw, human=False),
+                        self.run_saved(raw, human=False, expected_action_sha256=expected),
+                    )
+
+    def test_expected_action_digest_preserves_all_public_saved_case_outputs(self):
+        root = pathlib.Path(__file__).resolve().parents[3] / "examples" / "saved-results"
+        expected = self.request["action_sha256"]
+        for path in sorted(root.glob("case-*.jsonl")):
+            raw = path.read_bytes()
+            with self.subTest(case=path.name, human=True):
+                self.assertEqual(
+                    self.run_saved(raw),
+                    self.run_saved(raw, expected_action_sha256=expected),
+                )
+            with self.subTest(case=path.name, human=False):
+                self.assertEqual(
+                    self.run_saved(raw, human=False),
+                    self.run_saved(raw, human=False, expected_action_sha256=expected),
+                )
+
+    def test_expected_action_digest_rejects_empty_wrong_and_coherent_alternate_actions(self):
+        expected = self.request["action_sha256"]
+        wrong = "0" * 64 if expected != "0" * 64 else "1" * 64
+        valid_legacy = self.encode_rows(self.saved_rows())
+        valid_v1 = self.encode_rows(self.v1_rows(self.saved_rows()))
+
+        alternate = copy.deepcopy(self.saved_rows()[0])
+        alternate["action"]["action_id"] = "act-evidence-alternate"
+        alternate["action_sha256"] = action_sha256(alternate["action"])
+        alternate_legacy = self.encode_rows([alternate])
+        alternate_v1 = self.encode_rows(self.v1_rows([alternate]))
+        self.assertEqual(
+            alternate["action"]["execution_parameters"],
+            self.saved_rows()[0]["action"]["execution_parameters"],
+        )
+        for raw in (alternate_legacy, alternate_v1):
+            for human in (True, False):
+                with self.subTest(variant="alternate", raw=raw, human=human):
+                    self.assertEqual(0, self.run_saved(raw, human=human)[0])
+
+        for raw, supplied in (
+            (b"", expected),
+            (valid_legacy, wrong),
+            (valid_v1, wrong),
+            (alternate_legacy, expected),
+            (alternate_v1, expected),
+        ):
+            for human in (True, False):
+                with self.subTest(raw=raw[:20], supplied=supplied, human=human):
+                    code, output, error = self.run_saved(
+                        raw, human=human, expected_action_sha256=supplied
+                    )
+                    self.assertEqual((2, ""), (code, output))
+                    self.assertEqual("invalid bounded evidence input\n", error)
+
+    def test_expected_action_digest_does_not_bypass_existing_full_validation(self):
+        rows = self.saved_rows()
+        rows[1].update(status="success", merged=False)
+        code, output, error = self.run_saved(
+            self.encode_rows(rows), expected_action_sha256=self.request["action_sha256"]
+        )
+        self.assertEqual((2, ""), (code, output))
+        self.assertEqual("invalid bounded evidence input\n", error)
+
+    def test_saved_result_api_requires_strict_keyword_only_expected_digest(self):
+        rows = self.saved_rows()
+        raw = self.encode_rows(rows)
+        expected = self.request["action_sha256"]
+        self.assertEqual(
+            inspect_saved_result(raw),
+            inspect_saved_result(raw, expected_action_sha256=None),
+        )
+        self.assertEqual(
+            summarize_saved_result(raw),
+            summarize_saved_result(raw, expected_action_sha256=None),
+        )
+        with self.assertRaises(TypeError):
+            inspect_saved_result(raw, expected)  # type: ignore[call-arg]
+
+        malformed = ("", "A" * 64, "0" * 63 + "g", expected[:-1], True, 0, b"0" * 64)
+        for value in malformed:
+            with self.subTest(value=repr(value)):
+                with self.assertRaises(EvidenceError):
+                    inspect_saved_result(raw, expected_action_sha256=value)
+                with self.assertRaises(EvidenceError):
+                    summarize_saved_result(raw, expected_action_sha256=value)
+
+    def test_expected_action_option_rejects_before_stdin_and_keeps_fixed_diagnostics(self):
+        expected = self.request["action_sha256"]
+        cases = (
+            ["inspect-result", "--expect-action-sha256", "not-a-digest"],
+            ["inspect-result", "--expect-action-sha256", ""],
+            [
+                "inspect-result",
+                "--expect-action-sha256",
+                expected,
+                "--expect-action-sha256",
+                expected,
+            ],
+            ["inspect-result", "--expect-action-sha256"],
+            ["inspect-result", "--expect-action-sha256", "--human"],
+        )
+        for argv in cases:
+            source = io.BytesIO(b"PRIVATE_STDIN_SENTINEL")
+            stdin = io.TextIOWrapper(source, encoding="utf-8")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with self.subTest(argv=argv), mock.patch("sys.stdin", stdin), mock.patch(
+                "sys.stdout", stdout
+            ), mock.patch("sys.stderr", stderr):
+                try:
+                    code = evidence_cli_main(argv)
+                except SystemExit as exc:
+                    code = int(exc.code)
+            self.assertEqual(2, code)
+            self.assertEqual(0, source.tell())
+            self.assertEqual("", stdout.getvalue())
+            self.assertEqual("invalid bounded evidence input\n", stderr.getvalue())
+
+    def test_expected_action_digest_keeps_output_failure_and_repeatability_behavior(self):
+        raw = self.encode_rows(self.saved_rows())
+        expected = self.request["action_sha256"]
+        first = self.run_saved(raw, expected_action_sha256=expected)
+
+        class BrokenWriter(io.StringIO):
+            def write(self, text):
+                return super().write(text[:5])
+
+        self.assertEqual(2, self.run_saved(
+            raw, expected_action_sha256=expected, output=BrokenWriter()
+        )[0])
+        self.assertEqual(first, self.run_saved(raw, expected_action_sha256=expected))
 
 
 class AdapterEvidenceCLITests(EvidenceFixture):

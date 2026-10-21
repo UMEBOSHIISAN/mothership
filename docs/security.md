@@ -255,6 +255,18 @@ cryptographic downgrade protection. The reader does not fetch,
 execute, consume, repair records or add authority. Existing bundle inspection
 and readback eligibility remain unchanged.
 
+The optional `inspect-result --expect-action-sha256` guard compares the fully
+validated saved action with a caller's separately retained expected digest.
+The canonical digest includes the action ID and exact parameters/display.
+A mismatch, malformed expectation or missing action rejects before a summary;
+a match preserves all existing report/UNKNOWN/missing-record semantics. Both
+legacy and v1 inputs retain their original limits. Default inspection is
+unchanged when no expectation is supplied. An expectation extracted from the
+same input does not provide an independent target check. Matching does not
+authenticate the caller's expectation, the record source, freshness, execution,
+causation or current external truth, and does not detect substitution within
+that same action. No authority is created and no additional file is opened.
+
 ## Installation boundary
 
 Pip and Git are external tools with their own side effects and supply-chain risks. Review the source or wheel, verify

@@ -204,6 +204,52 @@ rewriting into valid legacy input are not detected by this association check.
 Do not convert historical files or rebuild missing records. The original six
 cases, their guides and held human-acceptance packet remain unchanged.
 
+### Check the expected operation
+
+Internal consistency alone does not tell the recipient which task they intended
+to inspect: another complete, internally valid result can describe another
+action. In this updated source checkout, `inspect-result` optionally compares
+the validated action against a digest the recipient **already retained from the
+original task or review**, separately from the inspected file. The existing
+canonical action digest covers the action ID, exact execution parameters and
+derived display, so no second ID option or new saved format is needed.
+
+With `expected_action_sha256` already set to that retained value:
+
+```sh
+mothership-evidence inspect-result --human \
+  --expect-action-sha256 "$expected_action_sha256" < result.jsonl
+```
+
+Do not extract the expected value from the file being checked just to make this
+comparison pass. If no independent expectation was retained, use the existing
+unguarded inspection and describe the supplied target without claiming it is
+the intended task. This option does not discover or authenticate an expectation.
+
+The option accepts exactly one 64-character lowercase hexadecimal digest.
+Malformed or repeated options return exit `2`. After the existing full-input
+validation, a different digest or an input with no action also returns `2`,
+with no operation summary. A matching legacy or v1 input produces the same
+JSON or human output as unguarded inspection. A matching action-only prefix
+remains UNKNOWN. Without the option, empty/prefix behavior and the original
+six-case outputs are unchanged. Exit `0` still does not mean operation success.
+
+The Python equivalents are
+`inspect_saved_result(raw, expected_action_sha256=retained_digest)` and
+`summarize_saved_result(raw, expected_action_sha256=retained_digest)`;
+omitting the keyword or passing `None` selects the existing unguarded behavior.
+Malformed expectations, missing action or mismatch raise `EvidenceError`.
+Both functions retain the existing return shape and status meanings.
+
+The digest matches the claimed action only. It does not authenticate origin,
+freshness, successful process exit, causation or current external state, and
+cannot distinguish substituted records for that same action. The command stays
+offline and never follows input paths, changes records or creates authority.
+This optional guard requires the updated reader; the historical `f9ef944` pin
+does not support the flag or keyword. Retain that pin and the six legacy cases
+for their existing reproduction/held human-acceptance purpose. Record the exact
+source revision and any local patch used for this new guard.
+
 Human usability acceptance remains separate: give success, unconfirmed and
 stopped saved cases to a person unfamiliar with the implementation, and record
 time to understand, author questions, mistaken completion claims and the next
