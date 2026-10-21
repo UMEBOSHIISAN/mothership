@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 920" role="img" aria-labelledby="title desc">
-<title id="title">Entrusted does not mean completed</title><desc id="desc">Distinct facts. This diagram does not show automatic integration or success.</desc>
-<rect width="840" height="920" rx="24" fill="#f7faf9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 1120" role="img" aria-labelledby="title desc">
+<title id="title">Separate records; hand over the result</title><desc id="desc">Reading transfers no authority; not source authentication or live-effect proof.</desc>
+<rect width="840" height="1120" rx="24" fill="#f7faf9"/>
 <g font-family="Noto Sans JP, sans-serif" fill="#17332d">
-<text x="42" y="62" font-size="32" font-weight="700">Entrusted does not mean completed</text>
+<text x="42" y="62" font-size="32" font-weight="700">Separate records; hand over the result</text>
 <text x="42" y="100" font-size="20" fill="#55706a">Record boundaries in the unreleased source candidate</text>
 <rect x="34" y="136" width="772" height="212" rx="18" fill="white" stroke="#176b58" stroke-width="2"/>
 <text x="58" y="178" font-size="23" fill="#176b58">01</text>
@@ -22,5 +22,11 @@
 <text x="58" y="692" font-size="21" fill="#7356a8">Opt-in companion read-back → Verification</text>
 <text x="58" y="740" font-size="22">Receipt SUCCESS is not independent verification.</text>
 <text x="58" y="779" font-size="22">Read-back stays separate from Receipt; Mothership checks binding.</text>
-<text x="42" y="883" font-size="18" fill="#55706a">Distinct facts. This diagram does not show automatic integration or success.</text>
+<rect x="34" y="844" width="772" height="212" rx="18" fill="#def3f6" stroke="#237e91" stroke-width="2"/>
+<text x="58" y="886" font-size="23" fill="#237e91">04</text>
+<text x="111" y="886" font-size="26" font-weight="700">Hand saved results to another person or AI</text>
+<text x="58" y="928" font-size="21" fill="#237e91">inspect-result --human / read-only</text>
+<text x="58" y="976" font-size="22">Separate reports, observations, missing records and next checks.</text>
+<text x="58" y="1015" font-size="22">Keep UNKNOWN; never invent approval or consume records.</text>
+<text x="42" y="1100" font-size="18" fill="#55706a">Reading transfers no authority; not source authentication or live-effect proof.</text>
 </g></svg>

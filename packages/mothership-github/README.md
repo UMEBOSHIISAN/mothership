@@ -3,11 +3,11 @@
 Version0.3.0.dev0 requires Core0.5.0.dev0 exactly. This is an isolated integration
 candidate, not a published package or live-operation proof.
 
-To try this pair, use the [pinned candidate installation](../../docs/action-review.md#install-the-source-candidate).
-It installs both local projects together, checks their exact dependency pairing,
-and runs the source-only portable review example against installed packages.
+To try the current runtime, use the [pinned candidate installation](../../docs/host-adapters.md#try-the-current-candidate).
+It installs Core, this companion and the optional adapters from one exact checkout.
 Installing Core alone does not install this optional companion; a default main
-clone also does not select an unmerged candidate.
+clone also does not select an unmerged candidate. Historical portable-review
+setup remains in the [action-review guide](../../docs/action-review.md#install-the-source-candidate).
 
 HTTP observation and bounded merge execution live here; Core owns the closed
 FrozenAction and authority ledger. All credentials are explicit constructor
@@ -108,6 +108,12 @@ accepts an exact action-bound decision and executes once. Add `--verify-result`
 to build a Receipt and perform independent public tokenless read-back in the same
 process. Execution and verification remain separate; UNKNOWN does not trigger a
 retry. The consumer is not an installed mutation CLI.
+
+Its `--save-result` file can be handed to another person or AI for offline
+`mothership-evidence inspect-result --human` reading through the optional adapters.
+See the [retained synthetic recipient cases](../../examples/saved-results/README.en.md).
+The file does not supply full approval/consume records; reading it neither
+creates those records nor authenticates its origin or current external state.
 
 ## Installed-wheel verification
 

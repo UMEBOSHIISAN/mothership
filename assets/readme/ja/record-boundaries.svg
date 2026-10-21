@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 920" role="img" aria-labelledby="title desc">
-<title id="title">「任せた」と「できた」を分ける</title><desc id="desc">3つは別の事実。自動接続や実行成功を示す図ではありません。</desc>
-<rect width="840" height="920" rx="24" fill="#f7faf9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 1120" role="img" aria-labelledby="title desc">
+<title id="title">記録を分けて、そのまま引き継ぐ</title><desc id="desc">記録を読むことで権限は渡りません。出所認証・実操作の証明ではありません。</desc>
+<rect width="840" height="1120" rx="24" fill="#f7faf9"/>
 <g font-family="Noto Sans JP, sans-serif" fill="#17332d">
-<text x="42" y="62" font-size="32" font-weight="700">「任せた」と「できた」を分ける</text>
+<text x="42" y="62" font-size="32" font-weight="700">記録を分けて、そのまま引き継ぐ</text>
 <text x="42" y="100" font-size="20" fill="#55706a">ソース候補（未リリース）の記録境界</text>
 <rect x="34" y="136" width="772" height="212" rx="18" fill="white" stroke="#176b58" stroke-width="2"/>
 <text x="58" y="178" font-size="23" fill="#176b58">01</text>
@@ -22,5 +22,11 @@
 <text x="58" y="692" font-size="21" fill="#7356a8">companion opt-in read-back → Verification</text>
 <text x="58" y="740" font-size="22">ReceiptのSUCCESSだけでは独立確認になりません。</text>
 <text x="58" y="779" font-size="22">read-backはReceiptとは別記録。形式と対応を検証します。</text>
-<text x="42" y="883" font-size="18" fill="#55706a">3つは別の事実。自動接続や実行成功を示す図ではありません。</text>
+<rect x="34" y="844" width="772" height="212" rx="18" fill="#def3f6" stroke="#237e91" stroke-width="2"/>
+<text x="58" y="886" font-size="23" fill="#237e91">04</text>
+<text x="111" y="886" font-size="26" font-weight="700">保存結果を別の人・AIへ</text>
+<text x="58" y="928" font-size="21" fill="#237e91">inspect-result --human / 読取専用</text>
+<text x="58" y="976" font-size="22">報告・独立観測・欠落・次の確認を区別。</text>
+<text x="58" y="1015" font-size="22">UNKNOWNを保持。承認やconsumeは後付けしません。</text>
+<text x="42" y="1100" font-size="18" fill="#55706a">記録を読むことで権限は渡りません。出所認証・実操作の証明ではありません。</text>
 </g></svg>
