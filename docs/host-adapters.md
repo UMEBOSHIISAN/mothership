@@ -21,7 +21,9 @@ This revision includes readback/inspect-sidecar, explicit JavaScript callback
 modes, Python `SessionError.diagnostic`, and opt-in direct Node diagnostic forwarding.
 This revision also includes the saved-result reader and its synthetic producer
 example. The retained recipient case data described below were added later.
-This is a fixed snapshot, not a promise to include later changes. Review the source and record
+This is a fixed snapshot, not a promise to include later changes. It does not
+include the v1 saved-result action binding described below; its reader accepts
+only legacy saved input. Review the source and record
 the exact revision. Start in a new directory:
 
 ```sh
@@ -103,8 +105,12 @@ history of a real PR, and no live effect or human acceptance is implied.
 
 ### Reader source candidate from one checkout
 
-Use the fixed PR #56 source checkout above, including
-`mothership_adapters/saved_result.py` and `examples/reference_result_handoff.py`.
+For the original legacy walkthrough, use the fixed PR #56 source checkout above.
+For v1 action binding, use this updated source checkout, including both
+`mothership_adapters/saved_result.py` and `examples/github_merge_reference.py`,
+plus `examples/reference_result_handoff.py`. V1 is not included in the PR #56
+pin or the published v0.4.2 / v0.4.3.dev0 distributions. A producer and reader
+from that historical pin reproduce the legacy walkthrough, not v1 binding.
 The historical PR #55 pin `6082bf8` and PR #49 pin `bd6a2e8` do not include
 the reader. Record the selected exact source commit with
 `git rev-parse HEAD` before installing. For an uncommitted local candidate,
@@ -156,9 +162,10 @@ execution. JSON output without `--human` exposes the same non-authorizing view.
 | Corrupt or mixed action/hash records | Reject without an operation summary. No repair or automatic external action. |
 
 This format never supplies the original review request, full approval or consume
-rows. The execution summary also lacks an action/run identifier and timestamp:
-its sequence alone cannot detect a same-shaped row replaced from another run.
-The reader states that limit and never treats that row as bound completion.
+rows. Legacy execution summaries lack an action/run identifier and timestamp:
+sequence alone cannot detect a same-shaped row replaced from another run.
+V1 checks claimed action identity as described below; neither format treats a
+summary without a Receipt as bound completion.
 It validates existing pair/Receipt/action and Verification/sidecar hashes when
 provided, but mutually consistent falsified records cannot be authenticated.
 It opens no input paths, discovers no records, and changes no input or ledger.
@@ -166,6 +173,36 @@ Bundled schemas are still read by the existing validators. It performs no
 network, execution, consume, retry or observation, and does not prove freshness
 or successful process exit. The existing bundle `inspect`/MCP and explicit
 network-capable `readback` contracts are unchanged.
+
+### Saved-result format compatibility
+
+| Input producer | Reader | Interpretation |
+| --- | --- | --- |
+| Old consumer / existing six retained cases | Updated reader | Legacy positional-only execution summary; existing meaning unchanged. |
+| Updated consumer with `--save-result` | Reader from the same updated checkout | V1 action ID/digest association, structural only. |
+| Updated consumer with `--save-result` | PR #56 `f9ef944` reader or another legacy-only reader | Rejected for unsupported fields; do not strip fields to force acceptance. |
+| Updated consumer without `--save-result` | Existing terminal consumer | Original unversioned terminal event shapes; no result file is produced. |
+
+V1 adds `saved_result_schema: mothership.reference-result.v1` to every saved row.
+The first `frozen_action` has the existing action/digest/expiry. Later
+`execution_result` and `verification_result` rows require top-level `action_id`
+and `action_sha256` matching that first action, including exception and
+unavailable reports. No executor-supplied identity overrides the retained action.
+Fields are closed per event and version. Unknown versions, missing or partial
+identity, mixed old/new rows and mismatches are rejected before a summary. A
+new-format validation failure is never reinterpreted as legacy.
+
+An empty file remains unversioned missing evidence. A complete one-, two- or
+three-row prefix is readable in its selected format; an action-only prefix has
+no execution linkage. A matched execution summary without a Receipt remains
+UNKNOWN. JSON/human output reports structural matching separately from completion
+and retains false authority, source-authentication and external-verification flags.
+
+IDs/digests do not authenticate origin or prove freshness, successful execution
+or causation. Coherent forgery, substitution within the same action, and complete
+rewriting into valid legacy input are not detected by this association check.
+Do not convert historical files or rebuild missing records. The original six
+cases, their guides and held human-acceptance packet remain unchanged.
 
 Human usability acceptance remains separate: give success, unconfirmed and
 stopped saved cases to a person unfamiliar with the implementation, and record

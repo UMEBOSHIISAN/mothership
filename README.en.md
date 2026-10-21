@@ -90,6 +90,11 @@ In this reader source candidate, use
 It separates the supplied execution summary, Receipt and recorded independent
 observation; approval and consume are shown as not supplied by this format.
 It never invents a request or missing Receipt, or follows paths inside the input.
+New saved output from this checkout carries action IDs and digests on execution
+and verification reports, so reports labelled for another action are rejected.
+Legacy files remain readable with positional-only summary linkage. Matching IDs
+do not authenticate origin or prove completion. New output needs the matching
+updated reader; see the [format compatibility table](docs/host-adapters.md#saved-result-format-compatibility).
 The [six retained recipient cases and guide](examples/saved-results/README.en.md)
 let a recipient read synthetic saved inputs with a pinned reader, without running
 the producer. Check the separate answer key only after recording responses.

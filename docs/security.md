@@ -237,10 +237,21 @@ and supplied action/pair/Receipt/Verification/sidecar bindings before displaying
 an operation summary. It never reconstructs a portable request, approval,
 consume or absent Receipt. Input paths are opaque and never opened; only the
 existing bundled-schema reads are needed. Empty or partial saved evidence does
-not prove no effect. The execution-summary row lacks an action/run identifier,
-so a same-shaped substituted row cannot be identified from that row alone;
-it is never treated as bound completion. Consistent hashes are not source
-authentication, freshness or causation proof. The reader does not fetch,
+not prove no effect. Legacy execution-summary rows lack an action/run identifier,
+so a same-shaped substituted row cannot be identified from that row alone.
+They remain positional-only and are never treated as bound completion.
+
+V1 saved rows declare `saved_result_schema: mothership.reference-result.v1`.
+The consumer obtains execution/verification row IDs and digests from its retained
+issued action. The reader checks these against the supplied frozen action and
+rejects wrong/missing identities, unknown versions and mixed forms before any
+summary; it does not fall back to legacy after a new-format failure. This adds
+structural association, including for unavailable reports, but does not turn a
+summary into a Receipt or change UNKNOWN and missing-authority semantics.
+Consistent hashes are not source authentication, freshness, execution-success or
+causation proof. Coherent forged records, same-action substitutions and complete
+rewriting into valid legacy input remain outside this check: versioning is not
+cryptographic downgrade protection. The reader does not fetch,
 execute, consume, repair records or add authority. Existing bundle inspection
 and readback eligibility remain unchanged.
 

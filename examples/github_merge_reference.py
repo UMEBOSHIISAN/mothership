@@ -34,6 +34,7 @@ _BASE_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*\Z")
 _LEDGER_NAMES = ("authority.jsonl", "attempts.jsonl")
 _RESULT_NAME = "result.jsonl"
 _SAVED_EVENTS = frozenset({"frozen_action", "execution_result", "verification_result"})
+_SAVED_RESULT_SCHEMA = "mothership.reference-result.v1"
 _STATUSES = frozenset({"success", "failure", "reconciliation_required"})
 _CONSUMER_SOURCE_REF_ID = "consumer-source:github_merge_reference.py"
 _RECEIPT_UNAVAILABLE = "receipt_unavailable"
@@ -195,24 +196,39 @@ def _json_value(value: object) -> object:
     return value
 
 
+def _saved_event_payload(payload: Mapping[str, object], frozen_action) -> dict[str, object]:
+    """Add the saved-result format and retained action identity at save boundaries."""
+
+    enriched = dict(payload)
+    enriched["saved_result_schema"] = _SAVED_RESULT_SCHEMA
+    if payload.get("event") != "frozen_action":
+        enriched["action_id"] = frozen_action.action["action_id"]
+        enriched["action_sha256"] = frozen_action.action_sha256
+    return enriched
+
+
 def _emit(
     output_stream: object,
     payload: Mapping[str, object],
     *,
     result_saver: _ResultSaver | None = None,
+    frozen_action=None,
 ) -> bool:
     """Write one JSON line; dynamic values are escaped by the JSON encoder."""
 
     try:
+        emitted_payload = payload
+        if result_saver is not None and payload.get("event") in _SAVED_EVENTS:
+            emitted_payload = _saved_event_payload(payload, frozen_action)
         line = json.dumps(
-            _json_value(payload),
+            _json_value(emitted_payload),
             ensure_ascii=True,
             sort_keys=True,
             separators=(",", ":"),
         ) + "\n"
     except BaseException:
         return False
-    if result_saver is not None and payload.get("event") in _SAVED_EVENTS:
+    if result_saver is not None and emitted_payload.get("event") in _SAVED_EVENTS:
         if not result_saver.save_event(line):
             return False
     try:
@@ -667,6 +683,7 @@ def _run_session(
             "expires_at": frozen.expires_at,
         },
         result_saver=result_saver,
+        frozen_action=frozen,
     ):
         if result_saver is not None and result_saver.failed:
             return _terminal_failure(output_stream, ledger_dir, _EVIDENCE_SAVE_FAILURE)
@@ -732,6 +749,7 @@ def _run_session(
                 "paths": _paths(ledger_dir),
             },
             result_saver=result_saver,
+            frozen_action=frozen,
         )
         if result_saver is not None and result_saver.failed:
             _terminal_failure(
@@ -743,7 +761,7 @@ def _run_session(
         return 1
 
     payload, code = _execution_payload(result, ledger_dir)
-    if not _emit(output_stream, payload, result_saver=result_saver):
+    if not _emit(output_stream, payload, result_saver=result_saver, frozen_action=frozen):
         if result_saver is not None and result_saver.failed:
             return _terminal_failure(
                 output_stream,
@@ -763,7 +781,12 @@ def _run_session(
         execution_status=payload["status"],
         readback_opener=readback_opener,
     )
-    if not _emit(output_stream, verification_payload, result_saver=result_saver):
+    if not _emit(
+        output_stream,
+        verification_payload,
+        result_saver=result_saver,
+        frozen_action=frozen,
+    ):
         if result_saver is not None and result_saver.failed:
             return _terminal_failure(
                 output_stream,

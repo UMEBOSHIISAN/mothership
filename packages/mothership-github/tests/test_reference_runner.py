@@ -28,6 +28,7 @@ _HEAD = "a" * 40
 _OTHER_HEAD = "b" * 40
 _MERGE_SHA = "c" * 40
 _BASE_SHA = "d" * 40
+_SAVED_RESULT_SCHEMA = "mothership.reference-result.v1"
 
 
 class TTYBuffer(io.StringIO):
@@ -496,6 +497,74 @@ class ReferenceRunnerTests(unittest.TestCase):
             saved,
         )
 
+    def test_saved_result_v1_binds_every_terminal_row_to_the_retained_action(self):
+        code, rows, _, _, _, _ = self.verified_run(save_result=True)
+
+        self.assertEqual(0, code)
+        saved = [row for row in rows if row.get("event") in {
+            "frozen_action", "execution_result", "verification_result"
+        }]
+        self.assertEqual(["frozen_action", "execution_result", "verification_result"],
+                         [row["event"] for row in saved])
+        frozen = saved[0]
+        self.assertEqual(_SAVED_RESULT_SCHEMA, frozen["saved_result_schema"])
+        self.assertNotIn("action_id", frozen)
+        for row in saved[1:]:
+            with self.subTest(event=row["event"]):
+                self.assertEqual(_SAVED_RESULT_SCHEMA, row["saved_result_schema"])
+                self.assertEqual(frozen["action"]["action_id"], row["action_id"])
+                self.assertEqual(frozen["action_sha256"], row["action_sha256"])
+
+        on_disk = [json.loads(line) for line in
+                   (self.ledger_dir / "result.jsonl").read_text().splitlines()]
+        self.assertEqual(saved, on_disk)
+
+    def test_unsaved_result_keeps_legacy_terminal_event_shape(self):
+        code, rows, _, _, _, _ = self.verified_run()
+
+        self.assertEqual(0, code)
+        for row in rows:
+            if row.get("event") not in {
+                "frozen_action", "execution_result", "verification_result"
+            }:
+                continue
+            with self.subTest(event=row["event"]):
+                self.assertNotIn("saved_result_schema", row)
+                if row["event"] != "frozen_action":
+                    self.assertNotIn("action_id", row)
+                    self.assertNotIn("action_sha256", row)
+
+    def test_saved_result_v1_binds_invalid_executor_return_and_unavailable_verification(self):
+        code, rows, _, _, _, _ = self.verified_run(
+            transform=lambda result: {"status": "not-a-valid-executor-result"},
+            save_result=True,
+        )
+
+        self.assertEqual(1, code)
+        saved = [row for row in rows if row.get("event") in {
+            "frozen_action", "execution_result", "verification_result"
+        }]
+        self.assertEqual("reconciliation_required", saved[1]["status"])
+        self.assertEqual("unavailable", saved[2]["status"])
+        for row in saved:
+            with self.subTest(event=row["event"]):
+                self.assertEqual(_SAVED_RESULT_SCHEMA, row["saved_result_schema"])
+                if row["event"] != "frozen_action":
+                    self.assertEqual(saved[0]["action"]["action_id"], row["action_id"])
+                    self.assertEqual(saved[0]["action_sha256"], row["action_sha256"])
+
+    def test_saved_result_v1_binds_verification_unavailable_after_receipt(self):
+        code, rows, _, _, _, _ = self.verified_run(mode="verifier_exception", save_result=True)
+
+        self.assertEqual(3, code)
+        saved = [row for row in rows if row.get("event") in {
+            "frozen_action", "execution_result", "verification_result"
+        }]
+        self.assertEqual("verification_unavailable", saved[2]["reason"])
+        self.assertEqual(_SAVED_RESULT_SCHEMA, saved[2]["saved_result_schema"])
+        self.assertEqual(saved[0]["action"]["action_id"], saved[2]["action_id"])
+        self.assertEqual(saved[0]["action_sha256"], saved[2]["action_sha256"])
+
     def test_each_saved_event_is_synced_before_terminal_display(self):
         result_paths = []
         reserved_fd = []
@@ -773,6 +842,10 @@ class ReferenceRunnerTests(unittest.TestCase):
             ["frozen_action", "execution_result"], [row["event"] for row in saved]
         )
         self.assertEqual("reconciliation_required", saved[-1]["status"])
+        self.assertEqual([_SAVED_RESULT_SCHEMA, _SAVED_RESULT_SCHEMA],
+                         [row["saved_result_schema"] for row in saved])
+        self.assertEqual(saved[0]["action"]["action_id"], saved[1]["action_id"])
+        self.assertEqual(saved[0]["action_sha256"], saved[1]["action_sha256"])
 
     def test_partial_result_is_never_reused_after_save_failure(self):
         transport = FakeTransport()

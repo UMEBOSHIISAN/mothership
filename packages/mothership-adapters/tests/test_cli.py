@@ -17,6 +17,10 @@ from mothership_adapters.cli import main as evidence_cli_main
 from mothership_adapters.evidence import MAX_ENCODED_BYTES
 from mothership.contracts import canonical_json_sha256
 from mothership_github import public_observation
+from orchestration.lib.action_authority import action_sha256
+
+
+_SAVED_RESULT_SCHEMA = "mothership.reference-result.v1"
 
 
 class SavedResultCLITests(EvidenceFixture):
@@ -46,6 +50,17 @@ class SavedResultCLITests(EvidenceFixture):
              "receipt": bundle["receipt"], "verification": bundle["verification"],
              "evidence": sidecar, "paths": copy.deepcopy(paths)},
         ]
+
+    @staticmethod
+    def v1_rows(rows):
+        rows = copy.deepcopy(rows)
+        frozen = rows[0]
+        for row in rows:
+            row["saved_result_schema"] = _SAVED_RESULT_SCHEMA
+            if row["event"] != "frozen_action":
+                row["action_id"] = frozen["action"]["action_id"]
+                row["action_sha256"] = frozen["action_sha256"]
+        return rows
 
     @staticmethod
     def encode_rows(rows):
@@ -233,6 +248,153 @@ class SavedResultCLITests(EvidenceFixture):
         code, text, error = self.run_saved(self.encode_rows(rows[:2]))
         self.assertIn("consumer execution report: success", text)
         self.assertIn("not a bound completion record", text)
+
+    def test_v1_clean_prefixes_keep_unknown_status_and_structural_binding_only(self):
+        rows = self.v1_rows(self.saved_rows())
+        for length in (1, 2, 3):
+            with self.subTest(length=length):
+                code, text, error = self.run_saved(self.encode_rows(rows[:length]))
+                self.assertEqual(0, code, error)
+                self.assertIn("outcome unknown" if length < 3 else "independent observation recorded", text)
+                expected = (
+                    "not supplied"
+                    if length == 1
+                    else "action ID and digest match (structural only; source-unverified)"
+                )
+                self.assertIn("execution linkage: " + expected, text)
+
+                code, projection, error = self.run_saved(
+                    self.encode_rows(rows[:length]), human=False
+                )
+                self.assertEqual(0, code, error)
+                view = json.loads(projection)
+                self.assertEqual(
+                    "not supplied"
+                    if length == 1
+                    else "action ID and digest match (structural only; source-unverified)",
+                    view["execution_summary_binding"],
+                )
+
+    def test_v1_requires_closed_version_and_complete_identity_fields(self):
+        valid = self.v1_rows(self.saved_rows())
+        foreign_action = copy.deepcopy(valid[0]["action"])
+        foreign_action["action_id"] = "act-foreign-identical-target"
+        foreign_digest = action_sha256(foreign_action)
+        cases = {
+            "unknown_first_marker": lambda rows: rows[0].update(
+                saved_result_schema="mothership.reference-result.v2"
+            ),
+            "unknown_later_marker": lambda rows: rows[1].update(
+                saved_result_schema="mothership.reference-result.v2"
+            ),
+            "missing_first_marker": lambda rows: rows[0].pop("saved_result_schema"),
+            "missing_later_marker": lambda rows: rows[1].pop("saved_result_schema"),
+            "missing_action_id": lambda rows: rows[1].pop("action_id"),
+            "missing_action_digest": lambda rows: rows[2].pop("action_sha256"),
+            "typed_action_id": lambda rows: rows[1].update(action_id=123),
+            "typed_action_digest": lambda rows: rows[2].update(action_sha256=True),
+            "partial_identity": lambda rows: rows[1].update(action_id=foreign_action["action_id"]),
+            "wrong_digest_only": lambda rows: rows[1].update(action_sha256=foreign_digest),
+            "extra_first_field": lambda rows: rows[0].update(extra="reject"),
+            "extra_later_field": lambda rows: rows[1].update(extra="reject"),
+            "mixed_legacy_first": lambda rows: rows[0].pop("saved_result_schema"),
+            "mixed_legacy_later": lambda rows: rows[2].pop("saved_result_schema"),
+            "wrong_action_identity": lambda rows: rows[1].update(
+                action_id=foreign_action["action_id"], action_sha256=foreign_digest
+            ),
+            "torn_final_line": lambda rows: None,
+            "reordered_rows": lambda rows: rows.reverse(),
+            "extra_row": lambda rows: rows.append(copy.deepcopy(rows[-1])),
+        }
+        for name, corrupt in cases.items():
+            with self.subTest(case=name):
+                rows = copy.deepcopy(valid)
+                raw = self.encode_rows(rows)
+                if name == "torn_final_line":
+                    raw = raw[:-1] + b"{"  # complete rows plus a torn final write
+                else:
+                    corrupt(rows)
+                    raw = self.encode_rows(rows)
+                code, text, error = self.run_saved(raw)
+                self.assertEqual((2, ""), (code, text))
+                self.assertEqual("invalid bounded evidence input\n", error)
+
+    def test_v1_rejects_cross_action_execution_and_verification_swaps(self):
+        valid = self.v1_rows(self.saved_rows())
+        foreign_action = copy.deepcopy(valid[0]["action"])
+        foreign_action["action_id"] = "act-foreign-identical-target"
+        foreign_digest = action_sha256(foreign_action)
+        self.assertEqual(
+            valid[0]["action"]["execution_parameters"],
+            foreign_action["execution_parameters"],
+        )
+        self.assertEqual(valid[1]["paths"], valid[2]["paths"])
+
+        for index in (1, 2):
+            rows = copy.deepcopy(valid)
+            rows[index].update(
+                action_id=foreign_action["action_id"], action_sha256=foreign_digest
+            )
+            code, text, error = self.run_saved(self.encode_rows(rows))
+            with self.subTest(variant="complete", row=index):
+                self.assertEqual((2, ""), (code, text))
+                self.assertEqual("invalid bounded evidence input\n", error)
+
+        for reason in ("receipt_unavailable", "verification_unavailable"):
+            rows = copy.deepcopy(valid)
+            if reason == "receipt_unavailable":
+                rows[2].update(
+                    status="unavailable", reason=reason, source_pair=None,
+                    receipt=None, verification=None, evidence=None,
+                )
+            else:
+                rows[2].update(
+                    status="unavailable", reason=reason, verification=None, evidence=None,
+                )
+            rows = self.v1_rows(rows)
+            rows[2].update(
+                action_id=foreign_action["action_id"], action_sha256=foreign_digest
+            )
+            code, text, error = self.run_saved(self.encode_rows(rows))
+            with self.subTest(variant=reason):
+                self.assertEqual((2, ""), (code, text))
+                self.assertEqual("invalid bounded evidence input\n", error)
+
+    def test_v1_reader_is_offline_repeatable_and_does_not_consume_opaque_paths(self):
+        rows = self.v1_rows(self.saved_rows(status="UNKNOWN"))
+        raw = self.encode_rows(rows)
+        before = bytes(raw)
+        with mock.patch("socket.socket", side_effect=AssertionError("network forbidden")), \
+             mock.patch("orchestration.lib.action_authority.freeze_action", side_effect=AssertionError("issuance forbidden")), \
+             mock.patch("orchestration.lib.action_authority_ledger.consume_action", side_effect=AssertionError("consume forbidden")), \
+             mock.patch("mothership_github.executor.execute_action_merge_pr", side_effect=AssertionError("execution forbidden")):
+            first = self.run_saved(raw)
+            self.run_saved(b"broken\n")
+            second = self.run_saved(raw)
+            projection = self.run_saved(raw, human=False)
+        self.assertEqual(first, second)
+        self.assertEqual(before, raw)
+        self.assertEqual(0, projection[0], projection[2])
+        view = json.loads(projection[1])
+        self.assertEqual("UNKNOWN", view["verification_status"])
+        self.assertFalse(view["source_authenticated"])
+        self.assertFalse(view["external_effect_verified"])
+        self.assertNotIn("/not-to-open", first[1])
+
+    def test_v1_output_failure_does_not_leak_into_repeated_inspection(self):
+        good = self.encode_rows(self.v1_rows(self.saved_rows()))
+        partial = self.encode_rows(self.v1_rows(self.saved_rows()[:1]))
+        first = self.run_saved(good)
+        expected_partial = self.run_saved(partial)
+
+        class BrokenWriter(io.StringIO):
+            def write(self, text):
+                return super().write(text[:5])
+
+        self.assertEqual(2, self.run_saved(good, output=BrokenWriter())[0])
+        self.assertEqual(first, self.run_saved(good))
+        self.assertEqual(expected_partial, self.run_saved(partial))
+        self.assertNotIn("CONFIRMED", expected_partial[1])
 
     def test_receipt_unavailable_does_not_reconstruct_missing_finish_or_receipt(self):
         rows = self.saved_rows()
