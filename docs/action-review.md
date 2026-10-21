@@ -93,6 +93,11 @@ scope. A `reject` response with an unchanged empty scope remains valid.
 
 ## Install the source candidate
 
+For the current runtime including saved-result inspection, start with the
+[current pinned host setup](host-adapters.md#try-the-current-candidate).
+The older exact pin below reproduces the original portable-review setup and
+does not include later Session diagnostics or the saved-result reader.
+
 The remote default branch includes this portable review API because [PR #43](https://github.com/UMEBOSHIISAN/mothership/pull/43)
 is merged. The commands below pin its reviewed runtime revision,
 `6793c87d2c7866d53d2966d4794be82aafeae917`, then install Core `0.5.0.dev0`

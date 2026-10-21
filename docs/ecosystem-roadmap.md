@@ -33,6 +33,10 @@ not promise dates, adoption, publication, deployment, or automatic integration.
   without fabricated review/authority records. See the [one-checkout save-to-reader
   walkthrough](host-adapters.md#saved-reference-results). Source authentication,
   human usability metrics and current external truth are not established by it.
+- Six [retained synthetic recipient cases](../examples/saved-results/README.en.md)
+  and bilingual instructions separate reported success, recorded observation,
+  missing records and rejected input. An answer key follows the exercise;
+  retaining these cases does not establish human acceptance or live-host use.
 
 See [composition and host obligations](composition.md) for continuation,
 delegation, observation, plugin and knowledge-lifecycle boundaries. These remain

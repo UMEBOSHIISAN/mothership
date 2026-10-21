@@ -90,6 +90,9 @@ In this reader source candidate, use
 It separates the supplied execution summary, Receipt and recorded independent
 observation; approval and consume are shown as not supplied by this format.
 It never invents a request or missing Receipt, or follows paths inside the input.
+The [six retained recipient cases and guide](examples/saved-results/README.en.md)
+let a recipient read synthetic saved inputs with a pinned reader, without running
+the producer. Check the separate answer key only after recording responses.
 See the [same-checkout offline save-to-reader example](docs/host-adapters.md#saved-reference-results).
 This addition is not in published distributions or the guide's older pinned revisions.
 
@@ -223,14 +226,14 @@ responsibilities distinct.
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/en/mothership-flow-poster.png">
     <img src="assets/readme/en/mothership-flow.gif"
-         alt="Eight bounded host and evidence routes feed Core one-use decision binding, companion Receipt, and separate Verification."
+         alt="Eight bounded routes bind an action; saved-result handoff separates reports from observations."
          width="100%">
   </picture>
 </p>
 
 This explanatory diagram shows the unreleased source candidate, not execution evidence.
 It separates the shared review request from eight host and evidence entry paths, Core, the optional
-companion, receipt adapter, and independent verification.
+companion, receipt adapter, independent verification and read-only handoff of saved results.
 Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
 
 Supported parameters are frozen before a caller-attested decision is checked
@@ -241,7 +244,7 @@ consumed once within one trusted local ledger history.
 
 <p align="center">
   <img src="assets/readme/en/record-boundaries.svg"
-       alt="Separate authority, Receipt, and Verification; UNKNOWN and missing finishes remain visible." width="840">
+       alt="Separate authority, Receipt, Verification and read-only handoff; reading grants no authority." width="840">
 </p>
 
 Mothership validates execution reports and independent verification as separate records.

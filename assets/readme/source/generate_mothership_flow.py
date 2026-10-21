@@ -61,8 +61,8 @@ LINE = "#c6d5d1"
 
 COPY = {
     "ja": {
-        "title": "Portable action review と Mothership Core",
-        "subtitle": "8つのbounded route、ひとつのexact action",
+        "title": "Mothership：操作と結果を引き継ぐ",
+        "subtitle": "8つのbounded route / 結果は読取専用で渡す",
         "context": ("8 routes", "local checks", "live hostは別"),
         "parameters": ("Core action", "操作 + expires_at"),
         "core": "Mothership Core（ソース候補）",
@@ -74,20 +74,20 @@ COPY = {
         "adapter": ("Receipt adapter", "finish欠落: reject", "UNKNOWNを保持"),
         "verifier": ("read-back Verification", "Receiptと別記録", "別経路"),
         "profile": "Core 0.5.0.dev0 / adapters 0.1.0.dev0",
-        "explain": "8経路の実装とlocal checksを示す説明図。live host/effectの証拠ではありません。",
+        "handoff": ("保存結果 → inspect-result --human", "UNKNOWN・欠落を保持 / 権限は渡さない"),
+        "explain": "ソース候補の説明図。閲覧は権限・出所認証・実運用の証明を作りません。",
         "scenes": (
             ("8つの入口、同じrequest", "Agents・LangGraph・OpenClaw・Lobster・MCP・Dots・Harness・Evidence。local checksとlive hostを分けます。"),
             ("正確な操作と期限を固定", "Coreのlive FrozenActionが操作とexpires_atを供給し、helperがrequest digestを計算します。"),
             ("host contextを照合", "responseは保持したrequest、action、期限、host_id・session・actor・generation・scopeへ照合します。期限切れと変更は止まります。"),
             ("Reviewと一度だけconsume", "responseはrequest/action/expiry/contextへ照合され、consumeは同じtrusted historyで一度です。"),
-            ("選択経路をローカルで確認", "Pinned SDK、real local fixture、subprocess、synthetic transportの範囲だけを測定します。"),
             ("ReceiptとVerificationを分離", "companion attemptからReceiptを作り、read-back Verificationは別記録。finish欠落はrejectします。"),
-            ("UNKNOWNで停止、future profileは別", "不明な結果はUNKNOWN。storageやdeviceは新しいexact profileなしにgeneric executeへ拡張しません。"),
+            ("引き継ぐのは記録、権限ではない", "保存物を別の人・AIへ渡し、実行報告・独立観測・欠落・次の確認を読む。UNKNOWNは成功にせず、再実行もしません。"),
         ),
     },
     "en": {
-        "title": "Portable action review + Mothership Core",
-        "subtitle": "Eight bounded routes, one exact action",
+        "title": "Mothership: actions and evidence",
+        "subtitle": "Eight bounded routes / read-only result handoff",
         "context": ("8 routes", "Local checks", "Live host separate"),
         "parameters": ("Core-issued action", "Action + expiry"),
         "core": "Mothership Core (source candidate)",
@@ -99,18 +99,21 @@ COPY = {
         "adapter": ("Receipt adapter", "Missing finish: reject", "UNKNOWN preserved"),
         "verifier": ("Read-back Verification", "Separate from Receipt", "Independent record"),
         "profile": "Core 0.5.0.dev0 / adapters 0.1.0.dev0",
-        "explain": "An explainer for eight implemented routes and local checks; not live-host or external-effect evidence.",
+        "handoff": ("Saved results → inspect-result --human", "UNKNOWN stays unknown; no authority transfer"),
+        "explain": "Source candidate. Reading grants no authority. Not proof of origin or live effects.",
         "scenes": (
             ("Eight paths, one request", "Agents, LangGraph, OpenClaw, Lobster, MCP, Dots, Harness, and Evidence stay bounded; local checks are separate from live hosts."),
             ("Freeze the exact operation and expiry", "The live FrozenAction supplies the operation and expires_at; the helper computes the request digest."),
             ("Bind the host context", "The response is checked against the retained request, action, expiry, and host ID, session, actor, generation, and scope. Drift stops."),
             ("Review, then consume once", "The response is checked against request, action, expiry, and context; consume remains one use per trusted history."),
-            ("Measure the selected seams locally", "Only pinned SDKs, real local fixtures, subprocess owner checks, and synthetic transport are measured."),
             ("Keep Receipt and Verification separate", "The companion attempt becomes Receipt; read-back Verification is separate. Missing finish is rejected."),
-            ("Stop on UNKNOWN; future profiles stay exact", "Unknown outcomes stop. Storage or device actions need a new exact profile rather than a generic execute path."),
+            ("Hand over records, never authority", "Another person or AI reads reports, observations, missing records and next checks. UNKNOWN is not success; reading never re-executes."),
         ),
     },
 }
+
+if any(len(copy["scenes"]) != SCENES for copy in COPY.values()):
+    raise SystemExit("every scene must have bilingual copy")
 
 FONT_PATH: Path
 
@@ -124,7 +127,7 @@ def load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
 def centered(draw: ImageDraw.ImageDraw, x: int, y: int, value: str, size: int, *, color: str = INK, bold: bool = False) -> None:
     current = load_font(size, bold=bold)
     box = draw.textbbox((0, 0), value, font=current)
-    draw.text((x - (box[2] - box[0]) / 2, y - (box[3] - box[1]) / 2), value, font=current, fill=color)
+    draw.text((x - (box[2] - box[0]) / 2 - box[0], y - (box[3] - box[1]) / 2 - box[1]), value, font=current, fill=color)
 
 
 def centered_lines(
@@ -138,14 +141,14 @@ def centered_lines(
     gap: int = 5,
 ) -> None:
     current = load_font(size, bold=bold)
-    heights = [draw.textbbox((0, 0), value, font=current)[3] for value in lines]
+    bounds = [draw.textbbox((0, 0), value, font=current) for value in lines]
+    heights = [bottom - top for _left, top, _right, bottom in bounds]
     total = sum(heights) + gap * max(0, len(lines) - 1)
     x0, y0, x1, y1 = box
     y = (y0 + y1 - total) / 2
-    for value, height in zip(lines, heights, strict=True):
-        text_box = draw.textbbox((0, 0), value, font=current)
-        x = (x0 + x1 - (text_box[2] - text_box[0])) / 2
-        draw.text((x, y), value, font=current, fill=color)
+    for value, height, text_box in zip(lines, heights, bounds, strict=True):
+        x = (x0 + x1 - (text_box[2] - text_box[0])) / 2 - text_box[0]
+        draw.text((x, y - text_box[1]), value, font=current, fill=color)
         y += height + gap
 
 
@@ -241,10 +244,10 @@ def draw_map(draw: ImageDraw.ImageDraw, copy: dict[str, object], scene: int | No
 
     solid_box(draw, companion, PURPLE_LIGHT, PURPLE, active=scene == 4)
     solid_box(draw, adapter, GREEN_LIGHT, GREEN, active=scene == 4)
-    solid_box(draw, verifier, CYAN_LIGHT, CYAN, active=scene == 5)
+    solid_box(draw, verifier, CYAN_LIGHT, CYAN, active=scene == 4)
     centered_lines(draw, companion, copy["executor"], 15, color=PURPLE, bold=scene == 4, gap=1)
     centered_lines(draw, adapter, copy["adapter"], 13, color=GREEN, bold=scene == 4, gap=0)
-    centered_lines(draw, verifier, copy["verifier"], 15, color=CYAN, bold=scene == 5, gap=1)
+    centered_lines(draw, verifier, copy["verifier"], 15, color=CYAN, bold=scene == 4, gap=1)
 
     dotted_segment(draw, (245, 150), (255, 150), BLUE)
     dotted_segment(draw, (255, 150), (255, 325), BLUE)
@@ -265,10 +268,14 @@ def draw_scene(locale: str, scene: int, progress: float) -> Image.Image:
     centered(draw, WIDTH // 2, 78, str(copy["subtitle"]), 22, color=MUTED)
     draw_map(draw, copy, scene)
 
-    panel = (35, 350, 1165, 555)
+    handoff = (35, 335, 1165, 379)
+    solid_box(draw, handoff, CYAN_LIGHT, CYAN, active=scene == 5)
+    centered_lines(draw, handoff, copy["handoff"], 14, color=CYAN, bold=scene == 5, gap=1)
+
+    panel = (35, 390, 1165, 555)
     draw.rounded_rectangle(panel, radius=22, fill=PAPER, outline=LINE, width=2)
     title, detail = copy["scenes"][scene]
-    centered(draw, WIDTH // 2, 390, title, 34, bold=True)
+    centered(draw, WIDTH // 2, 420, title, 30, bold=True)
     detail_size = 25
     lines = wrap_to_pixel_width(draw, detail, detail_size, 980, locale=locale)
     if len(lines) >= 3:
@@ -277,7 +284,7 @@ def draw_scene(locale: str, scene: int, progress: float) -> Image.Image:
     if len(lines) > 3:
         detail_size = 19
         lines = wrap_to_pixel_width(draw, detail, detail_size, 980, locale=locale)
-    centered_lines(draw, (80, 415, 1120, 505), lines, detail_size, color=MUTED, gap=3)
+    centered_lines(draw, (80, 443, 1120, 516), lines, detail_size, color=MUTED, gap=3)
 
     start, end, y = 170, 1030, 530
     draw.line((start, y, end, y), fill=LINE, width=3)
@@ -341,7 +348,7 @@ def draw_poster(locale: str) -> Image.Image:
     centered_lines(draw, verifier, copy["verifier"], 17, color=CYAN, bold=True, gap=3)
 
     draw.rounded_rectangle((45, 970, 675, 1015), radius=12, fill=GREEN_LIGHT, outline=GREEN, width=2)
-    centered(draw, center_x, 992, str(copy["profile"]), 19, color=GREEN, bold=True)
+    centered_lines(draw, (45, 970, 675, 1015), copy["handoff"], 16, color=GREEN, bold=True, gap=2)
     explanation = wrap(str(copy["explain"]), width=54 if locale == "en" else 34, break_long_words=False)
     centered_lines(draw, (45, 1020, 675, 1073), explanation, 17, color=MUTED, gap=3)
     return image

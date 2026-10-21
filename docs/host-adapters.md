@@ -15,21 +15,21 @@ route is documented separately below.
 
 ### Try the current candidate
 
-For the existing runtime through PR #55, use the unreleased source baseline
-at `6082bf84acaa28333a9f893b74157f90ec4c522f` (PR #55 merged on 2026-10-20 JST).
+For the existing runtime through PR #56, use the unreleased source baseline
+at `f9ef944bf54cb413824066f968010c0aaedc47ff` (PR #56).
 This revision includes readback/inspect-sidecar, explicit JavaScript callback
 modes, Python `SessionError.diagnostic`, and opt-in direct Node diagnostic forwarding.
-The saved-result reader introduced in this source change is **not** in that
-baseline; use the source-local candidate instructions below for that reader.
+This revision also includes the saved-result reader and its synthetic producer
+example. The retained recipient case data described below were added later.
 This is a fixed snapshot, not a promise to include later changes. Review the source and record
 the exact revision. Start in a new directory:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-candidate
 cd mothership-candidate
-git fetch origin 6082bf84acaa28333a9f893b74157f90ec4c522f
+git fetch origin f9ef944bf54cb413824066f968010c0aaedc47ff
 git rev-parse --verify FETCH_HEAD
-git checkout --detach 6082bf84acaa28333a9f893b74157f90ec4c522f
+git checkout --detach f9ef944bf54cb413824066f968010c0aaedc47ff
 git rev-parse --verify HEAD
 
 python3 -m venv .venv
@@ -85,12 +85,28 @@ not a `host-evidence-bundle.v0`. The offline `inspect-result` command reads that
 existing file directly. It does not manufacture a portable review request,
 approval, consume event or Receipt to make it fit `inspect`.
 
+### Read files someone handed you
+
+The [recipient guide with six retained synthetic inputs](../examples/saved-results/README.en.md)
+([日本語](../examples/saved-results/README.md)) starts from the received files;
+it does not require running the producer. It pins the three-package reader to
+`f9ef944bf54cb413824066f968010c0aaedc47ff` (PR #56), which contains
+`inspect-result`. The six case files are later data-only additions, held
+separately from that runtime pin; they are not claimed to be inside its wheels.
+Follow the guide's explicit venv path so another installed version is not used.
+
+Give recipients only the inputs and guides initially. Keep the separate answer
+key until responses are recorded. Record actual time, questions, mistaken
+completion claims and next records selected; an AI response does not supply
+human acceptance evidence. All six inputs are synthetic material, not the
+history of a real PR, and no live effect or human acceptance is implied.
+
 ### Reader source candidate from one checkout
 
-Use the reviewed source checkout **containing this reader change**, including
+Use the fixed PR #56 source checkout above, including
 `mothership_adapters/saved_result.py` and `examples/reference_result_handoff.py`.
-The baseline `6082bf8` above and the earlier PR #49 pin `bd6a2e8` do not include
-the reader. Select an exact source commit containing the reader and record
+The historical PR #55 pin `6082bf8` and PR #49 pin `bd6a2e8` do not include
+the reader. Record the selected exact source commit with
 `git rev-parse HEAD` before installing. For an uncommitted local candidate,
 retain its baseline plus the reviewed patch/file manifest as well. Do not label
 an ancestor pin as containing this reader or mix files from different revisions.

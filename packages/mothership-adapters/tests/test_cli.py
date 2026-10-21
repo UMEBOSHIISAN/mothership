@@ -74,6 +74,57 @@ class SavedResultCLITests(EvidenceFixture):
         self.assertNotIn("/not-to-open", text)
         self.assertIn("unlabelled execution summary", text)
 
+    def test_public_saved_cases_keep_their_meanings_without_effects_or_changes(self):
+        # Catch a reader which promotes an incomplete case, accepts a mixed
+        # action, or starts using input paths/effects while reading public data.
+        root = pathlib.Path(__file__).resolve().parents[3] / "examples" / "saved-results"
+        self.assertTrue(root.is_dir(), "public handoff inputs are not retained")
+        names = [f"case-{number:02d}.jsonl" for number in range(1, 7)]
+        self.assertEqual(set(names), {path.name for path in root.glob("case-*.jsonl")})
+        raw_cases = {name: (root / name).read_bytes() for name in names}
+        ledgers_before = [path.read_bytes() for path in (self.authority_path, self.receipt_path)]
+        expected = (
+            ("success", "SUCCESS", "CONFIRMED"),
+            ("success", None, None),
+            ("success", "SUCCESS", "UNKNOWN"),
+            (None, None, None),
+            ("reconciliation_required", None, None),
+        )
+        with mock.patch("socket.socket", side_effect=AssertionError("network forbidden")), \
+             mock.patch("orchestration.lib.action_authority.freeze_action", side_effect=AssertionError("issuance forbidden")), \
+             mock.patch("orchestration.lib.action_authority_ledger.consume_action", side_effect=AssertionError("consume forbidden")), \
+             mock.patch("mothership_github.executor.execute_action_merge_pr", side_effect=AssertionError("execution forbidden")):
+            for name, statuses in zip(names, expected):
+                with self.subTest(case=name):
+                    code, text, error = self.run_saved(raw_cases[name])
+                    self.assertEqual(0, code, error)
+                    for field, status in zip(("consumer execution report", "receipt", "verification"), statuses):
+                        self.assertIn(f"{field}: {status or 'not supplied'}", text)
+                    self.assertIn("approval: not supplied", text)
+                    self.assertIn("source-unverified", text)
+                    self.assertIn("external effect verified: false", text)
+                    self.assertIn("next read-only check:", text)
+                    self.assertIn("no re-execution; no reconsume", text)
+                    self.assertNotIn("/not-to-open", text)
+                    code, projection, error = self.run_saved(raw_cases[name], human=False)
+                    self.assertEqual(0, code, error)
+                    view = json.loads(projection)
+                    self.assertEqual(statuses, tuple(view[key] for key in
+                        ("execution_status", "receipt_status", "verification_status")))
+                    self.assertTrue({"review_request", "decision", "consume"} <= set(view["missing"]))
+                    self.assertFalse(view["authority"])
+            code, text, error = self.run_saved(raw_cases[names[-1]])
+            self.assertEqual((2, ""), (code, text))
+            self.assertEqual("invalid bounded evidence input\n", error)
+            # A rejected case cannot contaminate the next incomplete reading.
+            code, text, error = self.run_saved(raw_cases[names[3]])
+            self.assertEqual(0, code, error)
+            self.assertIn("outcome unknown", text)
+            self.assertNotIn("verification: CONFIRMED", text)
+        self.assertEqual(raw_cases, {name: (root / name).read_bytes() for name in names})
+        self.assertEqual(ledgers_before,
+                         [path.read_bytes() for path in (self.authority_path, self.receipt_path)])
+
     def test_real_consumer_saved_file_round_trip_is_offline_and_unchanged(self):
         from examples.reference_result_handoff import synthetic_saved_result
 

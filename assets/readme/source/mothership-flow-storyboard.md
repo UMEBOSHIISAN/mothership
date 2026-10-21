@@ -22,8 +22,15 @@
    Core Receiptへ投影する。host callback、retry、reconsumeは追加しない
 7. companionのopt-in read-back producerが別のVerificationを作る。Receipt成功を
    人間・GitHub・外部真実の証明へ昇格させず、UNKNOWNを保持する
-8. 不明な結果は停止し、storageやdeviceなどのfuture exact profileをgeneric
-   `execute`へ拡張しない
+8. 保存した結果を別の人・AIへ渡し、既存の `inspect-result --human` で
+   実行報告・独立観測・欠落・次の確認を読む。閲覧は承認・consumeを補わず、
+   権限を移送しない。UNKNOWNを成功へ変えず、操作を再実行しない
+
+GIFの6場面は、入口、操作の固定、context照合、reviewとconsume、
+ReceiptとVerification、保存結果の引継ぎです。local checksの範囲は入口と
+説明文で示します。合成の受取人向け6ケースは実操作の証拠ではなく、
+人間の受入も別途記録します。storageやdeviceなどのfuture exact profileを
+generic `execute`へ拡張する図ではありません。
 
 現在の最初の参照profileは `github.merge_pr` です。これは製品全体ではなく、
 5つの実行パラメータ、判断との照合、台帳記録、一回限りのconsume境界を

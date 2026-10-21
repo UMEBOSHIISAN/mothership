@@ -77,6 +77,8 @@ sidecarの照合や明示的なreadbackは、[詳しい読み取り手順](#結�
 `mothership-evidence inspect-result --human < result.jsonl`で読みます。
 保存された実行報告・Receipt・独立観測を分け、承認やconsumeは「この保存形式には未提供」と表示します。
 requestや欠けたReceiptを後付けせず、入力内のpathも読み込みません。
+[保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
+producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
 [同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。
 この追加は公開済み配布物や、ガイドの過去の固定revisionには含まれません。
 
@@ -197,13 +199,14 @@ Mothershipは、AIを止めることではなく、人間が具体的な仕事�
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <img src="assets/readme/ja/mothership-flow.gif"
-         alt="8つのbounded routeがCoreの正確な操作を判断の一度の使用へ結び付け、GitHub companionの実行報告をReceiptへ変換する。独立確認は別経路。"
+         alt="8つの限定経路から操作を固定し、一度だけ権限を使用する。実行報告と独立確認を分け、保存結果は別の人やAIへ読取専用で引き継ぐ。"
          width="100%">
   </picture>
 </p>
 
 これは未リリースのソース候補の仕組みの図解です。8つのhost/evidence routeから共有するreview request、Core、
-任意companion、receipt adapter、別経路の独立確認を区別しています。local checksの説明であり、GIFそのものは実行証拠ではありません。
+任意companion、receipt adapter、別経路の独立確認、保存結果の読取専用の引継ぎを区別しています。
+local checksの説明であり、GIFそのものは実行証拠ではありません。
 動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
 
 対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
@@ -214,7 +217,7 @@ action IDとdigestへ照合し、判断eventを記録します。同じaction ID
 
 <p align="center">
   <img src="assets/readme/ja/record-boundaries.svg"
-       alt="権限の使用、companionとadapterによるReceipt、独立Verificationを分けた図。UNKNOWNを保持し、finish欠落を拒否する。" width="840">
+       alt="権限使用、Receipt、独立Verification、保存結果の閲覧を分ける。UNKNOWNと欠落を保持し、閲覧で権限を作らない。" width="840">
 </p>
 
 Mothershipは実行報告と独立確認の記録を分けて検証します。
