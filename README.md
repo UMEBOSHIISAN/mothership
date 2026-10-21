@@ -64,7 +64,8 @@ recovery: no re-execution; no reconsume
 最初の読み取り経路は、呼出し元が保持・exportした既存の記録をターミナルで読む方法です。
 Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要です。
 [host adapter guideの現行候補setup](docs/host-adapters.md#try-the-current-candidate)で、
-使う版を固定して3パッケージを導入してください。
+`fd8d4f0`の完全SHAに固定し、同じcheckoutから作った3つのwheelを新しいvenvへ導入します。
+v1と期待digest照合を含むreader用の手順です。過去再現用の旧pinは別に保持しています。
 
 コマンド: `mothership-evidence inspect --human < existing-bundle.json`
 
@@ -89,12 +90,12 @@ requestや欠けたReceiptを後付けせず、入力内のpathも読み込み�
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
 [同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。
-この追加は公開済み配布物や、ガイドの過去の固定revisionには含まれません。
+v1と期待digest照合は公開済み配布物や、6ケース受入ガイドの旧pinには含まれません。
 
 更新した同一checkoutのPython ownerとNode clientでは、`sessionDiagnostics: true`を
 明示すると、停止段階・不明点・次の確認先をNode側でも読めます。
 [合成ターミナル例と互換性](docs/host-adapters.md#node-session-diagnostics)を参照してください。
-既定は従来のエラー形式です。過去の固定revisionにはこの追加はなく、OpenClaw／Lobsterの
+既定は従来のエラー形式です。PR #45／#49の旧pinにはNode転送がなく、OpenClaw／Lobsterの
 画面への転送や実運用の受入を示すものではありません。
 
 ### Coreの境界をオフラインで試す

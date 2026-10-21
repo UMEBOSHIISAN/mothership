@@ -117,12 +117,17 @@ creates those records nor authenticates its origin or current external state.
 
 ## Installed-wheel verification
 
-The companion distribution tests build the Core and companion wheels using the
-existing root test extra, then install the local artifacts in temporary virtual
-environments without fetching dependencies. They check package metadata and
-import locations, and rerun the pipeline, read-back, and process-boundary tests outside
-the source checkout. The installed tests use fake transports and local ledgers;
-they do not perform a live GitHub action or establish production readiness.
+The companion distribution tests build Core, companion and optional adapters
+wheels from one copied source snapshot using the existing root test extra.
+They install the local artifacts into temporary virtual environments with
+`--no-index --no-deps` and run `pip check`. Core-only and Core/companion checks
+remain separate; the three-wheel checks exercise the installed evidence reader
+outside the source checkout, without editable installs or `PYTHONPATH`.
+They cover the six retained inputs, v1 action binding and expected-digest checking;
+an intentionally incomplete test wheel must fail rather than import source files.
+Import locations and metadata are checked, and the installed pair reruns the
+pipeline, read-back and process-boundary suites. These synthetic tests do not
+perform a live GitHub action, qualify a live host or supply human acceptance.
 
 From the source checkout, with the root `.[test]` extra already installed:
 
@@ -130,8 +135,10 @@ From the source checkout, with the root `.[test]` extra already installed:
 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s packages/mothership-github/tests -p test_distribution.py -v
 ```
 
-This checks the built development-version pair, not a published release. The
-ordinary companion CI discovery also runs these distribution tests.
+This checks the built development-version artifacts, not a published release.
+The ordinary companion CI discovery includes this test module; no additional
+workflow or job is required. The current test candidate extends the regression
+coverage; historical pinned runtimes do not thereby acquire these new tests.
 
 ## Process interruption checks
 

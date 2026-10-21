@@ -15,20 +15,55 @@ route is documented separately below.
 
 ### Try the current candidate
 
-For the existing runtime through PR #56, use the unreleased source baseline
-at `f9ef944bf54cb413824066f968010c0aaedc47ff` (PR #56).
-This revision includes readback/inspect-sidecar, explicit JavaScript callback
-modes, Python `SessionError.diagnostic`, and opt-in direct Node diagnostic forwarding.
-This revision also includes the saved-result reader and its synthetic producer
-example. The retained recipient case data described below were added later.
-This is a fixed snapshot, not a promise to include later changes. It does not
-include the v1 saved-result action binding described below; its reader accepts
-only legacy saved input. Review the source and record
-the exact revision. Start in a new directory:
+For the reader through PR #59, use the unreleased source baseline
+`fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646`. It includes the six retained inputs,
+legacy/v1 saved-result reading, and the optional expected-action digest check.
+It also includes readback/inspect-sidecar, explicit JavaScript callback modes,
+Python `SessionError.diagnostic`, and opt-in direct Node diagnostic forwarding.
+This is a fixed snapshot, not a promise to include later changes or a published
+release. Review the source and record the exact revision. Start in a new directory:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-candidate
 cd mothership-candidate
+git fetch origin fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646
+git rev-parse --verify FETCH_HEAD
+git checkout --detach fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646
+git rev-parse --verify HEAD
+
+python3 -m venv .build-venv
+.build-venv/bin/python -m pip install 'build>=1.2' 'setuptools>=77'
+.build-venv/bin/python -m build --wheel --no-isolation --outdir wheels .
+.build-venv/bin/python -m build --wheel --no-isolation --outdir wheels packages/mothership-github
+.build-venv/bin/python -m build --wheel --no-isolation --outdir wheels packages/mothership-adapters
+
+python3 -m venv .venv
+.venv/bin/python -m pip install --no-index --no-deps \
+  wheels/mothership_control_plane-0.5.0.dev0-py3-none-any.whl \
+  wheels/mothership_github-0.3.0.dev0-py3-none-any.whl \
+  wheels/mothership_adapters-0.1.0.dev0-py3-none-any.whl
+.venv/bin/python -m pip check
+.venv/bin/mothership-evidence inspect-result --help
+```
+
+Check that both printed revisions equal the selected full SHA. This recipe does
+not claim that a package release or live host has been qualified. Python 3.12 or
+later is required; all three wheels must come from this same checkout. Build-tool
+installation may use the network; the local wheel install fetches no dependencies,
+and result inspection is offline. Use the explicit `.venv/bin/` paths to avoid a
+different installed reader. No Node or optional SDK extras are needed for reading.
+
+### Reproduce the PR #56 reader
+
+Keep `f9ef944bf54cb413824066f968010c0aaedc47ff` for the original legacy reader
+walkthrough and the frozen six-case recipient exercise. This older runtime has
+neither v1 saved-result binding nor the expected-digest option. The case data and
+guides were added later and are supplied separately for that exercise. Start in
+a separate new directory:
+
+```sh
+git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-legacy-reader
+cd mothership-legacy-reader
 git fetch origin f9ef944bf54cb413824066f968010c0aaedc47ff
 git rev-parse --verify FETCH_HEAD
 git checkout --detach f9ef944bf54cb413824066f968010c0aaedc47ff
@@ -36,15 +71,11 @@ git rev-parse --verify HEAD
 
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install \
-  -e . \
-  -e packages/mothership-github \
-  -e packages/mothership-adapters
+python -m pip install -e . -e packages/mothership-github -e packages/mothership-adapters
 ```
 
-Check that both printed revisions equal the selected full SHA. This recipe does
-not claim that a package release or live host has been qualified. Python 3.12 or
-later is required; all three packages must come from this same checkout.
+Check both revisions against this historical SHA. Preserve its original editable
+installation and legacy input meaning; do not convert inputs to claim v1 support.
 
 ### Reproduce the PR #45 runtime
 
@@ -65,12 +96,14 @@ git rev-parse --verify HEAD
 ```
 
 Check that both printed revisions equal the historical full SHA, then run the
-same venv and three-package install commands above in this historical checkout.
+historical venv and editable three-package commands from the PR #56 section in
+this historical checkout.
 Keep historical test evidence separate from current-candidate evidence.
 
-The three editable installs are from the same checkout. Optional SDK extras are
-opt-in; select only the extras required by the routes you use. The following
-additional command selects all three SDK extras:
+For source development, the three editable installs must use the same checkout.
+Optional SDK extras are opt-in; select only the extras required by the routes you
+use. The following additional command selects all three SDK extras in an activated
+development venv:
 
 ```sh
 python -m pip install -e 'packages/mothership-adapters[agents,langgraph,mcp]'
@@ -105,10 +138,11 @@ history of a real PR, and no live effect or human acceptance is implied.
 
 ### Reader source candidate from one checkout
 
-For the original legacy walkthrough, use the fixed PR #56 source checkout above.
-For v1 action binding, use this updated source checkout, including both
+For legacy/v1 reading and the expected-digest option, use the
+[fixed current candidate](#try-the-current-candidate) above. For the original
+legacy walkthrough, keep the separate PR #56 recipe. Use the same checkout for
 `mothership_adapters/saved_result.py` and `examples/github_merge_reference.py`,
-plus `examples/reference_result_handoff.py`. V1 is not included in the PR #56
+and `examples/reference_result_handoff.py`. V1 is not included in the PR #56
 pin or the published v0.4.2 / v0.4.3.dev0 distributions. A producer and reader
 from that historical pin reproduce the legacy walkthrough, not v1 binding.
 The historical PR #55 pin `6082bf8` and PR #49 pin `bd6a2e8` do not include
@@ -117,17 +151,12 @@ the reader. Record the selected exact source commit with
 retain its baseline plus the reviewed patch/file manifest as well. Do not label
 an ancestor pin as containing this reader or mix files from different revisions.
 
-In the root of that source candidate, install all three packages together
-(Python 3.12+; this offline reader requires no Node or optional SDK extras):
+After the current three-wheel installation above, run from its source root:
 
 ```sh
-git rev-parse HEAD
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -e . -e packages/mothership-github -e packages/mothership-adapters
-mothership-evidence inspect-result --help
-python -m examples.reference_result_handoff > synthetic-result.jsonl
-mothership-evidence inspect-result --human < synthetic-result.jsonl
+.venv/bin/mothership-evidence inspect-result --help
+.venv/bin/python -m examples.reference_result_handoff > synthetic-result.jsonl
+.venv/bin/mothership-evidence inspect-result --human < synthetic-result.jsonl
 ```
 
 Installation may resolve build tooling; the example and reader are offline.
@@ -141,6 +170,16 @@ separate. Inspecting the resulting file does not create or consume authority.
 For a real file already saved by the consumer, replace only the redirected
 input with that explicitly selected `result.jsonl`; do not rerun an operation
 to create evidence for this reader.
+
+For inspection outside the checkout, use the absolute path to this installed
+`.venv/bin/mothership-evidence` and redirect an explicitly selected input. The
+producer example remains source-only; the installed reader does not need the
+source tree or `PYTHONPATH`. The companion's
+[distribution regression](../packages/mothership-github/README.md#installed-wheel-verification)
+checks this boundary, including legacy inputs, v1 and the digest guard. These
+additional regression tests belong to this documentation/test update; the
+`fd8d4f0` runtime pin does not contain them. Keep current-tree test results
+separate from verification of that exact runtime pin.
 
 The command accepts an empty file or a complete ordered prefix of at most
 three saved events: `frozen_action`, `execution_result`, `verification_result`.

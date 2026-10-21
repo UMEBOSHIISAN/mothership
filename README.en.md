@@ -83,6 +83,9 @@ The optional three-package source-candidate setup is described in
 Reading retained results requires the Core, companion, and adapters from that
 same-checkout setup. It is opt-in and does not by itself qualify a live host or
 external effect.
+That recipe pins the complete SHA for `fd8d4f0` and installs three locally built
+wheels into a fresh venv, including v1 and expected-digest reader support.
+Historical reproduction pins remain separate.
 
 The reference consumer's `--save-result` writes a different format: `result.jsonl`.
 In this reader source candidate, use
@@ -105,13 +108,14 @@ The [six retained recipient cases and guide](examples/saved-results/README.en.md
 let a recipient read synthetic saved inputs with a pinned reader, without running
 the producer. Check the separate answer key only after recording responses.
 See the [same-checkout offline save-to-reader example](docs/host-adapters.md#saved-reference-results).
-This addition is not in published distributions or the guide's older pinned revisions.
+V1 and the expected-digest option are not in published distributions or the
+six-case recipient guide's historical runtime pin.
 
 The updated Python owner and Node client from the same checkout can explicitly
 forward stop diagnostics with `sessionDiagnostics: true`. See the
 [synthetic terminal example and compatibility rules](docs/host-adapters.md#node-session-diagnostics).
-The default remains the legacy error format. Older pinned revisions do not
-include this addition; it does not qualify OpenClaw/Lobster UI forwarding or
+The default remains the legacy error format. The PR #45/#49 pins do not include
+Node forwarding; this does not qualify OpenClaw/Lobster UI forwarding or
 live operation.
 
 ### Try the Core boundary offline

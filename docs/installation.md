@@ -16,12 +16,15 @@ or v0.4.2 release tag or wheel.
 The published v0.4.2 release remains the historical baseline. The remote default
 branch includes the portable review API merged through PR #43 and readback /
 inspect-sidecar functionality merged through PR #45. This main checkout remains
-unreleased source. For a pinned Core and companion runtime, use the
+unreleased source. To read saved results, including v1 and optional expected-action
+digest checking, use the [current three-wheel reader setup](host-adapters.md#try-the-current-candidate).
+It builds Core, companion and adapters from one fixed checkout and installs them
+into a fresh venv. The historical PR #56 and PR #45 reproduction recipes remain
+separate in that guide; the six-case recipient exercise retains its old reader pin.
+For a historical pinned Core and companion runtime, use the
 [portable review installation](action-review.md#install-the-source-candidate).
-To reproduce the reviewed readback and inspect-sidecar runtime, use the
-[host-adapter source setup](host-adapters.md#install-the-source-candidate-in-one-checkout).
-That setup installs all three packages from one checkout; optional SDK extras
-remain opt-in.
+Optional SDK extras remain opt-in. The clone-first commands below install Core
+only; they do not provide `mothership-evidence`.
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git
