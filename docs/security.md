@@ -272,6 +272,21 @@ authenticate the caller's expectation, the record source, freshness, execution,
 causation or current external truth, and does not detect substitution within
 that same action. No authority is created and no additional file is opened.
 
+The additional optional `inspect-result --expect-input-sha256` guard matches
+exact bounded saved-input bytes against a separately retained SHA-256. Unlike
+the action digest, it distinguishes files for the same action, including changed
+whitespace or removed complete rows. Strict expectation validation precedes stdin;
+full record validation and any expected-action comparison precede input matching.
+A matching hash never validates a malformed record or upgrades an incomplete
+result. Empty input with its expected hash remains unknown unless the action
+guard requires an action. Default output and legacy/v1 semantics are unchanged.
+With `--explain-error`, a validated mismatch uses only the fixed
+`expected_input_mismatch` code and static next check; neither digest is disclosed.
+This is equality against a caller-provided expectation, not authentication of
+that expectation, source, freshness, operation success or current external state.
+A digest taken from the received file itself supplies no independent handoff
+check. No paths are followed, records changed or authority created.
+
 ## Installation boundary
 
 Pip and Git are external tools with their own side effects and supply-chain risks. Review the source or wheel, verify

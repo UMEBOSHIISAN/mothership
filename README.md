@@ -88,6 +88,14 @@ requestや欠けたReceiptを後付けせず、入力内のpathも読み込み�
 一致してもUNKNOWNはUNKNOWNのままで、出所・鮮度・同じ操作内の証拠差替えは保証しません。
 [期待する操作との照合](docs/host-adapters.md#check-the-expected-operation)を参照してください。
 
+同じ操作の保存物同士を取り違えないためには、引き渡し時に別に保持した保存ファイル全体のSHA-256も照合できます。
+このローカル更新版では `--expect-input-sha256 "$expected_input_sha256"` を上のコマンドへ追加します。
+改行・空白を含む元のbytesが異なる場合や、末尾の記録が欠けた場合は説明を出さず拒否します。
+受け取ったファイルから期待値を取り直して通すのではなく、渡す時点で保持した値を使います。
+一致は送信者認証・鮮度・完了の証明ではなく、既定出力とUNKNOWNの意味は変わりません。
+この追加は`6c37212`を基点とするローカル差分にあり、そのcommit自体や旧pin・公開releaseには含まれません。
+[保存物そのものの照合と導入範囲](docs/host-adapters.md#check-the-exact-saved-input)を参照してください。
+
 拒否理由と次のread-only checkだけを確認したい場合は、同じ更新版source candidateで
 `--explain-error`を明示し、stderrをstdoutと分けて保存します。
 

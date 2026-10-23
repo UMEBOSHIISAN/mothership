@@ -104,6 +104,16 @@ A different action or missing action identity is rejected without a summary.
 Use the previously retained value, not one extracted from the file being checked.
 A match preserves UNKNOWN and does not authenticate origin, freshness or records
 substituted within the same action. See [expected-operation checking](docs/host-adapters.md#check-the-expected-operation).
+To distinguish different saved files for the same action, also retain the whole
+file's SHA-256 separately at handoff. This local update accepts
+`--expect-input-sha256 "$expected_input_sha256"` alongside the action guard.
+Changed raw bytes (including whitespace/newlines) or missing trailing records
+reject without a summary. Use the digest retained at handoff, not one recomputed
+from the received file to make it pass. Matching does not authenticate the
+sender, freshness or completion; default output and UNKNOWN remain unchanged.
+This addition is in the local patch based on `6c37212`, not that commit itself,
+older pins or published releases. See [exact saved-input checking](docs/host-adapters.md#check-the-exact-saved-input).
+
 To see only a fixed rejection reason and a next read-only check, opt in to
 `--explain-error` from the same updated source candidate and keep stderr
 separate from stdout:

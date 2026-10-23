@@ -156,6 +156,7 @@ _SAVED_REJECTION_CHECKS = {
     "invalid_saved_result": "preserve the original input; compare its separately retained checksum and original records with the sender",
     "expected_action_unavailable": "inspect the separately retained original task/action record; no action identity was supplied",
     "expected_action_mismatch": "compare the original task's separately retained action digest with the intended handoff; do not replace it from this input",
+    "expected_input_mismatch": "compare the handoff against its separately retained saved-input checksum; preserve the original bytes and do not replace the expectation from this input",
     "output_incomplete": "discard partial output; check the output destination",
     "inspection_unavailable": "preserve the original input and check the reader environment; the cause is unclassified",
 }
@@ -182,10 +183,14 @@ def _report_saved_rejection(code: str) -> int:
 def _inspect_saved_command(args: argparse.Namespace) -> int:
     stage = "inspection_unavailable"
     expectation_error = ()
+    input_expectation_error = ()
     try:
-        from .saved_result import _ExpectedActionError, inspect_saved_result, summarize_saved_result
+        from .saved_result import (
+            _ExpectedActionError, _ExpectedInputError, inspect_saved_result, summarize_saved_result,
+        )
 
         expectation_error = (_ExpectedActionError,)
+        input_expectation_error = (_ExpectedInputError,)
         stage = "invalid_expectation"
         expected_values = args.expect_action_sha256
         if expected_values is not None:
@@ -194,11 +199,19 @@ def _inspect_saved_command(args: argparse.Namespace) -> int:
             expected_action_sha256 = _require_digest(expected_values[0])
         else:
             expected_action_sha256 = None
+        expected_inputs = args.expect_input_sha256
+        if expected_inputs is not None:
+            if type(expected_inputs) is not list or len(expected_inputs) != 1:
+                raise _invalid()
+            expected_input_sha256 = _require_digest(expected_inputs[0])
+        else:
+            expected_input_sha256 = None
         stage = "input_unavailable"
         raw = _read_stdin_bytes()
         stage = "invalid_saved_result"
         result = (summarize_saved_result if args.human else inspect_saved_result)(
-            raw, expected_action_sha256=expected_action_sha256
+            raw, expected_action_sha256=expected_action_sha256,
+            expected_input_sha256=expected_input_sha256,
         )
         stage = "inspection_unavailable"
         line = result if args.human else _json_line(result)
@@ -211,6 +224,8 @@ def _inspect_saved_command(args: argparse.Namespace) -> int:
             raise
         if isinstance(error, expectation_error):
             code = "expected_action_unavailable" if error.action_unavailable else "expected_action_mismatch"
+        elif isinstance(error, input_expectation_error):
+            code = "expected_input_mismatch"
         elif isinstance(error, EvidenceError) or stage in {"input_unavailable", "output_incomplete"}:
             code = stage
         else:
@@ -271,6 +286,13 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         metavar="DIGEST",
         help="require the supplied saved result's already-validated action digest",
+    )
+    result_parser.add_argument(
+        "--expect-input-sha256",
+        action="append",
+        nargs="?",
+        metavar="DIGEST",
+        help="require the raw saved-input bytes to match a separately retained SHA-256",
     )
     return parser
 
