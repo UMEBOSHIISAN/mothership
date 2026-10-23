@@ -289,6 +289,63 @@ does not support the flag or keyword. Retain that pin and the six legacy cases
 for their existing reproduction/held human-acceptance purpose. Record the exact
 source revision and any local patch used for this new guard.
 
+### Check the exact saved input
+
+The action guard identifies the intended operation; two different saved files
+can still describe that same action. In this local update, the separate optional
+`--expect-input-sha256` guard compares the exact bounded input bytes with a
+SHA-256 retained separately **when the file was handed off**. It reuses the
+existing `input_sha256` calculation; there is no new file format or manifest.
+
+For example, the sender can run `shasum -a 256 result.jsonl` on the original file
+and retain/share its digest separately. With both independently retained values
+already set, the recipient runs:
+
+```sh
+mothership-evidence inspect-result --human \
+  --expect-action-sha256 "$expected_action_sha256" \
+  --expect-input-sha256 "$expected_input_sha256" \
+  --explain-error < result.jsonl 2> rejection.json
+```
+
+Do not copy the expectation out of the received input or compute it from that
+input just to pass the guard. If no separate checksum exists, inspect without
+this guard and do not claim that the supplied bytes match the intended handoff.
+The reader neither discovers nor authenticates the expectation.
+
+The option accepts exactly one 64-character lowercase hexadecimal digest.
+Malformed/repeated expectations reject before stdin is read. All existing
+record validation runs before either comparison; an invalid record remains
+`invalid_saved_result` even if its bytes match. The action comparison runs first
+when both guards are supplied. Valid records with differing input bytes return
+exit `2`, no summary, and (with `--explain-error`) `expected_input_mismatch`.
+The next check directs the recipient to the separately retained checksum; it
+never includes either digest or input content. Default errors stay unchanged.
+
+This hashes raw bytes, including whitespace and newlines, not canonical JSON.
+It detects a cleanly removed trailing row against a retained full-file checksum.
+An explicitly expected empty input remains UNKNOWN without the action guard;
+with the action guard it still rejects because no action was supplied. A
+matching valid prefix remains incomplete. Accepted JSON/human output is
+unchanged for legacy and v1, including the original six cases.
+
+Python APIs accept the keyword-only `expected_input_sha256=retained_checksum`
+on both `inspect_saved_result` and `summarize_saved_result`, alongside
+`expected_action_sha256`. Omitted/`None` means no input comparison. A `str`
+input is hashed as UTF-8 bytes. Invalid expectations or mismatches raise
+`EvidenceError`. There are no additional file reads, network calls, execution,
+reconsume or repairs. Matching proves bytes against the supplied expectation,
+not source, freshness, process exit, causation or external truth.
+
+Availability: this flag/keyword requires the local patch based on full revision
+`6c37212cbcfbf9f17757157ae502a7c4922e1039`; checking out that base alone does
+**not** include the patch. Record the base and exact reviewed patch, then build
+all three wheels from that updated checkout using the wheel commands above in
+fresh build/install directories. Check its installed `inspect-result --help`
+for this flag. The PR #59 setup pin remains a historical reproducible baseline
+for v1/action checking, and the PR #56/PR #45 pins and six-case exercise stay
+unchanged. No published release or human acceptance is claimed for this addition.
+
 ### Explain a rejected saved result
 
 The updated local source candidate adds the opt-in `--explain-error` flag to
@@ -320,7 +377,7 @@ or without this flag. Normal argparse grammar and help errors retain argparse's
 behavior; this option does not promise a JSON diagnostic for arbitrary command
 line syntax errors.
 
-The seven rejection codes and bounded next checks are:
+The rejection codes and bounded next checks are:
 
 | Code | Safe next read-only check |
 | --- | --- |
@@ -329,6 +386,7 @@ The seven rejection codes and bounded next checks are:
 | `invalid_saved_result` | Preserve the supplied bytes and compare a separately retained checksum or original with the sender. |
 | `expected_action_unavailable` | Inspect the separately retained original task or action record; missing action identity is not proof of no operation. |
 | `expected_action_mismatch` | Compare the separately retained original task digest; never take the expectation from the rejected file. |
+| `expected_input_mismatch` | Compare the separately retained handoff checksum; preserve original bytes and do not replace the expectation from the input. |
 | `output_incomplete` | Discard partial display and inspect the selected output destination. This code is only for stdout write/flush failure. |
 | `inspection_unavailable` | Preserve the input and inspect the reader environment when serialization, import or another runtime failure is unclassified. |
 
