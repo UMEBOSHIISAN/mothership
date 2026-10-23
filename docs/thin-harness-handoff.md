@@ -40,11 +40,22 @@ Use Python 3.12+, Git, and the reviewed candidate changes in both repositories.
 This local POSIX candidate requires `/usr/bin/git` and no-follow/nonblocking
 regular-file reads. The explicit Harness input rejects symlinked path components
 and special files; unsupported platforms stop before producing a handoff.
-The Mothership base is `6c37212cbcfbf9f17757157ae502a7c4922e1039`; the thin Harness
-base is `62a61ca8c5e03120cda28805de05e8a62e4304d9` in
-`ume-harness-engineering`. These base commits alone do not contain this new seam.
-Keep the exact candidate file/wheel hashes with the local acceptance record.
-No public candidate pin is claimed until these changes are committed and released.
+Use this fixed source pair for the synthetic path:
+
+- Mothership runtime:
+  [`5812c253a0ed33fbe28379da55ca847229eb343f`](https://github.com/UMEBOSHIISAN/mothership/commit/5812c253a0ed33fbe28379da55ca847229eb343f).
+  Build all three packages from this one checkout.
+- Canonical `ume-harness-engineering`:
+  [`8aa7d7417d70e6e3cc84a198357be48b194c423e`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/8aa7d7417d70e6e3cc84a198357be48b194c423e).
+  This includes the thin-preview case-marker correction from `fb070f6`.
+  Its installed root identity is
+  `c1f4356839e14ae2c9b0f50e53d8cd8742336ed14e3679ad058344f071edb097`.
+
+These are source candidates under review, not released packages. Access to the
+canonical Harness repository is required; its public mirror has not been promoted
+to this candidate. These runtime pins identify the tested code separately from
+later documentation commits. Keep the installed file/wheel hashes with the local
+acceptance record.
 
 Build the three wheels from the **same Mothership checkout**, using the existing
 [wheel recipe](host-adapters.md#try-the-current-candidate) with this reviewed
@@ -125,5 +136,6 @@ clean committed source is not bypassed to stage an uncommitted candidate.
 Harnessは依頼整理のままです。Mothership側の明示的な入口で、実Gitの状態と具体的な
 操作を確認し、既存Sessionへ渡します。独自Lease・権限管理は追加しません。
 依頼文のhash一致は、文章と操作対象の意味が一致する証明ではありません。
-この候補は合成入力・模擬通信のローカル確認用です。実canary、公開、人の受入は別です。
+この候補は合成入力・模擬通信のローカル確認用です。上記の固定commitを組み合わせます。
+実canary、公開mirrorへの反映、パッケージrelease、人の受入は別です。
 結果が不明なら、そのまま不明と表示して既存記録へ案内します。再実行で埋めません。
