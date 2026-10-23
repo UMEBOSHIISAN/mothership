@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from mothership_adapters.harness_handoff import (
     ThinHarnessOwner, HandoffError, collect_response, decode_handoff_json,
-    validate_preview,
+    read_regular, validate_preview,
 )
 from mothership_adapters.evidence import inspect_evidence
 from mothership_adapters.session import SessionError
@@ -108,6 +108,79 @@ class HandoffInputTests(unittest.TestCase):
                         {"interpretation_sha256": "0" * 64}):
             with self.subTest(changes=changes), self.assertRaises(HandoffError):
                 validate_preview({**preview(), **changes}, REQUEST, INTERPRETATION)
+
+
+class ReadRegularTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.parent = self.root / "parent"
+        self.parent.mkdir()
+        (self.parent / "input").write_bytes(b"trusted")
+        self.backup = self.root / "parent-original"
+        self.attack = self.root / "attack"
+        self.attack.mkdir()
+        (self.attack / "input").write_bytes(b"attack")
+
+    def replace_parent(self):
+        self.parent.rename(self.backup)
+        self.parent.symlink_to(self.attack, target_is_directory=True)
+
+    def test_rejects_parent_replacement_before_parent_open(self):
+        target = self.parent / "input"
+        real_open = os.open
+        state = {"swapped": False, "unsafe_open": False}
+
+        def raced_open(name, flags, *args, **kwargs):
+            if not state["swapped"] and (
+                    Path(name) == target
+                    or (name == self.parent.name and kwargs.get("dir_fd") is not None)):
+                self.replace_parent()
+                state["swapped"] = True
+            if state["swapped"] and kwargs.get("dir_fd") is None and Path(name) == target:
+                state["unsafe_open"] = True
+            return real_open(name, flags, *args, **kwargs)
+
+        supported_dir_fds = set(os.supports_dir_fd)
+        with patch("mothership_adapters.harness_handoff.os.open", side_effect=raced_open) as opened, \
+                patch.object(os, "supports_dir_fd", supported_dir_fds | {opened}):
+            with self.assertRaises(HandoffError):
+                read_regular(target)
+        self.assertTrue(state["swapped"])
+        self.assertFalse(state["unsafe_open"])
+
+    def test_reads_from_parent_descriptor_after_parent_replacement(self):
+        target = self.parent / "input"
+        real_open = os.open
+        state = {"parent_opened": False, "swapped": False, "unsafe_open": False}
+
+        def raced_open(name, flags, *args, **kwargs):
+            is_parent = (name == self.parent.name and kwargs.get("dir_fd") is not None
+                         and flags & os.O_DIRECTORY)
+            if not state["swapped"] and is_parent:
+                descriptor = real_open(name, flags, *args, **kwargs)
+                state["parent_opened"] = True
+                self.replace_parent()
+                state["swapped"] = True
+                return descriptor
+            if state["swapped"] and kwargs.get("dir_fd") is None and Path(name) == target:
+                state["unsafe_open"] = True
+            return real_open(name, flags, *args, **kwargs)
+
+        supported_dir_fds = set(os.supports_dir_fd)
+        with patch("mothership_adapters.harness_handoff.os.open", side_effect=raced_open) as opened, \
+                patch.object(os, "supports_dir_fd", supported_dir_fds | {opened}):
+            self.assertEqual(b"trusted", read_regular(target))
+        self.assertTrue(state["parent_opened"])
+        self.assertTrue(state["swapped"])
+        self.assertFalse(state["unsafe_open"])
+
+    def test_rejects_when_required_open_safety_flag_is_unsupported(self):
+        for flag in ("O_NOFOLLOW", "O_DIRECTORY", "O_NONBLOCK", "O_CLOEXEC"):
+            with self.subTest(flag=flag), patch.object(os, flag, 0, create=True):
+                with self.assertRaises(HandoffError):
+                    read_regular(self.parent / "input")
 
 
 class HandoffOwnerTests(unittest.TestCase):

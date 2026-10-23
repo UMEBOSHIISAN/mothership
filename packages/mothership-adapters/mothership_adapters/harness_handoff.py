@@ -112,21 +112,39 @@ def read_regular(path, limit=MAX_INPUT):
         path = Path(path).absolute()
         if path.resolve() != path:
             raise _invalid()
-        required = [getattr(os, name, None) for name in ("O_NOFOLLOW", "O_NONBLOCK", "O_CLOEXEC")]
-        if any(type(flag) is not int or flag <= 0 for flag in required):
+        required = {name: getattr(os, name, None) for name in (
+            "O_NOFOLLOW", "O_NONBLOCK", "O_CLOEXEC", "O_DIRECTORY")}
+        if any(type(flag) is not int or flag <= 0 for flag in required.values()):
             raise _invalid()
-        fd = os.open(path, os.O_RDONLY | required[0] | required[1] | required[2])
+        if os.open not in getattr(os, "supports_dir_fd", ()):
+            raise _invalid()
+        parts = path.parts[1:]
+        if not parts:
+            raise _invalid()
+        directory_flags = (os.O_RDONLY | required["O_NOFOLLOW"]
+                           | required["O_CLOEXEC"] | required["O_DIRECTORY"])
+        file_flags = (os.O_RDONLY | required["O_NOFOLLOW"]
+                      | required["O_NONBLOCK"] | required["O_CLOEXEC"])
+        descriptor = os.open(path.anchor, directory_flags)
         try:
-            metadata = os.fstat(fd)
-            if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > limit:
-                raise _invalid()
-            with os.fdopen(fd, "rb", closefd=False) as stream:
-                raw = stream.read(limit + 1)
-            if len(raw) > limit:
-                raise _invalid()
-            return raw
+            for part in parts[:-1]:
+                next_descriptor = os.open(part, directory_flags, dir_fd=descriptor)
+                os.close(descriptor)
+                descriptor = next_descriptor
+            fd = os.open(parts[-1], file_flags, dir_fd=descriptor)
+            try:
+                metadata = os.fstat(fd)
+                if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > limit:
+                    raise _invalid()
+                with os.fdopen(fd, "rb", closefd=False) as stream:
+                    raw = stream.read(limit + 1)
+                if len(raw) > limit:
+                    raise _invalid()
+                return raw
+            finally:
+                os.close(fd)
         finally:
-            os.close(fd)
+            os.close(descriptor)
     except FileNotFoundError:
         raise
     except (OSError, ValueError, TypeError):
