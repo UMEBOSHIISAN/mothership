@@ -29,6 +29,24 @@ Mothershipは、人間とAIが仕事を分け合うために、任せる操作�
 
 ## 結果の読み方
 
+保存物から、実行側の報告・独立観測・不明点・次の確認先を分けて読みます。
+まずは次の3例を見ると、`success`や終了コードだけで完了と判断しない理由が分かります。
+
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/saved-result-reading-poster.png">
+    <source media="(max-width: 600px)" srcset="assets/readme/ja/saved-result-reading-poster.png">
+    <img src="assets/readme/ja/saved-result-reading.gif"
+         alt="合成保存物3例。成功報告だけ、Receipt成功と独立観測UNKNOWN、不整合による拒否を分け、次に読む記録を示す。" width="100%">
+  </picture>
+</p>
+
+`case-02`・`03`・`06`を説明する図解です。実GitHub操作・人の承認・現在状態・Harness受入の証拠ではありません。
+静止ポスターも同じ3例を示します。[既存6ケースを試す](examples/saved-results/README.md)。
+
+<details>
+<summary>合成bundleの出力を読む：承認・権限使用・報告・独立確認</summary>
+
 たとえば、`example/repo` のPR #7について、承認・consume・実行成功の記録があり、
 独立確認の記録はまだないとします。現行の `inspect --human` に合成bundleを渡した出力の抜粋です。
 実際のGitHub操作や出所認証を示すものではありません。
@@ -57,7 +75,19 @@ recovery: no re-execution; no reconsume
 記録同士の整合性を調べることと、記録の発生元や現在の外部状態を認証することは分けて扱います。
 実際の公開結果は、後半の[PR #18の一例](#公開結果の一例)に分けています。
 
+</details>
+
 ## クイックスタート
+
+受け取った形式に合わせて入口を選びます。ファイルを相互変換したり、欠けた記録を補ったりする必要はありません。
+
+| 手元にあるもの | 読む入口 | 分かること |
+| --- | --- | --- |
+| 参照consumerの `result.jsonl` | `inspect-result --human` | 実行報告・Receipt・独立観測・未提供の記録 |
+| export済みevidence bundle | `inspect --human` | 含まれるrequest・判断・consume・結果の対応 |
+| Harnessから始めるローカル候補 | [明示handoffの手順](docs/thin-harness-handoff.md) | 合成入力・模擬通信で、元の入口への結果返却と保存再読 |
+
+読むだけで実行権限は作られません。Harness候補はbundleを保持する経路で、`result.jsonl`とは別です。
 
 ### 保存済みの結果を読む
 
@@ -78,6 +108,10 @@ sidecarの照合や明示的なreadbackは、[詳しい読み取り手順](#結�
 `mothership-evidence inspect-result --human < result.jsonl`で読みます。
 保存された実行報告・Receipt・独立観測を分け、承認やconsumeは「この保存形式には未提供」と表示します。
 requestや欠けたReceiptを後付けせず、入力内のpathも読み込みません。
+
+<details>
+<summary>互換性・期待digest・拒否理由・Node診断の詳細</summary>
+
 このcheckoutの新しい保存形式では、実行報告と確認結果に操作ID・digestを付け、別操作の報告が混ざれば拒否します。
 旧形式も読めますが、報告行は位置だけの対応です。IDの一致は出所認証や完了の証明ではありません。
 新形式には同じ更新版のreaderが必要です。[新旧形式の対応](docs/host-adapters.md#saved-result-format-compatibility)を確認してください。
@@ -113,6 +147,8 @@ v1と期待digest照合は公開済み配布物や、6ケース受入ガイド�
 [合成ターミナル例と互換性](docs/host-adapters.md#node-session-diagnostics)を参照してください。
 既定は従来のエラー形式です。PR #45／#49の旧pinにはNode転送がなく、OpenClaw／Lobsterの
 画面への転送や実運用の受入を示すものではありません。
+
+</details>
 
 ### Coreの境界をオフラインで試す
 
@@ -201,8 +237,8 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 薄いHarness候補は依頼整理を担い、ローカル作業の権限・実行にはホスト標準機能を使います。
 [明示的なhandoff候補](docs/thin-harness-handoff.md)は、実Git観測、具体的な操作の判断、
 既存Session、独立readback、同じ入口への結果表示と保存再読を接続します。
-現在は合成入力・模擬通信のローカル経路です。独自Leaseは追加せず、公開版同士の自動接続や
-実canaryの完了を主張しません。現在の公開版同士に自動接続はありません。
+現在は合成入力・模擬通信のローカル経路です。独自Leaseは追加せず、実canaryの完了を主張しません。
+現在の公開版同士に自動接続はありません。
 旧Lease依存の補助bridgeはlocal lease観測をCore contextへ渡すだけで、過去版の互換経路として残しています。
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。
 transportと実際のeffect境界は別途構成し、VerificationはReceiptとは別の記録として扱います。
@@ -229,13 +265,14 @@ Mothershipは、AIを止めることではなく、人間が具体的な仕事�
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/ja/mothership-flow-poster.png">
     <img src="assets/readme/ja/mothership-flow.gif"
-         alt="8つの限定経路から操作を固定し、一度だけ権限を使用する。実行報告と独立確認を分け、保存結果は別の人やAIへ読取専用で引き継ぐ。"
+         alt="操作を固定し、台帳履歴内で一度だけconsume。実行報告と独立確認を分け、記録を別の人やAIへ読取専用で渡す。"
          width="100%">
   </picture>
 </p>
 
-これは未リリースのソース候補の仕組みの図解です。8つのhost/evidence routeから共有するreview request、Core、
-任意companion、receipt adapter、別経路の独立確認、保存結果の読取専用の引継ぎを区別しています。
+これは未リリースのソース候補の仕組みの図解です。実行系のreview request、Core、任意companion、
+Receipt adapter、別経路の独立確認と、保存結果の読取専用経路を区別しています。
+8つのhost/evidence routeすべてが実行・承認を行うわけではありません。
 local checksの説明であり、GIFそのものは実行証拠ではありません。
 動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
 

@@ -8,6 +8,11 @@ do not execute work. No custom Lease, managed mode or approval token is added.
 
 ## What the path means
 
+![Explicit local handoff and separate result return; synthetic path, not live acceptance](../assets/readme/en/ume-stack-responsibility.svg)
+
+The diagram is an explanation of the local candidate. Its return path means the
+foreground result and retained evidence, not a successful live GitHub operation.
+
 ```text
 Explicit request + offline interpretation
   → installed ume-harness --handoff-json (advisory preview)
@@ -116,6 +121,19 @@ ledgers, `original.json`, and, when available, `verified.json` and
 outcome. `manifest.json` relates artifact hashes to the action and request; it is
 correlation evidence, not authenticated provenance or a new authority ledger.
 Raw user input is retained only in this explicitly selected private directory.
+
+| Retained file | What the next person or AI can read |
+| --- | --- |
+| `result.json` / `RESULT.md` | The same foreground outcome, with unknowns kept separate |
+| `original.json` | Supplied request, decision, consume and execution records; inspect only if saved |
+| `verified.json` + `readback-evidence.json` | Recorded independent observation and its structural binding |
+| Explicit authority / attempt ledgers | Existing records to inspect when result saving or a terminal pair is incomplete |
+
+Use `inspect --human` for these bundles. The reference consumer's `result.jsonl`
+uses the separate `inspect-result --human` reader shown in the
+[saved-result examples](../examples/saved-results/README.en.md). A filename or
+manifest entry does not prove that a write completed; keep the original files
+and do not reconstruct missing records or run the operation again.
 
 The existing legacy Lease-based `HarnessMergeBridge` and its historical pin remain
 unchanged. They are not required by this thin path. Existing bundle validation,

@@ -38,6 +38,26 @@ within the same trusted local ledger history.
 
 ## Read a result
 
+Separate the executor report, independent observation, unknowns and next checks.
+These three examples show why a success label or exit code alone is not completion.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/saved-result-reading-poster.png">
+    <source media="(max-width: 600px)" srcset="assets/readme/en/saved-result-reading-poster.png">
+    <img src="assets/readme/en/saved-result-reading.gif"
+         alt="Three synthetic cases: report only, observation UNKNOWN and rejected input, with next checks."
+         width="100%">
+  </picture>
+</p>
+
+An illustration of cases 02, 03 and 06, not proof of real GitHub activity, human
+approval, current external state or Harness acceptance. The static poster covers
+the same cases. [Try the existing six cases](examples/saved-results/README.en.md).
+
+<details>
+<summary>Read the synthetic bundle excerpt: approval, authority use, report and observation</summary>
+
 Read a retained record as a set of separate claims. A recorded approval and
 authority use do not by themselves establish an external effect; a `SUCCESS`
 Receipt without Verification remains executor-reported success only.
@@ -69,7 +89,20 @@ the action already exists, inspect it as the next read-only check. Do not infer
 absence from a missing record, and do not re-execute or reconsume from this
 excerpt.
 
+</details>
+
 ## Quick start
+
+Choose the reader for the retained format. Keep missing records missing; no conversion is needed.
+
+| What you received | Entry | What it explains |
+| --- | --- | --- |
+| Saved `result.jsonl` | `inspect-result --human` | Report, Receipt, observation and missing records |
+| Exported evidence bundle | `inspect --human` | Supplied request, decision, consume and result binding |
+| Local Harness candidate | [Handoff guide](docs/thin-harness-handoff.md) | Synthetic result return and reread |
+
+Reading grants no execution authority. The Harness candidate retains bundles,
+which are different from the reference consumer's `result.jsonl`.
 
 ### Read an existing result
 
@@ -93,6 +126,10 @@ In this reader source candidate, use
 It separates the supplied execution summary, Receipt and recorded independent
 observation; approval and consume are shown as not supplied by this format.
 It never invents a request or missing Receipt, or follows paths inside the input.
+
+<details>
+<summary>Format compatibility, expected digests, rejection details and Node diagnostics</summary>
+
 New saved output from this checkout carries action IDs and digests on execution
 and verification reports, so reports labelled for another action are rejected.
 Legacy files remain readable with positional-only summary linkage. Matching IDs
@@ -136,6 +173,8 @@ forward stop diagnostics with `sessionDiagnostics: true`. See the
 The default remains the legacy error format. The PR #45/#49 pins do not include
 Node forwarding; this does not qualify OpenClaw/Lobster UI forwarding or
 live operation.
+
+</details>
 
 ### Try the Core boundary offline
 
@@ -265,14 +304,15 @@ responsibilities distinct.
     <source media="(prefers-reduced-motion: reduce)" srcset="assets/readme/en/mothership-flow-poster.png">
     <source media="(max-width: 600px)" srcset="assets/readme/en/mothership-flow-poster.png">
     <img src="assets/readme/en/mothership-flow.gif"
-         alt="Eight bounded routes bind an action; saved-result handoff separates reports from observations."
+         alt="Bind an operation and consume once per ledger history; hand over reports and observations separately."
          width="100%">
   </picture>
 </p>
 
 This explanatory diagram shows the unreleased source candidate, not execution evidence.
-It separates the shared review request from eight host and evidence entry paths, Core, the optional
-companion, receipt adapter, independent verification and read-only handoff of saved results.
+It separates execution-route review requests, Core, the optional companion, Receipt
+adapter and independent verification from read-only inspection of saved results.
+Not all eight host/evidence routes review or execute an operation.
 Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
 
 Supported parameters are frozen before a caller-attested decision is checked
