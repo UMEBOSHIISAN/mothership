@@ -657,6 +657,234 @@ class SavedResultCLITests(EvidenceFixture):
         )[0])
         self.assertEqual(first, self.run_saved(raw, expected_action_sha256=expected))
 
+    def assert_saved_rejection(self, result, code, next_check, *, partial_output=False):
+        status, output, error = result
+        self.assertEqual(2, status)
+        if not partial_output:
+            self.assertEqual("", output)
+        diagnostic = json.loads(error)
+        self.assertEqual({
+            "schema", "code", "next_read_only_check", "accepted_result", "authority",
+            "source_authenticated", "external_effect_verified", "recovery",
+        }, set(diagnostic))
+        self.assertEqual("mothership.saved-result-rejection.v0", diagnostic["schema"])
+        self.assertEqual(code, diagnostic["code"])
+        self.assertIn(next_check, diagnostic["next_read_only_check"])
+        for field in ("accepted_result", "authority", "source_authenticated", "external_effect_verified"):
+            self.assertIs(False, diagnostic[field])
+        self.assertEqual("no re-execution; no reconsume", diagnostic["recovery"])
+        self.assertEqual(1, error.count("\n"))
+        self.assertLess(len(error), 2048)
+        self.assertNotIn("PRIVATE", error)
+        self.assertNotIn("/not-to-open", error)
+        self.assertNotIn(self.request["action"]["action_id"], error)
+        self.assertNotIn(self.request["action_sha256"], error)
+
+    def test_explained_mismatch_requires_valid_legacy_or_v1_evidence(self):
+        # A digest comparison before full validation would misclassify bad evidence.
+        for rows in (self.saved_rows(), self.v1_rows(self.saved_rows())):
+            for length in (1, 2, 3):
+                for human in (True, False):
+                    with self.subTest(version=rows[0].get("saved_result_schema"), length=length, human=human):
+                        self.assert_saved_rejection(self.run_saved(
+                            self.encode_rows(rows[:length]), human=human,
+                            expected_action_sha256="0" * 64, extra_args=("--explain-error",),
+                        ), "expected_action_mismatch", "separately retained")
+            rows[1].update(status="success", merged=False)
+            self.assert_saved_rejection(self.run_saved(
+                self.encode_rows(rows), expected_action_sha256="0" * 64,
+                extra_args=("--explain-error",),
+            ), "invalid_saved_result", "original")
+
+    def test_explained_invalid_evidence_is_not_an_accepted_target(self):
+        good = self.encode_rows(self.saved_rows())
+        mixed = self.v1_rows(self.saved_rows())
+        mixed[1].pop("saved_result_schema")
+        altered = self.saved_rows()
+        altered[0]["action"]["action_id"] = "PRIVATE_UNTRUSTED_ACTION\u001b[31m"
+        for raw in (good[:-1], b"PRIVATE_NOT_JSON\n", b"\xff\n",
+                    self.encode_rows(mixed), self.encode_rows(altered)):
+            for human in (True, False):
+                with self.subTest(raw=raw[:20], human=human):
+                    self.assert_saved_rejection(self.run_saved(
+                        raw, human=human, extra_args=("--explain-error",),
+                    ), "invalid_saved_result", "original")
+
+    def test_explained_missing_action_is_unavailable_not_a_mismatch(self):
+        for human in (True, False):
+            self.assert_saved_rejection(self.run_saved(
+                b"", human=human, expected_action_sha256=self.request["action_sha256"],
+                extra_args=("--explain-error",),
+            ), "expected_action_unavailable", "original")
+
+    def test_explain_error_preserves_accepted_default_outputs_and_formats(self):
+        # The option must not add metadata/diagnostics to accepted results.
+        for rows in (self.saved_rows(), self.v1_rows(self.saved_rows())):
+            for length in (0, 1, 2, 3):
+                raw = self.encode_rows(rows[:length])
+                for human in (True, False):
+                    for expected in (None, self.request["action_sha256"] if length else None):
+                        with self.subTest(length=length, human=human, expected=expected):
+                            self.assertEqual(self.run_saved(raw, human=human, expected_action_sha256=expected),
+                                             self.run_saved(raw, human=human, expected_action_sha256=expected,
+                                                            extra_args=("--explain-error",)))
+
+    def test_explained_bad_expectation_still_rejects_before_reading_stdin(self):
+        expected = self.request["action_sha256"]
+        options = (
+            ("--expect-action-sha256", "PRIVATE_BAD_DIGEST"),
+            ("--expect-action-sha256", ""),
+            ("--expect-action-sha256", "A" * 64),
+            ("--expect-action-sha256",),
+            ("--expect-action-sha256", expected, "--expect-action-sha256", expected),
+        )
+        for args in options:
+            source = io.BytesIO(b"PRIVATE_STDIN_SENTINEL")
+            stdin = io.TextIOWrapper(source, encoding="utf-8")
+            out, err = io.StringIO(), io.StringIO()
+            with self.subTest(args=args), mock.patch("sys.stdin", stdin), \
+                 mock.patch("sys.stdout", out), mock.patch("sys.stderr", err):
+                code = evidence_cli_main(["inspect-result", "--explain-error", *args])
+            self.assert_saved_rejection((code, out.getvalue(), err.getvalue()),
+                                        "invalid_expectation", "separately retained")
+            self.assertEqual(0, source.tell())
+
+    def test_explained_input_failure_does_not_claim_corrupt_evidence(self):
+        class UnreadableInput:
+            @property
+            def buffer(self):
+                raise OSError("PRIVATE_INPUT_FAILURE")
+
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch("sys.stdin", UnreadableInput()), mock.patch("sys.stdout", out), \
+             mock.patch("sys.stderr", err):
+            code = evidence_cli_main(["inspect-result", "--explain-error"])
+        self.assert_saved_rejection((code, out.getvalue(), err.getvalue()),
+                                    "input_unavailable", "input")
+
+    def test_explained_runtime_and_import_failures_remain_unclassified(self):
+        raw = self.encode_rows(self.saved_rows())
+        real_import = __import__
+
+        def failed_import(name, *args, **kwargs):
+            if name.endswith("saved_result"):
+                raise ImportError("PRIVATE_IMPORT_FAILURE")
+            return real_import(name, *args, **kwargs)
+
+        with mock.patch("mothership_adapters.saved_result.inspect_saved_result",
+                        side_effect=RuntimeError("PRIVATE_RUNTIME_FAILURE")):
+            self.assert_saved_rejection(self.run_saved(raw, human=False, extra_args=("--explain-error",)),
+                                        "inspection_unavailable", "environment")
+            with self.assertRaisesRegex(RuntimeError, "PRIVATE_RUNTIME_FAILURE"):
+                self.run_saved(raw, human=False)
+        with mock.patch("builtins.__import__", side_effect=failed_import):
+            self.assert_saved_rejection(self.run_saved(raw, extra_args=("--explain-error",)),
+                                        "inspection_unavailable", "environment")
+
+    def test_explained_serialization_failure_is_not_a_stdout_failure(self):
+        raw = self.encode_rows(self.saved_rows())
+        real_dumps = json.dumps
+
+        def fail_result_serialization(value, *args, **kwargs):
+            if type(value) is dict and value.get("format") == "reference-result-jsonl":
+                raise ValueError("PRIVATE_SERIALIZATION_FAILURE")
+            return real_dumps(value, *args, **kwargs)
+
+        with mock.patch("mothership_adapters.cli.json.dumps", side_effect=fail_result_serialization):
+            self.assert_saved_rejection(self.run_saved(raw, human=False, extra_args=("--explain-error",)),
+                                        "inspection_unavailable", "environment")
+
+    def test_explained_output_failure_does_not_persist_into_next_call(self):
+        raw = self.encode_rows(self.saved_rows())
+        first = self.run_saved(raw)
+
+        class BrokenOutput(io.StringIO):
+            def __init__(self, failure):
+                super().__init__()
+                self.failure = failure
+
+            def write(self, text):
+                if self.failure == "write":
+                    super().write(text[:5])
+                    raise OSError("PRIVATE_OUTPUT_FAILURE")
+                return super().write(text[:5] if self.failure == "short" else text)
+
+            def flush(self):
+                if self.failure == "flush":
+                    raise OSError("PRIVATE_FLUSH_FAILURE")
+                super().flush()
+
+        for human in (True, False):
+            for failure in ("write", "short", "flush"):
+                self.assert_saved_rejection(self.run_saved(
+                    raw, human=human, output=BrokenOutput(failure), extra_args=("--explain-error",),
+                ), "output_incomplete", "discard", partial_output=True)
+                self.assertEqual(first, self.run_saved(raw))
+        rejected = self.run_saved(b"PRIVATE_BAD_INPUT\n", extra_args=("--explain-error",))
+        self.run_saved(raw)
+        self.assertEqual(rejected, self.run_saved(b"PRIVATE_BAD_INPUT\n", extra_args=("--explain-error",)))
+        self.assertEqual((2, "", "invalid bounded evidence input\n"), self.run_saved(b"bad\n"))
+
+    def test_diagnostic_sink_failure_never_triggers_a_second_write(self):
+        class BrokenDiagnostic(io.StringIO):
+            def __init__(self, failure):
+                super().__init__()
+                self.failure, self.writes = failure, 0
+
+            def write(self, text):
+                self.writes += 1
+                if self.failure == "write":
+                    raise OSError("PRIVATE_DIAGNOSTIC_FAILURE")
+                return super().write(text[:3] if self.failure == "short" else text)
+
+            def flush(self):
+                if self.failure == "flush":
+                    raise OSError("PRIVATE_DIAGNOSTIC_FLUSH_FAILURE")
+                super().flush()
+
+        for failure in ("write", "short", "flush"):
+            source = io.TextIOWrapper(io.BytesIO(b"bad\n"), encoding="utf-8")
+            out, err = io.StringIO(), BrokenDiagnostic(failure)
+            with mock.patch("sys.stdin", source), mock.patch("sys.stdout", out), mock.patch("sys.stderr", err):
+                self.assertEqual(2, evidence_cli_main(["inspect-result", "--explain-error"]))
+            self.assertEqual("", out.getvalue())
+            self.assertEqual(1, err.writes)
+            self.assertNotIn("PRIVATE", err.getvalue())
+
+    def test_explained_rejections_are_offline_and_preserve_retained_records(self):
+        raw = self.encode_rows(self.v1_rows(self.saved_rows()))
+        before = [p.read_bytes() for p in (self.authority_path, self.receipt_path)]
+        forbidden = {str(self.authority_path), str(self.receipt_path),
+                     "/not-to-open/authority.jsonl", "/not-to-open/attempts.jsonl"}
+        real_open, real_io_open, real_os_open = open, io.open, os.open
+
+        def guarded_file_opener(opener):
+            def read_only(path, mode="r", *args, **kwargs):
+                self.assertNotIn(str(path), forbidden)
+                self.assertNotIn("+", mode)
+                self.assertTrue(mode.startswith("r"))
+                return opener(path, mode, *args, **kwargs)
+            return read_only
+
+        def read_only_os_open(path, flags, *args, **kwargs):
+            self.assertNotIn(str(path), forbidden)
+            self.assertEqual(0, flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND))
+            return real_os_open(path, flags, *args, **kwargs)
+
+        with mock.patch("socket.socket", side_effect=AssertionError("network forbidden")), \
+             mock.patch("builtins.open", side_effect=guarded_file_opener(real_open)), \
+             mock.patch("io.open", side_effect=guarded_file_opener(real_io_open)), \
+             mock.patch("os.open", side_effect=read_only_os_open), \
+             mock.patch("orchestration.lib.action_authority.freeze_action", side_effect=AssertionError("issuance forbidden")), \
+             mock.patch("orchestration.lib.action_authority_ledger.consume_action", side_effect=AssertionError("consume forbidden")), \
+             mock.patch("mothership_github.executor.execute_action_merge_pr", side_effect=AssertionError("execution forbidden")):
+            for candidate, expected, code in ((raw, "0" * 64, "expected_action_mismatch"),
+                                              (raw[:-1], "0" * 64, "invalid_saved_result"),
+                                              (b"", "0" * 64, "expected_action_unavailable")):
+                self.assert_saved_rejection(self.run_saved(candidate, expected_action_sha256=expected,
+                                                          extra_args=("--explain-error",)), code, "original")
+        self.assertEqual(before, [p.read_bytes() for p in (self.authority_path, self.receipt_path)])
+
 
 class AdapterEvidenceCLITests(EvidenceFixture):
     def test_output_failure_does_not_leak_a_success_into_the_next_inspection(self) -> None:

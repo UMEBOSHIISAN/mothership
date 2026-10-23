@@ -34,6 +34,14 @@ _VERIFICATION = frozenset({
 })
 
 
+class _ExpectedActionError(EvidenceError):
+    """An expectation rejected only after every supplied record was validated."""
+
+    def __init__(self, *, action_unavailable: bool):
+        super().__init__("invalid bounded evidence input")
+        self.action_unavailable = action_unavailable
+
+
 def _version(rows: list[dict[str, object]]) -> str:
     """Select one closed row format before any row-specific validation."""
 
@@ -252,7 +260,7 @@ def inspect_saved_result(
         if expected_action_sha256 is not None and (
             action is None or checked_action_sha256 != expected_action_sha256
         ):
-            raise _invalid()
+            raise _ExpectedActionError(action_unavailable=action is None)
         receipt = None if verification is None else verification["receipt"]
         observed = None if verification is None else verification["verification"]
         binding = (

@@ -104,6 +104,25 @@ A different action or missing action identity is rejected without a summary.
 Use the previously retained value, not one extracted from the file being checked.
 A match preserves UNKNOWN and does not authenticate origin, freshness or records
 substituted within the same action. See [expected-operation checking](docs/host-adapters.md#check-the-expected-operation).
+To see only a fixed rejection reason and a next read-only check, opt in to
+`--explain-error` from the same updated source candidate and keep stderr
+separate from stdout:
+
+Command: `mothership-evidence inspect-result --human
+--expect-action-sha256 "$expected_action_sha256"
+--explain-error < result.jsonl 2> rejection.json`
+
+When stderr is writable on rejection, `rejection.json` contains one JSON line with the fixed schema
+`mothership.saved-result-rejection.v0`. It reports only the fixed `code`,
+`next_read_only_check`, `accepted_result: false`, `authority: false`,
+`source_authenticated: false`, `external_effect_verified: false`, and
+`recovery: "no re-execution; no reconsume"`; it does not disclose input
+identity, digests, paths or raw exception text. Rejection remains exit `2`
+without an accepted result; discard any partial stdout. Accepted stdout/stderr,
+default JSON/`--human` output and status meanings are unchanged. This option
+is added only by this updated unreleased source candidate; it is not in the
+existing `fd8d4f0`, `f9ef944` or `91f474e` pins or published releases. Keep
+those pins and the six-case guide's inputs and procedure unchanged.
 The [six retained recipient cases and guide](examples/saved-results/README.en.md)
 let a recipient read synthetic saved inputs with a pinned reader, without running
 the producer. Check the separate answer key only after recording responses.

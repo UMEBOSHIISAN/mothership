@@ -109,7 +109,7 @@ def _export_from_envelope(payload: object) -> dict[str, object]:
         raise _invalid() from None
 
 
-def _write_json(value: object) -> None:
+def _json_line(value: object) -> str:
     try:
         encoded = json.dumps(
             value,
@@ -120,7 +120,11 @@ def _write_json(value: object) -> None:
         )
     except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
         raise _invalid() from None
-    _write_once(sys.stdout, encoded + "\n")
+    return encoded + "\n"
+
+
+def _write_json(value: object) -> None:
+    _write_once(sys.stdout, _json_line(value))
 
 
 def _readback_line(value: object) -> str:
@@ -144,6 +148,74 @@ def _report_invalid() -> int:
     except (OSError, TypeError, ValueError, UnicodeError):
         pass
     return 2
+
+
+_SAVED_REJECTION_CHECKS = {
+    "invalid_expectation": "check the command and the original task's separately retained action digest; do not derive it from this input",
+    "input_unavailable": "check access to the original input and its byte limit; preserve the original bytes",
+    "invalid_saved_result": "preserve the original input; compare its separately retained checksum and original records with the sender",
+    "expected_action_unavailable": "inspect the separately retained original task/action record; no action identity was supplied",
+    "expected_action_mismatch": "compare the original task's separately retained action digest with the intended handoff; do not replace it from this input",
+    "output_incomplete": "discard partial output; check the output destination",
+    "inspection_unavailable": "preserve the original input and check the reader environment; the cause is unclassified",
+}
+
+
+def _report_saved_rejection(code: str) -> int:
+    if code not in _SAVED_REJECTION_CHECKS:
+        code = "inspection_unavailable"
+    diagnostic = {
+        "schema": "mothership.saved-result-rejection.v0",
+        "code": code, "next_read_only_check": _SAVED_REJECTION_CHECKS[code],
+        "accepted_result": False, "authority": False,
+        "source_authenticated": False, "external_effect_verified": False,
+        "recovery": "no re-execution; no reconsume",
+    }
+    try:
+        _write_once(sys.stderr, _json_line(diagnostic))
+    except Exception:
+        # An incomplete diagnostic is not data. Never retry a broken sink.
+        pass
+    return 2
+
+
+def _inspect_saved_command(args: argparse.Namespace) -> int:
+    stage = "inspection_unavailable"
+    expectation_error = ()
+    try:
+        from .saved_result import _ExpectedActionError, inspect_saved_result, summarize_saved_result
+
+        expectation_error = (_ExpectedActionError,)
+        stage = "invalid_expectation"
+        expected_values = args.expect_action_sha256
+        if expected_values is not None:
+            if type(expected_values) is not list or len(expected_values) != 1:
+                raise _invalid()
+            expected_action_sha256 = _require_digest(expected_values[0])
+        else:
+            expected_action_sha256 = None
+        stage = "input_unavailable"
+        raw = _read_stdin_bytes()
+        stage = "invalid_saved_result"
+        result = (summarize_saved_result if args.human else inspect_saved_result)(
+            raw, expected_action_sha256=expected_action_sha256
+        )
+        stage = "inspection_unavailable"
+        line = result if args.human else _json_line(result)
+        stage = "output_incomplete"
+        _write_once(sys.stdout, line)
+        return 0
+    except Exception as error:
+        if not args.explain_error:
+            # Retain the existing main handler's exact default error contract.
+            raise
+        if isinstance(error, expectation_error):
+            code = "expected_action_unavailable" if error.action_unavailable else "expected_action_mismatch"
+        elif isinstance(error, EvidenceError) or stage in {"input_unavailable", "output_incomplete"}:
+            code = stage
+        else:
+            code = "inspection_unavailable"
+        return _report_saved_rejection(code)
 
 
 def _emit_readback(result: dict[str, object]) -> int:
@@ -190,6 +262,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     result_parser.add_argument("--human", action="store_true", help="explain supplied saved-result records")
     result_parser.add_argument(
+        "--explain-error", action="store_true",
+        help="on rejection, emit a bounded reason and next read-only check as JSON on stderr",
+    )
+    result_parser.add_argument(
         "--expect-action-sha256",
         action="append",
         nargs="?",
@@ -214,30 +290,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ):
             raise _invalid()
         if args.command == "inspect-result":
-            from .saved_result import inspect_saved_result, summarize_saved_result
-
-            expected_values = getattr(args, "expect_action_sha256", None)
-            if expected_values is not None:
-                if type(expected_values) is not list or len(expected_values) != 1:
-                    raise _invalid()
-                expected_action_sha256 = _require_digest(expected_values[0])
-            else:
-                expected_action_sha256 = None
-            raw = _read_stdin_bytes()
-            if args.human:
-                _write_once(
-                    sys.stdout,
-                    summarize_saved_result(
-                        raw, expected_action_sha256=expected_action_sha256
-                    ),
-                )
-            else:
-                _write_json(
-                    inspect_saved_result(
-                        raw, expected_action_sha256=expected_action_sha256
-                    )
-                )
-            return 0
+            return _inspect_saved_command(args)
         payload = _read_stdin()
         if args.command == "export":
             result = _export_from_envelope(payload)

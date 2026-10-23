@@ -87,6 +87,22 @@ requestや欠けたReceiptを後付けせず、入力内のpathも読み込み�
 期待値を検査対象ファイル自身から取って済ませず、元の依頼に保持した値を使ってください。
 一致してもUNKNOWNはUNKNOWNのままで、出所・鮮度・同じ操作内の証拠差替えは保証しません。
 [期待する操作との照合](docs/host-adapters.md#check-the-expected-operation)を参照してください。
+
+拒否理由と次のread-only checkだけを確認したい場合は、同じ更新版source candidateで
+`--explain-error`を明示し、stderrをstdoutと分けて保存します。
+
+コマンド: `mothership-evidence inspect-result --human
+--expect-action-sha256 "$expected_action_sha256"
+--explain-error < result.jsonl 2> rejection.json`
+
+stderrが書き込み可能な拒否時の`rejection.json`は、固定schema `mothership.saved-result-rejection.v0` の1行JSONです。
+`code`（固定された理由）と`next_read_only_check`、`accepted_result: false`、
+`authority: false`、`source_authenticated: false`、`external_effect_verified: false`、
+`recovery: "no re-execution; no reconsume"`だけを示し、入力のidentity・digest・pathや生の例外を含みません。
+拒否は従来どおりexit `2`で受理済みの結果を出さず、標準出力の途中出力があれば採用せず破棄します。
+受理時のstdout/stderr、既定のJSON/`--human`表示、statusは変わりません。
+このオプションはこの更新済みの未リリースsource candidateの追加で、既存の`fd8d4f0`・`f9ef944`・`91f474e`のpinや公開releaseには含まれません。
+既存pinと6ケースguideの入力・手順はそのままです。
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
 [同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。
