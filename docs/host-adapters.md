@@ -582,9 +582,13 @@ Missing Verification stays `None`; fake SUCCESS is only an executor report.
 On exceptions the owner reads only its explicit original ledger paths and exports
 only actual rows. A missing finish produces no Receipt. Torn, foreign, ambiguous
 or exporter-rejected input produces no successful explanation and is never
-repaired. Temporary source ledgers are removed when this reference exits; retain
-a complete accepted bundle separately. A nonzero exit requires inspecting retained
-records and does not authorize retry, reconsume or action reissue.
+repaired. Temporary source ledgers are removed only after a successful exit with
+an exported bundle; retain that complete accepted bundle separately. On failure,
+including Ctrl-C or refused export, the original private temporary directory is
+kept and its path is printed to stderr. Inspect those bytes read-only; never treat
+torn rows or partial stdout as a complete bundle. Retention does not restore the
+live Session or authorize retry, reconsume or action reissue. Hard process loss
+cannot guarantee a final diagnostic or an export.
 
 Lease/worktree/context drift stops admission or the next guarded transport call.
 Cancellation during preflight GET can leave one consume and an UNKNOWN Receipt

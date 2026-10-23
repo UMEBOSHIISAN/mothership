@@ -18,7 +18,7 @@ from local_execution_lease_state import LeaseLifecycle
 from mothership_adapters.session import SessionError
 from mothership.contracts import canonical_json_sha256
 from examples.harness_merge_owner import (
-    HarnessReferenceOwner, collect_response, prepare_local_work,
+    HarnessReferenceOwner, collect_response, main, prepare_local_work,
 )
 
 
@@ -294,3 +294,80 @@ class HarnessReferenceOwnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             collect_response(request, io.StringIO('approve\n'), Terminal())
         self.assertEqual([], self.rows('authority.jsonl'))
+
+    def _run_foreground(self, mutation=None):
+        # Exercise the actual request display/input and real isolated ledgers.
+        # The terminal response is synthetic; only the fake effect may fail.
+        class Terminal(io.StringIO):
+            def isatty(self):
+                return True
+
+        display, output = Terminal(), io.StringIO()
+
+        class Input(Terminal):
+            def readline(self):
+                request, _ = json.JSONDecoder().raw_decode(display.getvalue())
+                return f"approve {request['request_id']} {request['request_sha256']}\n"
+
+        directories = []
+        temporary_directory = tempfile.TemporaryDirectory
+
+        def create_directory(**kwargs):
+            directory = temporary_directory(dir=self.root, **kwargs)
+            directories.append(Path(directory.name).resolve())
+            return directory
+
+        with patch('examples.harness_merge_owner.tempfile.TemporaryDirectory', side_effect=create_directory), \
+                patch('sys.stdin', Input()), patch('sys.stderr', display), patch('sys.stdout', output):
+            if mutation is None:
+                code = main()
+            else:
+                with patch('examples.harness_merge_owner.FakeMergeTransport.merge_pull_request',
+                           side_effect=lambda **kwargs: mutation(directories[0])):
+                    try:
+                        code = main()
+                    except KeyboardInterrupt:
+                        code = 'uncaught interrupt'
+        self.assertEqual(1, len(directories))
+        return code, directories[0], output.getvalue(), display.getvalue()
+
+    def test_foreground_interrupt_retains_actual_consume_and_missing_finish(self):
+        def interrupt(_root):
+            raise KeyboardInterrupt
+
+        code, root, output, display = self._run_foreground(interrupt)
+        self.assertTrue(root.is_dir(), 'consumed authority records were deleted')
+        self.assertEqual(2, code)
+        bundle = json.loads(output)
+        self.assertEqual(['finished', 'verification'], bundle['missing'])
+        self.assertIsNone(bundle['receipt'])
+        self.assertEqual(['authority_action_approval', 'authority_action_consume'],
+                         [json.loads(line)['event_type'] for line in
+                          (root / 'authority.jsonl').read_text().splitlines()])
+        self.assertEqual(['attempt_started'], [json.loads(line)['event_type'] for line in
+                                              (root / 'attempts.jsonl').read_text().splitlines()])
+        self.assertIn(str(root), display)
+
+    def test_foreground_export_rejection_retains_torn_records_without_bundle(self):
+        def torn_write(root):
+            with (root / 'attempts.jsonl').open('ab') as stream:
+                stream.write(b'{"partial":')
+            raise OSError('synthetic torn write')
+
+        code, root, output, display = self._run_foreground(torn_write)
+        self.assertTrue(root.is_dir(), 'unexportable records were deleted')
+        self.assertEqual(2, code)
+        self.assertEqual('', output)
+        self.assertTrue((root / 'attempts.jsonl').read_bytes().endswith(b'{"partial":'))
+        self.assertEqual(['authority_action_approval', 'authority_action_consume'],
+                         [json.loads(line)['event_type'] for line in
+                          (root / 'authority.jsonl').read_text().splitlines()])
+        self.assertIn(str(root), display)
+
+    def test_foreground_success_exports_then_removes_temporary_records(self):
+        code, root, output, _display = self._run_foreground()
+        self.assertEqual(0, code)
+        self.assertFalse(root.exists())
+        bundle = json.loads(output)
+        self.assertEqual('SUCCESS', bundle['receipt']['status'])
+        self.assertEqual(['verification'], bundle['missing'])

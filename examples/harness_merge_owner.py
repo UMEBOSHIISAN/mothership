@@ -258,35 +258,42 @@ def collect_response(request, input_stream, output_stream):
 def main():
     # Foreground-only isolated reference. No option opens a daily-host store,
     # restores an owner or replaces the fake transport with a GitHub client.
-    with tempfile.TemporaryDirectory(prefix='mothership-harness-reference-') as directory:
+    temporary = tempfile.TemporaryDirectory(prefix='mothership-harness-reference-', delete=False)
+    with temporary as directory:
         root = Path(directory).resolve()
         root.chmod(0o700)
-        _, lease = prepare_local_work(root)
-        context = {'host_id': platform.node(), 'session_id': uuid.uuid4().hex,
-                   'actor_id': getpass.getuser(), 'runtime_generation': f'{os.getpid()}-{uuid.uuid4().hex}',
-                   'scope': ['github.merge_pr']}
-        owner = HarnessReferenceOwner(
-            worktree=root / 'worktree', state_path=root / 'lease-state.json', lease_id=lease.lease_id,
-            parameters=PARAMETERS, host_context_provider=lambda: copy.deepcopy(context),
-            authority_path=root / 'authority.jsonl', attempts_path=root / 'attempts.jsonl',
-            executor_ref=EXECUTOR_REF,
-        )
+        cleaned = False
         try:
-            response = collect_response(owner.request, sys.stdin, sys.stderr)
-            if owner.review(response) == 'approve':
-                owner.execute(PARAMETERS)
-        except Exception:
-            # Retain only actual source records. Rejected export produces no
-            # success explanation, and no missing finish/Receipt is synthesized.
-            sys.stderr.write('Reference stopped; no retry or action reissue.\n')
+            _, lease = prepare_local_work(root)
+            context = {'host_id': platform.node(), 'session_id': uuid.uuid4().hex,
+                       'actor_id': getpass.getuser(), 'runtime_generation': f'{os.getpid()}-{uuid.uuid4().hex}',
+                       'scope': ['github.merge_pr']}
+            owner = HarnessReferenceOwner(
+                worktree=root / 'worktree', state_path=root / 'lease-state.json', lease_id=lease.lease_id,
+                parameters=PARAMETERS, host_context_provider=lambda: copy.deepcopy(context),
+                authority_path=root / 'authority.jsonl', attempts_path=root / 'attempts.jsonl',
+                executor_ref=EXECUTOR_REF,
+            )
+            exit_code = 0
             try:
-                bundle = owner.export()
-            except Exception:
-                return 2
-            print(json.dumps(bundle, sort_keys=True))
+                response = collect_response(owner.request, sys.stdin, sys.stderr)
+                if owner.review(response) == 'approve':
+                    owner.execute(PARAMETERS)
+            except (Exception, KeyboardInterrupt):
+                exit_code = 2
+            # Export actual records once, including after an interrupt. Refused
+            # export leaves the original bytes available for read-only diagnosis.
+            print(json.dumps(owner.export(), sort_keys=True))
+            if exit_code == 0:
+                temporary.cleanup()
+                cleaned = True
+            return exit_code
+        except (Exception, KeyboardInterrupt):
             return 2
-        print(json.dumps(owner.export(), sort_keys=True))
-        return 0
+        finally:
+            if not cleaned:
+                sys.stderr.write(f'Reference stopped; records retained at {root}; '
+                                 'no retry or action reissue.\n')
 
 
 if __name__ == '__main__':
