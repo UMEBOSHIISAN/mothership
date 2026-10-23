@@ -289,6 +289,68 @@ does not support the flag or keyword. Retain that pin and the six legacy cases
 for their existing reproduction/held human-acceptance purpose. Record the exact
 source revision and any local patch used for this new guard.
 
+### Explain a rejected saved result
+
+The updated local source candidate adds the opt-in `--explain-error` flag to
+`inspect-result`. Use it with either output mode and keep the fixed diagnostic
+on stderr separate from the saved-result projection on stdout:
+
+```sh
+mothership-evidence inspect-result --human \
+  --expect-action-sha256 "$expected_action_sha256" \
+  --explain-error < result.jsonl 2> rejection.json
+```
+
+For a rejected input, the command still returns exit `2` and does not produce
+an accepted operation/result summary. When stdout has a partial display because
+its write or flush failed, discard that partial output. When stderr is writable,
+the opt-in diagnostic is one fixed JSON line with schema
+`mothership.saved-result-rejection.v0`; it contains only `code`,
+`next_read_only_check`, `accepted_result: false`, `authority: false`,
+`source_authenticated: false`, `external_effect_verified: false`, and
+`recovery: "no re-execution; no reconsume"`. The values come from a fixed
+allowlist. The diagnostic never adopts an input action ID or digest and never
+includes raw input, hashes, paths or exception text. It does not establish an
+operation outcome or authenticate the source. There is no repair, retry,
+reconsume, network request or implicit input-path read. A short or failed
+diagnostic write returns `2` without retrying the diagnostic write.
+
+Accepted input has the same stdout/stderr, exit status and status meanings with
+or without this flag. Normal argparse grammar and help errors retain argparse's
+behavior; this option does not promise a JSON diagnostic for arbitrary command
+line syntax errors.
+
+The seven rejection codes and bounded next checks are:
+
+| Code | Safe next read-only check |
+| --- | --- |
+| `invalid_expectation` | Check the digest and command separately retained from the original task. |
+| `input_unavailable` | Check the original bytes and the bounded input access; preserve what was supplied. |
+| `invalid_saved_result` | Preserve the supplied bytes and compare a separately retained checksum or original with the sender. |
+| `expected_action_unavailable` | Inspect the separately retained original task or action record; missing action identity is not proof of no operation. |
+| `expected_action_mismatch` | Compare the separately retained original task digest; never take the expectation from the rejected file. |
+| `output_incomplete` | Discard partial display and inspect the selected output destination. This code is only for stdout write/flush failure. |
+| `inspection_unavailable` | Preserve the input and inspect the reader environment when serialization, import or another runtime failure is unclassified. |
+
+`invalid_saved_result` is for a supplied record that fails full validation,
+including corrupt, torn or mixed records. A fully validated record with a
+different retained expected action is `expected_action_mismatch`; a valid input
+without an action is `expected_action_unavailable`, including empty input plus
+an expectation. Serialization, import and unclassified runtime failures remain
+`inspection_unavailable`, never corrupt evidence; only stdout write/flush
+failure is `output_incomplete`. Wrong expectations are checked only after full
+input validation, so a malformed record is never reclassified as a validated
+mismatch.
+
+The flag is present only in this updated, unreleased local source candidate. It
+is not part of the existing full pins
+`fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646`,
+`f9ef944bf54cb413824066f968010c0aaedc47ff` or
+`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`, nor of a published release. Do
+not describe an uncommitted working-tree change as part of an older installed
+pin. Keep those historical/current pins and the original six-case recipient
+guides unchanged.
+
 Human usability acceptance remains separate: give success, unconfirmed and
 stopped saved cases to a person unfamiliar with the implementation, and record
 time to understand, author questions, mistaken completion claims and the next
