@@ -269,9 +269,9 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("Mothership binds a human decision to bounded authority for one external action.", composition)
         self.assertIn("ローカル作業のプレビュー", japanese_map)
         self.assertIn("Visible scope / confirmation", english_map)
-        self.assertIn("補助bridge / 別途構成", japanese_map)
+        self.assertIn("補助bridge：既存ソースあり / host接続は別途", japanese_map)
         self.assertIn("外部権限への変換・自動接続はなし", japanese_map)
-        self.assertIn("SUPPLEMENTAL BRIDGE / SEPARATE", english_map)
+        self.assertIn("BRIDGE SOURCE EXISTS / HOST WIRING SEPARATE", english_map)
         self.assertIn("No external permission conversion or auto bridge", english_map)
         self.assertNotIn("やる / 確認 / しない", japanese_map)
         self.assertNotIn("Will do / confirm / will not do", english_map)
@@ -283,8 +283,8 @@ class ReadmeContractTests(unittest.TestCase):
         english = README_EN.read_text("utf-8")
 
         for phrase in (
-            "現在の公開版同士に自動接続はありません。",
-            "補助bridgeはlocal lease観測をCore contextへ渡すだけ",
+            "公開版同士の自動接続はありません。",
+            "補助bridgeの既存ソースは、local lease再確認",
             "proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません",
             "同じactionへ複数のdecision eventを記録できる",
             "同じaction IDは同じ台帳履歴内で一度だけconsumeできる",
@@ -292,8 +292,8 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, self.text)
 
         for phrase in (
-            "the current public releases have no",
-            "The supplemental bridge passes",
+            "Public releases have no",
+            "The existing supplemental bridge",
             "automatic runtime bridge.",
             "Proposal and evidence are decision context, but they were not mechanically bound to a FrozenAction",
             "multiple events per action",
@@ -445,7 +445,7 @@ class ReadmeContractTests(unittest.TestCase):
                 self.assertNotIn("Solid = implemented now    Dashed = not connected", svg)
             else:
                 self.assertEqual(2, svg.count(">現在の実装</text>"))
-                self.assertIn(">補助bridge / 別途構成</text>", svg)
+                self.assertIn(">補助bridge：既存ソースあり / host接続は別途</text>", svg)
                 self.assertNotIn(">CURRENT</text>", svg)
                 self.assertNotIn("DIRECTION / NOT_SHIPPED", svg)
 

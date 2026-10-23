@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
   <title id="title">Responsibility split for humans and AI sharing work</title>
-  <desc id="desc">The supplemental bridge passes local lease observations only; no automatic Core bridge. The read-back producer is an opt-in companion capability; Verification remains separate from Receipt.</desc>
+  <desc id="desc">Existing supplemental bridge source rechecks the lease and independent Core context; host wiring is separate. The read-back producer is an opt-in companion capability; Verification remains separate from Receipt.</desc>
   <style>
     .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
@@ -31,8 +31,8 @@
     <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>
     <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
     <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
-    <text class="state" x="360" y="542" text-anchor="middle">SUPPLEMENTAL BRIDGE / SEPARATE</text>
-    <text class="small" x="360" y="574" text-anchor="middle">Pass local lease observations into Core context</text>
+    <text class="state" x="360" y="542" text-anchor="middle">BRIDGE SOURCE EXISTS / HOST WIRING SEPARATE</text>
+    <text class="small" x="360" y="574" text-anchor="middle">Recheck local lease + independent Core context</text>
     <text class="small" x="360" y="602" text-anchor="middle">No external permission conversion or auto bridge</text>
   </g>
 

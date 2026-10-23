@@ -182,8 +182,11 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
        width="760">
 </p>
 
-これは責務分担の方向を示す図です。補助bridgeはlocal lease観測をCore contextへ渡すだけで、
-現在の公開版同士に自動接続はありません。
+これは責務分担を示す図です。補助bridgeの既存ソースは、local lease再確認と、
+独立したhost providerが渡すCore contextの照合を行います。外部承認への変換は行いません。
+公開版同士の自動接続はありません。このcheckoutには、実worktreeを観測する
+[foreground Python参照ownerと公開fixture試験](docs/host-adapters.md#harness-reference-owner)があります。
+fake transportによる隔離環境の接続試験であり、実機activationや人間の受入済みを意味しません。
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。
 transportと実際のeffect境界は別途構成し、VerificationはReceiptとは別の記録として扱います。
 
