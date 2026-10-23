@@ -43,8 +43,10 @@ and special files; unsupported platforms stop before producing a handoff.
 Use this fixed source pair for the synthetic path:
 
 - Mothership runtime:
-  [`5812c253a0ed33fbe28379da55ca847229eb343f`](https://github.com/UMEBOSHIISAN/mothership/commit/5812c253a0ed33fbe28379da55ca847229eb343f).
-  Build all three packages from this one checkout.
+  [`ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc`](https://github.com/UMEBOSHIISAN/mothership/commit/ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc).
+  Build all three packages from this one checkout. This revision includes the
+  no-follow directory-descriptor input-read fix. The earlier installed four-case
+  evidence used runtime `5812c253`; it is not installed verification of this fix.
 - Canonical `ume-harness-engineering`:
   [`2da9a0afeaf937ba95d6f8526888ffc926aaf10b`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/2da9a0afeaf937ba95d6f8526888ffc926aaf10b).
   This includes the thin-preview case-marker correction from `fb070f6` and
