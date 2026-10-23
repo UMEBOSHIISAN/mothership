@@ -1,0 +1,7 @@
+{
+  "host_id": "synthetic-local",
+  "session_id": "synthetic-one-run",
+  "actor_id": "synthetic-terminal",
+  "runtime_generation": "synthetic-candidate",
+  "scope": ["github.merge_pr"]
+}

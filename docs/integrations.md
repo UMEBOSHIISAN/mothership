@@ -15,6 +15,13 @@ from Verification; missing or uncertain completion stays visible as UNKNOWN.
 
 ## Eight bounded routes
 
+For the thin Harness candidate, an additional **explicit local entry within the
+Harness route** consumes advisory preview JSON and uses `MergeReviewSession`
+directly, with real Git observation and injected transports. See the
+[handoff guide](thin-harness-handoff.md). It adds no custom Lease, normal-hook
+mutation or live-host qualification; the Lease-specific row below records the
+unchanged historical adapter, not the current thin Harness requirement.
+
 | Route and entry point | Implemented source | Local evidence recorded | Qualification limit |
 | --- | --- | --- | --- |
 | **OpenAI Agents SDK** — one typed function tool with approval interruption | `mothership_adapters.agents_sdk.AgentsMergeAdapter`; optional `openai-agents==0.23.1` | 11 pinned local checks with a public synthetic Model, including caller-hook rejection and fixed-tool mutation gates | Only hook-free caller agents and the adapter-owned fixed tool are qualified; provider calls, credentials, tracing, deployed runners, private SDK mutation, and live effects were not exercised |

@@ -230,8 +230,13 @@ Mothership binds a human decision to bounded authority for one external action.
        width="760">
 </p>
 
-This diagram shows a responsibility direction. The supplemental bridge passes
-local lease observations into Core context; the current public releases have no
+The thin Harness candidate keeps request preview and uses host-native work control.
+An [explicit local handoff](docs/thin-harness-handoff.md) connects real Git observation,
+exact operation review, the existing Session, separate readback, a foreground result
+and offline reread. It uses synthetic interpretation and transports, adds no custom
+Lease, and claims neither live canary acceptance nor automatic public-release
+integration. The supplemental bridge passes local lease observations only and remains
+a historical compatibility route; the current public releases have no
 automatic runtime bridge.
 The optional GitHub companion provides execution, receipt conversion,
 and an opt-in read-back Verification producer. Transport and the actual effect

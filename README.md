@@ -198,8 +198,12 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
        width="760">
 </p>
 
-これは責務分担の方向を示す図です。補助bridgeはlocal lease観測をCore contextへ渡すだけで、
-現在の公開版同士に自動接続はありません。
+薄いHarness候補は依頼整理を担い、ローカル作業の権限・実行にはホスト標準機能を使います。
+[明示的なhandoff候補](docs/thin-harness-handoff.md)は、実Git観測、具体的な操作の判断、
+既存Session、独立readback、同じ入口への結果表示と保存再読を接続します。
+現在は合成入力・模擬通信のローカル経路です。独自Leaseは追加せず、公開版同士の自動接続や
+実canaryの完了を主張しません。現在の公開版同士に自動接続はありません。
+旧Lease依存の補助bridgeはlocal lease観測をCore contextへ渡すだけで、過去版の互換経路として残しています。
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。
 transportと実際のeffect境界は別途構成し、VerificationはReceiptとは別の記録として扱います。
 

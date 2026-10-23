@@ -10,7 +10,7 @@ Mothership is the Consequential Authority Plane in a three-product UME Stack:
 | Plane | Responsibility boundary | Authority boundary |
 | --- | --- | --- |
 | UME Presence | human-facing presentation contracts | no decision or execution authority |
-| UME-HARNESS | local work governance and exact local execution leases | no external consequential authority |
+| UME-HARNESS thin candidate | non-executing request preview and presentation; host-native work control | no external consequential authority |
 | Mothership | evidence, human decisions, and exact one-use action authority | no model, worker, or generic executor |
 
 There is no automatic runtime dependency between these products. The table is a
@@ -25,6 +25,13 @@ Mothership binds a human decision to bounded authority for one external action.
 
 This is a responsibility relationship, not a runtime dependency. The current
 public releases do not contain an automatic Harness-to-Mothership bridge.
+
+The [explicit thin handoff candidate](thin-harness-handoff.md) uses advisory
+Harness JSON, real bounded Git observation and the existing retained Session.
+It returns distinct execution/readback records to the same foreground entry and
+preserves files for offline reread. Its local tests use synthetic interpretation,
+terminal answers and transports. No custom Lease or permission conversion is
+introduced. The old Lease-specific bridge remains historical compatibility.
 
 ## Current receipt connection (source candidate)
 

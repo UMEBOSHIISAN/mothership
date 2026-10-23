@@ -1,0 +1,7 @@
+{
+  "work_type": "EDIT_CREATE",
+  "inferred_intent": "隔離したPRの対象を確認する",
+  "inferred_deliverable": "操作対象と保存された結果",
+  "candidate_actions": ["GitHubのPRをマージする"],
+  "clarification_assessments": []
+}
