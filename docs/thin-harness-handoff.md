@@ -46,12 +46,13 @@ Use this fixed source pair for the synthetic path:
   [`5812c253a0ed33fbe28379da55ca847229eb343f`](https://github.com/UMEBOSHIISAN/mothership/commit/5812c253a0ed33fbe28379da55ca847229eb343f).
   Build all three packages from this one checkout.
 - Canonical `ume-harness-engineering`:
-  [`8aa7d7417d70e6e3cc84a198357be48b194c423e`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/8aa7d7417d70e6e3cc84a198357be48b194c423e).
-  This includes the thin-preview case-marker correction from `fb070f6`.
+  [`2da9a0afeaf937ba95d6f8526888ffc926aaf10b`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/2da9a0afeaf937ba95d6f8526888ffc926aaf10b).
+  This includes the thin-preview case-marker correction from `fb070f6` and
+  emits the machine handoff as UTF-8 independently of stdout locale.
   Its installed root identity is
-  `c1f4356839e14ae2c9b0f50e53d8cd8742336ed14e3679ad058344f071edb097`.
+  `76a8a54332f8b50face686cd5e8ebef45da17bcf3e493d8602697f1f5aa5425e`.
 
-These are source candidates under review, not released packages. Access to the
+These pins identify source revisions, not released package versions. Access to the
 canonical Harness repository is required; its public mirror has not been promoted
 to this candidate. These runtime pins identify the tested code separately from
 later documentation commits. Keep the installed file/wheel hashes with the local
