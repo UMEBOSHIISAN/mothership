@@ -23,3 +23,9 @@ outputs = [
   "assets/readme/ja/ume-stack-responsibility.svg",
   "assets/readme/en/ume-stack-responsibility.svg"
 ]
+reader_outputs = [
+  "assets/readme/ja/saved-result-reading.gif",
+  "assets/readme/ja/saved-result-reading-poster.png",
+  "assets/readme/en/saved-result-reading.gif",
+  "assets/readme/en/saved-result-reading-poster.png"
+]

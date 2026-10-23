@@ -57,6 +57,8 @@ PURPLE = "#7356a8"
 PURPLE_LIGHT = "#eee8fb"
 CYAN = "#237e91"
 CYAN_LIGHT = "#def3f6"
+RED = "#a44747"
+RED_LIGHT = "#fbe5e3"
 LINE = "#c6d5d1"
 
 COPY = {
@@ -74,10 +76,10 @@ COPY = {
         "adapter": ("Receipt adapter", "finish欠落: reject", "UNKNOWNを保持"),
         "verifier": ("read-back Verification", "Receiptと別記録", "別経路"),
         "profile": "Core 0.5.0.dev0 / adapters 0.1.0.dev0",
-        "handoff": ("保存結果 → inspect-result --human", "UNKNOWN・欠落を保持 / 権限は渡さない"),
+        "handoff": ("保存形式に合うreaderで再読", "UNKNOWN・欠落を保持 / 権限は渡さない"),
         "explain": "ソース候補の説明図。閲覧は権限・出所認証・実運用の証明を作りません。",
         "scenes": (
-            ("8つの入口、同じrequest", "Agents・LangGraph・OpenClaw・Lobster・MCP・Dots・Harness・Evidence。local checksとlive hostを分けます。"),
+            ("実行・review経路を分けて読む", "Agents・LangGraph・OpenClaw・Lobster・Harnessの実行系と、MCP・Dots・Evidenceの読取専用系を分けます。"),
             ("正確な操作と期限を固定", "Coreのlive FrozenActionが操作とexpires_atを供給し、helperがrequest digestを計算します。"),
             ("host contextを照合", "responseは保持したrequest、action、期限、host_id・session・actor・generation・scopeへ照合します。期限切れと変更は止まります。"),
             ("Reviewと一度だけconsume", "responseはrequest/action/expiry/contextへ照合され、consumeは同じtrusted historyで一度です。"),
@@ -99,10 +101,10 @@ COPY = {
         "adapter": ("Receipt adapter", "Missing finish: reject", "UNKNOWN preserved"),
         "verifier": ("Read-back Verification", "Separate from Receipt", "Independent record"),
         "profile": "Core 0.5.0.dev0 / adapters 0.1.0.dev0",
-        "handoff": ("Saved results → inspect-result --human", "UNKNOWN stays unknown; no authority transfer"),
+        "handoff": ("Saved results → reader for the format", "UNKNOWN stays unknown; no authority transfer"),
         "explain": "Source candidate. Reading grants no authority. Not proof of origin or live effects.",
         "scenes": (
-            ("Eight paths, one request", "Agents, LangGraph, OpenClaw, Lobster, MCP, Dots, Harness, and Evidence stay bounded; local checks are separate from live hosts."),
+            ("Separate execution/review from evidence reading", "Agents, LangGraph, OpenClaw, Lobster and Harness have execution seams. MCP, Dots and Evidence inspect records read-only."),
             ("Freeze the exact operation and expiry", "The live FrozenAction supplies the operation and expires_at; the helper computes the request digest."),
             ("Bind the host context", "The response is checked against the retained request, action, expiry, and host ID, session, actor, generation, and scope. Drift stops."),
             ("Review, then consume once", "The response is checked against request, action, expiry, and context; consume remains one use per trusted history."),
@@ -114,6 +116,97 @@ COPY = {
 
 if any(len(copy["scenes"]) != SCENES for copy in COPY.values()):
     raise SystemExit("every scene must have bilingual copy")
+
+SAVED_RESULT_SCENES = 3
+if FRAME_COUNT % SAVED_RESULT_SCENES:
+    raise SystemExit("frame_count must divide evenly across saved-result scenes")
+SAVED_RESULT_FRAMES_PER_SCENE = FRAME_COUNT // SAVED_RESULT_SCENES
+
+SAVED_RESULT_COPY = {
+    "ja": {
+        "title": "保存結果を読む：完了とは限らない",
+        "subtitle": "合成の説明図 / 3 cases / source-unverified",
+        "footer": "説明用の合成図。スクリーンショットや実行証拠ではありません。source-unverified / authority: false / no rerun",
+        "cases": (
+            {
+                "label": "case 02",
+                "kind": "UNKNOWN",
+                "kind_color": ORANGE,
+                "kind_fill": ORANGE_LIGHT,
+                "title": "実行側の成功報告だけ",
+                "status": ("consumer: success", "Receipt: not supplied", "Verification: not supplied"),
+                "status_colors": (BLUE, ORANGE, ORANGE),
+                "outcome": "結果: UNKNOWN / 完了は未確定",
+                "next": "次: 保持済みの同じactionのauthority・attempt記録を読む。",
+            },
+            {
+                "label": "case 03",
+                "kind": "UNKNOWN",
+                "kind_color": ORANGE,
+                "kind_fill": ORANGE_LIGHT,
+                "title": "Receipt成功でも完了は未確定",
+                "status": ("Receipt: SUCCESS", "Verification: UNKNOWN", "reason: ambiguous_merge_time"),
+                "status_colors": (BLUE, ORANGE, ORANGE),
+                "outcome": "完了: 未確定 / UNKNOWN",
+                "next": "次: 保持したstarted_atと報告されたmerged_atを比較。再実行しない。",
+            },
+            {
+                "label": "case 06",
+                "kind": "REJECTED",
+                "kind_color": RED,
+                "kind_fill": RED_LIGHT,
+                "title": "不整合入力は説明を受け付けない",
+                "status": ("exit: 2", "no accepted explanation", "target: not established"),
+                "status_colors": (RED, RED, RED),
+                "outcome": "受理なし / 対象を表示しない",
+                "next": "次: 元の入力を保持し、senderへ同一性を確認。操作完了を確定しない。",
+            },
+        ),
+    },
+    "en": {
+        "title": "Reading saved results: completion is not implied",
+        "subtitle": "Synthetic explainer / 3 cases / source-unverified",
+        "footer": "Explanatory synthesis, not a screenshot or execution evidence. source-unverified / authority: false / no rerun",
+        "cases": (
+            {
+                "label": "case 02",
+                "kind": "UNKNOWN",
+                "kind_color": ORANGE,
+                "kind_fill": ORANGE_LIGHT,
+                "title": "Consumer success report only",
+                "status": ("consumer: success", "Receipt: not supplied", "Verification: not supplied"),
+                "status_colors": (BLUE, ORANGE, ORANGE),
+                "outcome": "Outcome: UNKNOWN / completion not established",
+                "next": "Next: read retained authority and attempt records for the same action.",
+            },
+            {
+                "label": "case 03",
+                "kind": "UNKNOWN",
+                "kind_color": ORANGE,
+                "kind_fill": ORANGE_LIGHT,
+                "title": "Receipt success does not establish completion",
+                "status": ("Receipt: SUCCESS", "Verification: UNKNOWN", "reason: ambiguous_merge_time"),
+                "status_colors": (BLUE, ORANGE, ORANGE),
+                "outcome": "Completion: NOT ESTABLISHED / UNKNOWN",
+                "next": "Next: compare retained started_at with reported merged_at. Do not rerun.",
+            },
+            {
+                "label": "case 06",
+                "kind": "REJECTED",
+                "kind_color": RED,
+                "kind_fill": RED_LIGHT,
+                "title": "Inconsistent input has no accepted explanation",
+                "status": ("exit: 2", "no accepted explanation", "target: not established"),
+                "status_colors": (RED, RED, RED),
+                "outcome": "Not accepted / do not display a target",
+                "next": "Next: retain the original input and check identity with the sender. Do not establish completion.",
+            },
+        ),
+    },
+}
+
+if any(len(copy["cases"]) != SAVED_RESULT_SCENES for copy in SAVED_RESULT_COPY.values()):
+    raise SystemExit("saved-result story must have three bilingual cases")
 
 FONT_PATH: Path
 
@@ -175,6 +268,162 @@ def wrap_to_pixel_width(
     if current:
         lines.append(current)
     return lines or [""]
+
+
+def fit_wrapped_lines(
+    draw: ImageDraw.ImageDraw,
+    value: str,
+    size: int,
+    max_width: int,
+    *,
+    locale: str,
+    max_lines: int,
+    minimum_size: int = 14,
+) -> tuple[int, list[str]]:
+    """Choose a readable size that keeps a story label inside its panel."""
+    current_size = size
+    while current_size >= minimum_size:
+        lines = wrap_to_pixel_width(draw, value, current_size, max_width, locale=locale)
+        if len(lines) <= max_lines:
+            return current_size, lines
+        current_size -= 1
+    return minimum_size, wrap_to_pixel_width(draw, value, minimum_size, max_width, locale=locale)
+
+
+def story_status_box(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    value: str,
+    color: str,
+    *,
+    locale: str,
+    poster: bool = False,
+) -> None:
+    fill = PAPER if color not in (RED,) else RED_LIGHT
+    solid_box(draw, box, fill, color)
+    x0, y0, x1, y1 = box
+    wrap_locale = "en" if value.isascii() else locale
+    size, lines = fit_wrapped_lines(
+        draw,
+        value,
+        19 if poster else 21,
+        x1 - x0 - 24,
+        locale=wrap_locale,
+        max_lines=2,
+        minimum_size=14 if poster else 16,
+    )
+    centered_lines(draw, box, lines, size, color=color, bold=True, gap=2)
+
+
+def saved_result_case_header(
+    draw: ImageDraw.ImageDraw,
+    box: tuple[int, int, int, int],
+    case: dict[str, object],
+    *,
+    locale: str,
+    poster: bool = False,
+) -> None:
+    x0, y0, x1, y1 = box
+    label_box = (x0, y0, x0 + (135 if poster else 150), y1)
+    kind_box = (x1 - (150 if poster else 175), y0, x1, y1)
+    solid_box(draw, label_box, BLUE_LIGHT, BLUE)
+    centered(draw, (label_box[0] + label_box[2]) // 2, (y0 + y1) // 2, str(case["label"]), 20 if poster else 22, color=BLUE, bold=True)
+    solid_box(draw, kind_box, case["kind_fill"], case["kind_color"])
+    centered(draw, (kind_box[0] + kind_box[2]) // 2, (y0 + y1) // 2, str(case["kind"]), 19 if poster else 21, color=case["kind_color"], bold=True)
+
+
+def saved_result_footer(draw: ImageDraw.ImageDraw, copy: dict[str, object], *, locale: str, poster: bool = False) -> None:
+    if poster:
+        footer_box = (35, 970, 685, 1040)
+        footer_text = str(copy["footer"])
+        if locale == "ja":
+            prefix, _, boundary = footer_text.partition("source-unverified /")
+            lines = [prefix.strip(), f"source-unverified / {boundary.strip()}".strip()]
+            size = 14
+        else:
+            size, lines = fit_wrapped_lines(draw, footer_text, 15, 610, locale=locale, max_lines=3, minimum_size=12)
+    else:
+        footer_box = (45, 585, 1155, 635)
+        size, lines = fit_wrapped_lines(draw, str(copy["footer"]), 17, 1080, locale=locale, max_lines=2, minimum_size=14)
+    draw.rounded_rectangle(footer_box, radius=12, fill=CYAN_LIGHT, outline=CYAN, width=2)
+    centered_lines(draw, footer_box, lines, size, color=CYAN, bold=True, gap=2)
+
+
+def draw_saved_result_scene(locale: str, scene: int, progress: float) -> Image.Image:
+    copy = SAVED_RESULT_COPY[locale]
+    case = copy["cases"][scene]
+    image = Image.new("RGB", (WIDTH, HEIGHT), BG)
+    draw = ImageDraw.Draw(image)
+    centered(draw, WIDTH // 2, 36, str(copy["title"]), 32 if locale == "en" else 34, bold=True)
+    centered(draw, WIDTH // 2, 76, str(copy["subtitle"]), 21, color=MUTED)
+
+    card = (35, 105, 1165, 560)
+    draw.rounded_rectangle(card, radius=24, fill=PAPER, outline=case["kind_color"], width=6)
+    saved_result_case_header(draw, (65, 130, 1135, 185), case, locale=locale)
+    title_size, title_lines = fit_wrapped_lines(draw, str(case["title"]), 25, 680, locale=locale, max_lines=2, minimum_size=19)
+    centered_lines(draw, (250, 130, 950, 185), title_lines, title_size, bold=True, gap=1)
+
+    status_y0, status_y1 = 220, 325
+    status_boxes = ((65, status_y0, 400, status_y1), (430, status_y0, 765, status_y1), (795, status_y0, 1135, status_y1))
+    for status_box, value, color in zip(status_boxes, case["status"], case["status_colors"], strict=True):
+        story_status_box(draw, status_box, str(value), str(color), locale=locale)
+
+    outcome = (65, 355, 1135, 430)
+    solid_box(draw, outcome, case["kind_fill"], case["kind_color"], active=True)
+    size, lines = fit_wrapped_lines(draw, str(case["outcome"]), 27, 1020, locale=locale, max_lines=2, minimum_size=21)
+    centered_lines(draw, outcome, lines, size, color=case["kind_color"], bold=True, gap=2)
+
+    next_box = (65, 455, 1135, 525)
+    solid_box(draw, next_box, BLUE_LIGHT, BLUE)
+    size, lines = fit_wrapped_lines(draw, str(case["next"]), 20, 1020, locale=locale, max_lines=2, minimum_size=16)
+    centered_lines(draw, next_box, lines, size, color=BLUE, bold=True, gap=2)
+
+    saved_result_footer(draw, copy, locale=locale)
+    start, end, y = 470, 1030, 652
+    draw.line((start, y, end, y), fill=LINE, width=3)
+    for index in range(SAVED_RESULT_SCENES):
+        x = start + int((end - start) * index / (SAVED_RESULT_SCENES - 1))
+        fill = case["kind_color"] if index == scene else PAPER
+        draw.ellipse((x - 7, y - 7, x + 7, y + 7), fill=fill, outline=case["kind_color"], width=2)
+    cursor = start + int((end - start) * progress)
+    draw.ellipse((cursor - 8, y - 8, cursor + 8, y + 8), fill=case["kind_color"], outline=PAPER, width=2)
+    return image
+
+
+def draw_saved_result_poster(locale: str) -> Image.Image:
+    copy = SAVED_RESULT_COPY[locale]
+    image = Image.new("RGB", (POSTER_WIDTH, POSTER_HEIGHT), BG)
+    draw = ImageDraw.Draw(image)
+    center_x = POSTER_WIDTH // 2
+    centered(draw, center_x, 30, str(copy["title"]), 26 if locale == "en" else 28, bold=True)
+    subtitle_size, subtitle = fit_wrapped_lines(draw, str(copy["subtitle"]), 18, 620, locale=locale, max_lines=2, minimum_size=15)
+    centered_lines(draw, (45, 55, 675, 105), subtitle, subtitle_size, color=MUTED, gap=2)
+
+    card_y = (120, 405, 690)
+    for case, y0 in zip(copy["cases"], card_y, strict=True):
+        card = (35, y0, 685, y0 + 260)
+        draw.rounded_rectangle(card, radius=20, fill=PAPER, outline=case["kind_color"], width=5)
+        saved_result_case_header(draw, (55, y0 + 16, 665, y0 + 55), case, locale=locale, poster=True)
+        title_box = (205, y0 + 16, 495, y0 + 55)
+        title_size, title_lines = fit_wrapped_lines(draw, str(case["title"]), 18, 275, locale=locale, max_lines=2, minimum_size=14)
+        centered_lines(draw, title_box, title_lines, title_size, bold=True, gap=1)
+
+        status_top = y0 + 72
+        for index, (value, color) in enumerate(zip(case["status"], case["status_colors"], strict=True)):
+            status_box = (55, status_top + index * 32, 665, status_top + 28 + index * 32)
+            story_status_box(draw, status_box, str(value), str(color), locale=locale, poster=True)
+
+        outcome = (55, y0 + 181, 665, y0 + 220)
+        solid_box(draw, outcome, case["kind_fill"], case["kind_color"])
+        size, lines = fit_wrapped_lines(draw, str(case["outcome"]), 18, 580, locale=locale, max_lines=2, minimum_size=14)
+        centered_lines(draw, outcome, lines, size, color=case["kind_color"], bold=True, gap=1)
+
+        next_box = (55, y0 + 224, 665, y0 + 252)
+        size, lines = fit_wrapped_lines(draw, str(case["next"]), 14, 580, locale=locale, max_lines=2, minimum_size=11)
+        centered_lines(draw, next_box, lines, size, color=BLUE, bold=True, gap=1)
+
+    saved_result_footer(draw, copy, locale=locale, poster=True)
+    return image
 
 
 def solid_box(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], fill: str, outline: str, *, active: bool = False) -> None:
@@ -359,6 +608,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--locale", choices=tuple(COPY), required=True)
     parser.add_argument("--font", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--story", choices=("saved-result",), default=None)
     return parser.parse_args()
 
 
@@ -395,15 +645,23 @@ def main() -> None:
 
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    gif_path = output_dir / "mothership-flow.gif"
-    poster_path = output_dir / "mothership-flow-poster.png"
+    if args.story == "saved-result":
+        gif_path = output_dir / "saved-result-reading.gif"
+        poster_path = output_dir / "saved-result-reading-poster.png"
+        frames = []
+        for frame_index in range(FRAME_COUNT):
+            scene = min(SAVED_RESULT_SCENES - 1, frame_index // SAVED_RESULT_FRAMES_PER_SCENE)
+            frames.append(draw_saved_result_scene(args.locale, scene, frame_index / max(1, FRAME_COUNT - 1)))
+        draw_saved_result_poster(args.locale).save(poster_path, format="PNG", optimize=True)
+    else:
+        gif_path = output_dir / "mothership-flow.gif"
+        poster_path = output_dir / "mothership-flow-poster.png"
+        frames = []
+        for frame_index in range(FRAME_COUNT):
+            scene = min(SCENES - 1, frame_index // FRAMES_PER_SCENE)
+            frames.append(draw_scene(args.locale, scene, frame_index / max(1, FRAME_COUNT - 1)))
+        draw_poster(args.locale).save(poster_path, format="PNG", optimize=True)
 
-    frames = []
-    for frame_index in range(FRAME_COUNT):
-        scene = min(SCENES - 1, frame_index // FRAMES_PER_SCENE)
-        frames.append(draw_scene(args.locale, scene, frame_index / max(1, FRAME_COUNT - 1)))
-
-    draw_poster(args.locale).save(poster_path, format="PNG", optimize=True)
     palette = [
         frame.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
         for frame in frames

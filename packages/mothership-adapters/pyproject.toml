@@ -18,6 +18,7 @@ mcp = ["mcp==2.3.0"]
 [project.scripts]
 mothership-evidence = "mothership_adapters.cli:main"
 mothership-evidence-mcp = "mothership_adapters.mcp_server:main"
+mothership-harness-handoff = "mothership_adapters.harness_handoff_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -269,10 +269,10 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("Mothership binds a human decision to bounded authority for one external action.", composition)
         self.assertIn("ローカル作業のプレビュー", japanese_map)
         self.assertIn("Visible scope / confirmation", english_map)
-        self.assertIn("補助bridge / 別途構成", japanese_map)
-        self.assertIn("外部権限への変換・自動接続はなし", japanese_map)
-        self.assertIn("SUPPLEMENTAL BRIDGE / SEPARATE", english_map)
-        self.assertIn("No external permission conversion or auto bridge", english_map)
+        self.assertIn("明示handoff / ローカル候補", japanese_map)
+        self.assertIn("合成入力・模擬通信 / 独自Leaseなし", japanese_map)
+        self.assertIn("EXPLICIT HANDOFF / LOCAL CANDIDATE", english_map)
+        self.assertIn("Synthetic input and transport / no custom Lease", english_map)
         self.assertNotIn("やる / 確認 / しない", japanese_map)
         self.assertNotIn("Will do / confirm / will not do", english_map)
         purpose = self.text.split("## PURPOSE", 1)[1].split("\n## ", 1)[0]
@@ -428,7 +428,8 @@ class ReadmeContractTests(unittest.TestCase):
         for locale in ("ja", "en"):
             svg = (ROOT / f"assets/readme/{locale}/ume-stack-responsibility.svg").read_text("utf-8")
             self.assertIn('viewBox="0 0 720 1120"', svg)
-            self.assertEqual(2, svg.count("stroke-dasharray="))
+            self.assertEqual(3, svg.count("stroke-dasharray="))
+            self.assertEqual(1, svg.count('data-role="result-return"'))
             self.assertEqual(1, svg.count('data-role="bridge"'))
             self.assertEqual(2, svg.count('data-role="external"'))
             if locale == "en":
@@ -439,13 +440,13 @@ class ReadmeContractTests(unittest.TestCase):
                 self.assertIn(">Separate Verification</tspan>", svg)
                 self.assertIn(">Companion producer</tspan>", svg)
                 self.assertNotIn(">Separately configured executor</text>", svg)
-                self.assertIn(">Solid = implemented now</tspan>", svg)
-                self.assertIn(">Dashed = no automatic bridge</tspan>", svg)
-                self.assertIn(">Outline = opt-in / separately configured</tspan>", svg)
+                self.assertIn(">Solid = existing parts / dashed = explicit local candidate</tspan>", svg)
+                self.assertIn(">Result returns to the entry / saved for offline reread</tspan>", svg)
+                self.assertIn(">github.merge_pr / synthetic path / 2026-10-23</tspan>", svg)
                 self.assertNotIn("Solid = implemented now    Dashed = not connected", svg)
             else:
                 self.assertEqual(2, svg.count(">現在の実装</text>"))
-                self.assertIn(">補助bridge / 別途構成</text>", svg)
+                self.assertIn(">明示handoff / ローカル候補</text>", svg)
                 self.assertNotIn(">CURRENT</text>", svg)
                 self.assertNotIn("DIRECTION / NOT_SHIPPED", svg)
 

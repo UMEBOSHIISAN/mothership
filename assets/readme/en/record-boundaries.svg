@@ -25,7 +25,7 @@
 <rect x="34" y="844" width="772" height="212" rx="18" fill="#def3f6" stroke="#237e91" stroke-width="2"/>
 <text x="58" y="886" font-size="23" fill="#237e91">04</text>
 <text x="111" y="886" font-size="26" font-weight="700">Hand saved results to another person or AI</text>
-<text x="58" y="928" font-size="21" fill="#237e91">inspect-result --human / read-only</text>
+<text x="58" y="928" font-size="21" fill="#237e91">JSONL: inspect-result / bundle: inspect (both --human)</text>
 <text x="58" y="976" font-size="22">Separate reports, observations, missing records and next checks.</text>
 <text x="58" y="1015" font-size="22">Keep UNKNOWN; never invent approval or consume records.</text>
 <text x="42" y="1100" font-size="18" fill="#55706a">Reading transfers no authority; not source authentication or live-effect proof.</text>

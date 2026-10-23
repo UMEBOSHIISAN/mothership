@@ -1,0 +1,162 @@
+# Thin Harness handoff — local synthetic candidate
+
+This opt-in path connects a non-executing Harness preview to one retained
+`MergeReviewSession`, injected execution, separate readback, a foreground result
+and offline evidence inspection. It is a local candidate, not a released or live
+GitHub integration. The normal Harness command and its presentation hooks still
+do not execute work. No custom Lease, managed mode or approval token is added.
+
+## What the path means
+
+![Explicit local handoff and separate result return; synthetic path, not live acceptance](../assets/readme/en/ume-stack-responsibility.svg)
+
+The diagram is an explanation of the local candidate. Its return path means the
+foreground result and retained evidence, not a successful live GitHub operation.
+
+```text
+Explicit request + offline interpretation
+  → installed ume-harness --handoff-json (advisory preview)
+  → Mothership foreground owner + actual Git observation
+  → exact request displayed → one exact terminal response
+  → existing Session / Core consume / companion (injected transport)
+  → original bundle → separate injected readback
+  → result at the same terminal + preserved files → offline inspect
+```
+
+The preview hash identifies the provided request and interpretation. It does
+**not** prove that natural-language text means the separately supplied operation.
+The human must review the full repository, PR, head, base, method, expiry, action
+ID/digest and request ID/digest. A preview's classification or “approval required”
+label never becomes a Core decision. Host context remains separately provided.
+
+The owner observes a real worktree's origin, path, branch, head, status and
+tracked/nonignored file contents. The origin must match the operation repository,
+and the clean worktree head must match the expected head. The existing Session
+callbacks reobserve before review/preflight/mutation. These are bounded,
+best-effort observations, not a lock, sandbox, revocation fence or coverage of
+ignored files. Symlinks, submodules and oversized trees are rejected.
+The observer invokes the trusted host's `/usr/bin/git` with a fixed
+`/usr/bin:/bin` child PATH; caller PATH cannot select its Git binary. Missing
+system Git stops observation, without a searched or automatic fallback.
+
+## Local installation and invocation
+
+Use Python 3.12+, Git, and the reviewed candidate changes in both repositories.
+This local POSIX candidate requires `/usr/bin/git` and no-follow/nonblocking
+regular-file reads. The explicit Harness input rejects symlinked path components
+and special files; unsupported platforms stop before producing a handoff.
+Use this fixed source pair for the synthetic path:
+
+- Mothership runtime:
+  [`ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc`](https://github.com/UMEBOSHIISAN/mothership/commit/ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc).
+  Build all three packages from this one checkout. This revision includes the
+  no-follow directory-descriptor input-read fix. The earlier installed four-case
+  evidence used runtime `5812c253`; it is not installed verification of this fix.
+- Canonical `ume-harness-engineering`:
+  [`2da9a0afeaf937ba95d6f8526888ffc926aaf10b`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/2da9a0afeaf937ba95d6f8526888ffc926aaf10b).
+  This includes the thin-preview case-marker correction from `fb070f6` and
+  emits the machine handoff as UTF-8 independently of stdout locale.
+  Its installed root identity is
+  `76a8a54332f8b50face686cd5e8ebef45da17bcf3e493d8602697f1f5aa5425e`.
+
+These pins identify source revisions, not released package versions. Access to the
+canonical Harness repository is required; its public mirror has not been promoted
+to this candidate. These runtime pins identify the tested code separately from
+later documentation commits. Keep the installed file/wheel hashes with the local
+acceptance record.
+
+Build the three wheels from the **same Mothership checkout**, using the existing
+[wheel recipe](host-adapters.md#try-the-current-candidate) with this reviewed
+candidate. Install them into a fresh virtual environment with `--no-index --no-deps`.
+Use Harness's standard installer with a **new dedicated prefix**. Do not run
+`setup`, connect hooks, replace a daily installation or edit the public mirror.
+
+Inputs are explicit: a prepared clean synthetic worktree, an operation JSON with
+exactly `repository`, `pull_request`, `expected_head_sha`, `expected_base` and
+`merge_method`, and complete host context. The context example below is synthetic;
+it does not authenticate a person or grant permission. The run directory must not
+exist and must be outside the observed worktree.
+
+```sh
+# Paths below select your reviewed installed candidates and prepared local fixture.
+/path/to/venv/bin/mothership-harness-handoff \
+  --harness-cli /path/to/new-harness-prefix/bin/ume-harness \
+  --request '隔離したPRの対象を確認する' \
+  --interpretation-file examples/thin-harness-handoff/interpretation.json \
+  --parameters /path/to/prepared-fixture/parameters.json \
+  --host-context examples/thin-harness-handoff/context.json \
+  --worktree /path/to/prepared-fixture/worktree \
+  --run-directory /path/to/new-run
+```
+
+Run in a foreground terminal. After checking the full displayed request, type
+`approve REQUEST_ID REQUEST_SHA256`, `reject REQUEST_ID REQUEST_SHA256`, or `cancel`.
+There is no `--yes`, saved-answer restoration or live transport option. The
+command uses an injected synthetic merge and deliberately unavailable synthetic
+readback: executor `SUCCESS` and independent `UNKNOWN` remain different. No
+token, GitHub request or model call is used. Exit 0 means the local workflow and
+its reporting completed, not that a real PR merged or Verification is CONFIRMED.
+`--json` returns the same structured outcome saved in `result.json`.
+
+Read the saved records in another process:
+
+```sh
+/path/to/venv/bin/mothership-evidence inspect --human \
+  --readback-evidence /path/to/new-run/readback-evidence.json \
+  < /path/to/new-run/verified.json
+```
+
+For rejection, cancellation, missing finish or unavailable readback, inspect
+`original.json` without a sidecar if that file was successfully saved. If saving
+failed or the ledger is torn, retain the originals and inspect the explicit
+authority/attempt paths. Do not repair a prefix, recreate a Receipt, reconsume or
+run the operation again. A missing file is not evidence that no write occurred.
+
+## Retained evidence and compatibility
+
+The private run directory contains the request/interpretation inputs, advisory
+preview, observed Git snapshot, exact review request, original authority/attempt
+ledgers, `original.json`, and, when available, `verified.json` and
+`readback-evidence.json`. `result.json` and `RESULT.md` explain the same structured
+outcome. `manifest.json` relates artifact hashes to the action and request; it is
+correlation evidence, not authenticated provenance or a new authority ledger.
+Raw user input is retained only in this explicitly selected private directory.
+
+| Retained file | What the next person or AI can read |
+| --- | --- |
+| `result.json` / `RESULT.md` | The same foreground outcome, with unknowns kept separate |
+| `original.json` | Supplied request, decision, consume and execution records; inspect only if saved |
+| `verified.json` + `readback-evidence.json` | Recorded independent observation and its structural binding |
+| Explicit authority / attempt ledgers | Existing records to inspect when result saving or a terminal pair is incomplete |
+
+Use `inspect --human` for these bundles. The reference consumer's `result.jsonl`
+uses the separate `inspect-result --human` reader shown in the
+[saved-result examples](../examples/saved-results/README.en.md). A filename or
+manifest entry does not prove that a write completed; keep the original files
+and do not reconstruct missing records or run the operation again.
+
+The existing legacy Lease-based `HarnessMergeBridge` and its historical pin remain
+unchanged. They are not required by this thin path. Existing bundle validation,
+saved-result v0/v1 readers, expected-digest checks and the six recipient cases keep
+their contracts. This path already retains a real portable request before review,
+so it exports the existing bundle directly rather than fabricating one afterward.
+
+## Local acceptance limits
+
+Regression checks use real Git/Core/ledger/evidence code with synthetic terminal
+responses and injected transport/observations. They cover input bounds, identity
+drift, wrong/expired decisions, cancellation, duplicate calls, uncertain attempts,
+missing finish, output failure and distinct CONFIRMED/UNKNOWN/MISMATCH records.
+They do not count as a human participant, live interpretation, live canary, hosted
+CI, a published package, or universal host/tool coverage. Fresh installed candidate
+bytes must be checked separately from source tests. A release stage requiring a
+clean committed source is not bypassed to stage an uncommitted candidate.
+
+## 日本語での境界
+
+Harnessは依頼整理のままです。Mothership側の明示的な入口で、実Gitの状態と具体的な
+操作を確認し、既存Sessionへ渡します。独自Lease・権限管理は追加しません。
+依頼文のhash一致は、文章と操作対象の意味が一致する証明ではありません。
+この候補は合成入力・模擬通信のローカル確認用です。上記の固定commitを組み合わせます。
+実canary、公開mirrorへの反映、パッケージrelease、人の受入は別です。
+結果が不明なら、そのまま不明と表示して既存記録へ案内します。再実行で埋めません。

@@ -32,15 +32,15 @@ COPY = {
         "harness": "UME-HARNESS",
         "harness_lines": ("曖昧な日本語を整理", "確認範囲 / 承認要求", "ローカル作業のプレビュー"),
         "state_current": "現在の実装",
-        "bridge": "補助bridge / 別途構成",
-        "bridge_detail": ("local lease観測をCore contextへ渡す", "外部権限への変換・自動接続はなし"),
+        "bridge": "明示handoff / ローカル候補",
+        "bridge_detail": ("依頼整理 → 実Git観測 → 保持Session", "合成入力・模擬通信 / 独自Leaseなし"),
         "mothership": "Mothership",
         "mothership_lines": ("具体的な外部操作を固定", "人間の判断と照合", "台帳履歴内で一度だけ"),
         "executor": ("任意GitHub", "companion", "明示transport"),
         "adapter": ("Receipt adapter", "finish欠落: reject", "UNKNOWNを保持"),
         "verifier": ("opt-in read-back", "別のVerification", "companion producer"),
-        "caption": ("補助bridgeはlocal lease観測を渡すだけで、Coreと自動接続しません。", "read-back producerはcompanionのopt-in機能ですが、VerificationはReceiptとは別経路です。"),
-        "legend": ("実線 = 現在実装済み", "破線 = 自動接続なし", "外枠 = 任意・別途構成"),
+        "caption": ("明示的なローカル候補。合成入力・模擬通信で、独自Leaseは使いません。", "実行報告と独立観測を元の入口へ返し、保存して再読します。実canary・公開は未受入です。"),
+        "legend": ("実線 = 既存部品 / 破線 = 明示ローカル候補", "結果を元の入口へ返す / 保存して再読", "github.merge_pr / 合成経路 / 2026-10-23"),
     },
     "en": {
         "title": "Responsibility split for humans and AI sharing work",
@@ -49,15 +49,15 @@ COPY = {
         "harness": "UME-HARNESS",
         "harness_lines": ("Organize ambiguous Japanese intent", "Visible scope / confirmation", "Local-work preview"),
         "state_current": "CURRENT",
-        "bridge": "SUPPLEMENTAL BRIDGE / SEPARATE",
-        "bridge_detail": ("Pass local lease observations into Core context", "No external permission conversion or auto bridge"),
+        "bridge": "EXPLICIT HANDOFF / LOCAL CANDIDATE",
+        "bridge_detail": ("Preview → real Git observation → retained Session", "Synthetic input and transport / no custom Lease"),
         "mothership": "Mothership",
         "mothership_lines": ("Freeze one concrete external action", "Check the human decision", "Consume once per ledger history"),
         "executor": ("Optional GitHub", "companion", "Explicit transport"),
         "adapter": ("Receipt adapter", "Missing finish: reject", "UNKNOWN preserved"),
         "verifier": ("Opt-in read-back", "Separate Verification", "Companion producer"),
-        "caption": ("The supplemental bridge passes local lease observations only; no automatic Core bridge.", "The read-back producer is an opt-in companion capability; Verification remains separate from Receipt."),
-        "legend": ("Solid = implemented now", "Dashed = no automatic bridge", "Outline = opt-in / separately configured"),
+        "caption": ("Explicit local candidate with synthetic input and transport, no custom Lease.", "Separate execution and observation return to the original entry and remain available for offline reread. Live canary and publication are not accepted."),
+        "legend": ("Solid = existing parts / dashed = explicit local candidate", "Result returns to the entry / saved for offline reread", "github.merge_pr / synthetic path / 2026-10-23"),
     },
 }
 
@@ -139,6 +139,9 @@ def render(locale: str) -> str:
   {centered_tspans(copy["executor"], 137, 956, gap=25, css_class="boxbody")}
   {centered_tspans(copy["adapter"], 369, 956, gap=25, css_class="boxbody")}
   {centered_tspans(copy["verifier"], 587, 956, gap=25, css_class="boxbody")}
+
+  <path data-role="result-return" d="M690 956 H706 V150 H665" fill="none" stroke="#237e91" stroke-width="3" stroke-dasharray="8 6"/>
+  <path d="M660 150 L674 142 L674 158 Z" fill="#237e91"/>
 
   {centered_tspans(copy["legend"], CENTER, 1068, gap=30, css_class="legend")}
 </svg>
