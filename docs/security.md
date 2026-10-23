@@ -51,6 +51,11 @@ file identity and size before and after reading to detect relevant substitution 
 
 These checks depend on POSIX descriptor features. See [Compatibility](compatibility.md).
 
+The bounded scope helpers (`mothership.scope.prepare_scope` and `open_output_leaf`) also open roots and parents
+without following symbolic links. If `O_NOFOLLOW` is absent or zero, their shared entry rejects the operation
+with `ValueError` before opening a root, reading input, staging files, or creating output. They provide no
+weaker fallback. This is a scope I/O boundary, not a package-wide claim of platform qualification.
+
 ## Packaged-resource threats
 
 `mothership verify` rejects missing, extra, duplicate, unsafe, resized, or digest-mismatched inventory entries. The

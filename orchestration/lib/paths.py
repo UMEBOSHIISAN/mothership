@@ -14,7 +14,7 @@ from typing import BinaryIO
 _MAX_FILES = 32
 _MAX_BYTES = 1_048_576
 _CHUNK = 65_536
-_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+_NOFOLLOW = getattr(os, "O_NOFOLLOW", None)
 _NONBLOCK = getattr(os, "O_NONBLOCK", 0)
 _SENSITIVE_NAME = re.compile(
     r"(^\.env(?:\.|$)|^(?:id_rsa|id_dsa|id_ecdsa|id_ed25519)$|"
@@ -121,6 +121,8 @@ def _open_dir(name: str, parent_fd: int | None = None) -> int:
 
 
 def _root(value: Path) -> tuple[Path, int, tuple[int, int]]:
+    if type(_NOFOLLOW) is not int or _NOFOLLOW == 0:
+        raise ValueError("no-follow scope access is unavailable")
     try:
         text = os.fspath(value)
     except TypeError:
