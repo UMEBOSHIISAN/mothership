@@ -211,9 +211,13 @@ Mothership binds a human decision to bounded authority for one external action.
        width="760">
 </p>
 
-This diagram shows a responsibility direction. The supplemental bridge passes
-local lease observations into Core context; the current public releases have no
-automatic runtime bridge.
+This diagram shows responsibility boundaries. The existing supplemental bridge
+rechecks the local lease and compares independently supplied Core host context.
+It does not convert the lease into external approval. Public releases have no
+automatic runtime bridge. This checkout adds a
+[foreground Python reference owner and public-fixture qualification](docs/host-adapters.md#harness-reference-owner)
+with real isolated worktree observations and fake transport. These checks do not
+establish daily-host activation or observed human acceptance.
 The optional GitHub companion provides execution, receipt conversion,
 and an opt-in read-back Verification producer. Transport and the actual effect
 boundary remain separately configured; Verification remains a record separate from Receipt.

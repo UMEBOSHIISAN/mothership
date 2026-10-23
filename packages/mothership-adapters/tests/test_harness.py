@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import copy
 from dataclasses import replace
-import hashlib
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import threading
@@ -24,16 +22,9 @@ if not _fixture_path:
 HARNESS_ROOT = Path(_fixture_path).resolve()
 if not HARNESS_ROOT.is_dir():
     raise unittest.SkipTest("selected real Harness fixture is unavailable")
-_expected_sources = {
-    "local_execution_lease.py": "fcbc7b571f6033ea64b584468bd16e198e59abeb162fb8fbffb02bcba14b16d9",
-    "local_execution_lease_state.py": "1e19380e036ad1b622b3aebce82c3cc6b97e2008bdaf0e382b0367dabffe94e2",
-}
-for _name, _digest in _expected_sources.items():
-    if hashlib.sha256((HARNESS_ROOT / "runtime" / _name).read_bytes()).hexdigest() != _digest:
-        raise RuntimeError("Harness fixture source differs from qualified pin")
-if subprocess.run(["git", "-C", str(HARNESS_ROOT), "rev-parse", "HEAD"],
-                  check=True, capture_output=True, text=True).stdout.strip() != "d7640a03b4b823d960f6e382607ad04aa8678c84":
-    raise RuntimeError("Harness fixture revision differs from qualified pin")
+from tools.qualify_harness_bridge import check_checkout  # noqa: E402
+
+check_checkout(HARNESS_ROOT)
 if str(HARNESS_ROOT) not in sys.path:
     sys.path.insert(0, str(HARNESS_ROOT))
 if str(HARNESS_ROOT / "runtime") not in sys.path:

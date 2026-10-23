@@ -26,6 +26,15 @@ Mothership binds a human decision to bounded authority for one external action.
 This is a responsibility relationship, not a runtime dependency. The current
 public releases do not contain an automatic Harness-to-Mothership bridge.
 
+The existing supplemental `HarnessMergeBridge` rechecks local lease evidence and
+independently supplied Core host context; it does not derive host identity or
+external approval from a local lease. The [reference Python owner](host-adapters.md#harness-reference-owner)
+connects an explicitly selected real lease store to fresh Git/worktree observations
+in one process, then exports its actual result mapping through `export_evidence`.
+Its external transport is fake. Public fixture qualification and isolated local
+operation transitions do not establish daily-host activation, human acceptance,
+external effects, or atomic cancellation with a transport send.
+
 ## Current receipt connection (source candidate)
 
 The optional [GitHub companion](../packages/mothership-github/README.md) now

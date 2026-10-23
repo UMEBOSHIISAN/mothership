@@ -251,3 +251,37 @@ jobs:
             echo "::error::Node host adapter suite reported ${failures:-unknown} failure(s)"
             exit 1
           fi
+
+  harness-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch exact public Harness fixture
+        env:
+          HARNESS_REVISION: 9d88a091a56e9a5fb76c3c901a1da75b01c5c110
+        run: |
+          set -euo pipefail
+          fixture="$RUNNER_TEMP/harness"
+          git init "$fixture"
+          git -C "$fixture" remote add origin https://github.com/UMEBOSHIISAN/ume-harness.git
+          git -C "$fixture" fetch --depth=1 origin "$HARNESS_REVISION"
+          git -C "$fixture" checkout --detach "$HARNESS_REVISION"
+          test "$(git -C "$fixture" rev-parse HEAD)" = "$HARNESS_REVISION"
+      - run: python -m pip install -e . -e packages/mothership-github -e packages/mothership-adapters
+      - name: Qualify bridge and actual-worktree reference owner
+        env:
+          MOTHERSHIP_HARNESS_ROOT: ${{ runner.temp }}/harness
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -euo pipefail
+          python tools/qualify_harness_bridge.py --harness-root "$MOTHERSHIP_HARNESS_ROOT" \
+            | tee harness-qualification.json
+      - name: Record qualification revisions and counts
+        if: always()
+        run: |
+          if test -f harness-qualification.json; then
+            cat harness-qualification.json >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -490,19 +490,109 @@ schema, guardrails, approval policy, or dispatch identity stops the route before
 review or execution. This qualification does not cover private SDK mutation or
 arbitrary Python monkeypatching.
 
-For a real Harness fixture qualification, set the test-only source root to the
-pinned fixture before running the focused test. The recorded fixture is
-`v0.1.7` at commit
-`d7640a03b4b823d960f6e382607ad04aa8678c84`; without the variable, the fixture
-qualification is explicitly skipped:
+### Harness reference owner
+
+The supplemental bridge already exists in `mothership_adapters.harness`.
+It rechecks local lease evidence and compares independent Core host context;
+it never converts a local lease into external approval. Standard HARNESS setup
+does not establish an ACTIVE lease or wire host expected-state/operation lifecycle.
+The public HARNESS README selects `ume-harness-engineering` as its canonical
+source; the public `ume-harness` repository is a generated release mirror.
+No changes to that mirror or daily-host hooks are part of this reference.
+
+The developer-only public fixture qualification is reproducible from this
+Mothership checkout (Python 3.12+):
 
 ```sh
-MOTHERSHIP_HARNESS_ROOT=/path/to/pinned-harness \
-python -m unittest packages/mothership-adapters/tests/test_harness.py
+git clone https://github.com/UMEBOSHIISAN/ume-harness.git harness-fixture
+git -C harness-fixture checkout --detach 9d88a091a56e9a5fb76c3c901a1da75b01c5c110
+python tools/qualify_harness_bridge.py --harness-root "$PWD/harness-fixture"
 ```
 
-This command is a qualification recipe, not evidence that a Harness runtime
-was activated by this package.
+The dedicated `harness-bridge` CI job fetches only this public commit into its
+runner temporary directory and runs the same qualification command. Fixture
+fetch or checkout failure stops the job; no private credentials or content are used.
+
+The runner explicitly sets test-only `MOTHERSHIP_HARNESS_ROOT`, uses Core,
+companion and adapters from this same Mothership checkout, and reports full
+source/fixture revisions, source/fixture dirty status, the two source hashes, run count,
+skips, failures and errors. Zero discovered/executed tests or any skip/error/failure
+fails qualification. It also requires at least 19 bridge and 19 reference-owner
+cases. Missing fixtures, dirty fixture checkouts, wrong HEAD and changed source bytes also
+fail. The existing 19 bridge methods remain in the suite; the reference-owner
+methods additionally exercise real Git and regular-file observations with fake
+transport. A matching source hash never admits an arbitrary revision.
+
+The exact public v0.1.7 pin above is an explicitly added fixture. Preserve the
+historical engineering fixture `d7640a03b4b823d960f6e382607ad04aa8678c84` for private
+local reproduction. Both admitted revisions must match these SHA-256 bytes:
+
+| Runtime source | SHA-256 |
+| --- | --- |
+| `local_execution_lease.py` | `fcbc7b571f6033ea64b584468bd16e198e59abeb162fb8fbffb02bcba14b16d9` |
+| `local_execution_lease_state.py` | `1e19380e036ad1b622b3aebce82c3cc6b97e2008bdaf0e382b0367dabffe94e2` |
+
+Without a fixture, ordinary direct discovery still explicitly skips the optional
+suite. Use the qualification runner when skip must be a failure. Public-fixture
+success proves this bounded connection, not activation on a daily host.
+
+`examples/harness_merge_owner.py` is one foreground Python reference entry.
+Its `HarnessReferenceOwner` takes an explicit worktree, existing state path and
+lease ID, ledger paths, exact merge parameters, independent context callback
+and executor reference. It creates no lease. Its retained `LeaseStateStore`
+binds `GitWorktreeObserver`; each unchanged lease callback invokes `resume()`
+to measure current HEAD, branch, worktree root, porcelain status and regular-file
+bytes against expected state. It does not merely reread saved digests.
+The reference observes tracked and nonignored untracked files; ignored paths
+are excluded. Symlinks, submodules/nonregular files, more than 1,024 files,
+files above 1 MiB, or total bytes above 16 MiB are refused. This bounded observer
+is not a general host sandbox or an atomic filesystem snapshot.
+
+For the isolated foreground exercise, include the qualified fixture's runtime
+and root on `PYTHONPATH`, alongside all three same-checkout Mothership packages:
+
+```sh
+PYTHONPATH=".:packages/mothership-github:packages/mothership-adapters:$PWD/harness-fixture:$PWD/harness-fixture/runtime" \
+  python -m examples.harness_merge_owner > reference-bundle.json
+mothership-evidence inspect --human < reference-bundle.json
+```
+
+Run with a foreground terminal for stdin and stderr. The reference creates a
+fresh temporary Git repository, derives a declared synthetic local task/policy
+lease from measured bytes/HEAD, activates it, and begins/completes one fixed
+edit-and-test operation. The lease remains ACTIVE with no open operation before
+bridge construction. The local task/policy references are fixture inputs, not
+human external approval. The external action is separately fixed to fictional
+`example/repo`, PR 7, head `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, base `main`,
+method `merge`; the fake transport has no HTTP or credential path.
+
+The host context comes independently from the current hostname, OS account,
+new foreground session ID, process/generation ID and explicit host scope. These
+are caller-attested observations, not identity authentication or lease-derived
+values. Keep the same owner/bridge/Session while displaying `bridge.request`
+(a property), collecting the exact request ID/digest answer, reviewing it and
+executing. The automated tests supply synthetic responses only. Actual human
+response acceptance remains unmeasured until a person runs this foreground path.
+
+On a returned mapping, the same owner passes `request`, `response`, `decision`,
+`consume_event`, `attempt_started`, `attempt_finished`, its original executor
+reference and `verification` to the existing exporter. The output is
+`host-evidence-bundle.v0`, for `inspect --human`, never `inspect-result` JSONL.
+Missing Verification stays `None`; fake SUCCESS is only an executor report.
+On exceptions the owner reads only its explicit original ledger paths and exports
+only actual rows. A missing finish produces no Receipt. Torn, foreign, ambiguous
+or exporter-rejected input produces no successful explanation and is never
+repaired. Temporary source ledgers are removed when this reference exits; retain
+a complete accepted bundle separately. A nonzero exit requires inspecting retained
+records and does not authorize retry, reconsume or action reissue.
+
+Lease/worktree/context drift stops admission or the next guarded transport call.
+Cancellation during preflight GET can leave one consume and an UNKNOWN Receipt
+with no fake mutation. Cancel checks are best effort at observation boundaries;
+there is no atomic cancellation with external send or rollback guarantee.
+Owner/process loss is terminal for live execution; exported data cannot restore
+that Session. This is an isolated reference, not a daemon, installed host adapter,
+real GitHub merge, independent Verification, or deployed host acceptance.
 
 ## JavaScript owner, OpenClaw, and Lobster
 
