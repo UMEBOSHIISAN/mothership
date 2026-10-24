@@ -104,6 +104,13 @@ Choose the reader for the retained format. Keep missing records missing; no conv
 Reading grants no execution authority. The Harness candidate retains bundles,
 which are different from the reference consumer's `result.jsonl`.
 
+On 2026-10-24, three wheels built from pinned sources and a dedicated Harness
+prefix passed the existing four cases and three input-read regressions on macOS
+arm64 / Python 3.12.14. Separate-process inspection preserved the saved evidence
+bytes. See the [installed revisions and scope](docs/thin-harness-handoff.md#installed-offline-check-2026-10-24).
+These are synthetic offline measurements, separate from live canary, human
+acceptance and public-mirror qualification.
+
 ### Read an existing result
 
 Read an already-retained evidence bundle first with
