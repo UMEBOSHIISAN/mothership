@@ -13,9 +13,11 @@ route is documented separately below.
 
 ## Install the source candidate in one checkout
 
-For the new local, non-Lease Harness handoff, use the separate
-[thin handoff guide](thin-harness-handoff.md). The historical pins below do not
-include that uncommitted candidate; no published install pin is implied.
+For the explicit, non-Lease Harness handoff in the current source, use the separate
+[thin handoff guide](thin-harness-handoff.md) for its fixed source pair and
+installed offline verification. The historical pins below do not include this
+path. Source integration does not imply a package release, public-mirror
+promotion or live acceptance.
 
 ### Try the current candidate
 
