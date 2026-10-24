@@ -48,12 +48,12 @@ and special files; unsupported platforms stop before producing a handoff.
 Use this fixed source pair for the synthetic path:
 
 - Mothership runtime:
-  [`ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc`](https://github.com/UMEBOSHIISAN/mothership/commit/ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc).
+  [`e787206979b24de2df06f45caa2610c52c5b5753`](https://github.com/UMEBOSHIISAN/mothership/commit/e787206979b24de2df06f45caa2610c52c5b5753).
   Build all three packages from this one checkout. This revision includes the
-  no-follow directory-descriptor input-read fix. The earlier installed four-case
-  evidence used runtime `5812c253`; it is not installed verification of this fix.
+  no-follow directory-descriptor input-read fix and was used for the installed
+  offline check below.
 - Canonical `ume-harness-engineering`:
-  [`2da9a0afeaf937ba95d6f8526888ffc926aaf10b`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/2da9a0afeaf937ba95d6f8526888ffc926aaf10b).
+  [`c0b036e091c189435564387427bf04e3930893f7`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/c0b036e091c189435564387427bf04e3930893f7).
   This includes the thin-preview case-marker correction from `fb070f6` and
   emits the machine handoff as UTF-8 independently of stdout locale.
   Its installed root identity is
@@ -64,6 +64,13 @@ canonical Harness repository is required; its public mirror has not been promote
 to this candidate. These runtime pins identify the tested code separately from
 later documentation commits. Keep the installed file/wheel hashes with the local
 acceptance record.
+
+Historical reproduction pins remain available: Mothership's input-read fix at
+[`ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc`](https://github.com/UMEBOSHIISAN/mothership/commit/ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc)
+and Harness
+[`2da9a0afeaf937ba95d6f8526888ffc926aaf10b`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/2da9a0afeaf937ba95d6f8526888ffc926aaf10b).
+The earlier installed four-case evidence used Mothership `5812c253`; it does not
+verify the later input-read fix. The new check uses the exact current pair above.
 
 Build the three wheels from the **same Mothership checkout**, using the existing
 [wheel recipe](host-adapters.md#try-the-current-candidate) with this reviewed
@@ -134,6 +141,37 @@ uses the separate `inspect-result --human` reader shown in the
 [saved-result examples](../examples/saved-results/README.en.md). A filename or
 manifest entry does not prove that a write completed; keep the original files
 and do not reconstruct missing records or run the operation again.
+
+## Installed offline check (2026-10-24)
+
+The fixed pair above was checked on macOS arm64 with Python 3.12.14. The build
+frontend used pip 26.2.2, setuptools 84.1.0 and wheel 0.48.0; the fresh venv used
+its bundled pip 25.0.1. Exact-commit source-only archives were checked
+against all tracked blob IDs and executable modes: 288 Mothership files and 73
+Harness files. Three wheels were built offline from that one Mothership snapshot,
+installed into a fresh venv, and Harness's standard installer used a fresh prefix
+with the same Python selected on PATH. No development checkout supplied imports.
+
+| Check | Observed result |
+| --- | --- |
+| Source → wheel → installed bytes | 84 runtime/data files match; all 28 Harness payload files match |
+| Standard new-prefix installer | All 9 default health checks passed; no setup or host activation |
+| Existing synthetic approve case | One consume and one started/finished attempt pair; Receipt SUCCESS, Verification UNKNOWN |
+| Existing reject / cancel / wrong-request cases | No execution attempts; wrong-request exits 2 |
+| Existing three input-read regressions | 3 passed, 0 skipped: parent replacement, held parent descriptor, unsupported safety flag |
+| Separate-process inspection | All four bundles re-read offline; saved artifacts and ledgers unchanged; manifest hashes match |
+
+The unchanged four-case checker used synthetic terminal answers and injected
+transport/readback. Its success report does not establish an actual merge or a
+CONFIRMED external result. The original six saved-result cases and old pins are
+preserved. The wheel/source/installed hashes belong to the runtime pins, before
+these later documentation changes.
+
+This measures installed-runtime behavior from verified source snapshots. It does
+not perform canonical `stage_release` / `verify_staged_release`: their clean Git
+checkout and committed-byte gates remain required for release work. No substitute
+Git metadata or public-mirror promotion was used. Linux/mini execution, human
+acceptance, live interpretation and real canary remain outside this measurement.
 
 The existing legacy Lease-based `HarnessMergeBridge` and its historical pin remain
 unchanged. They are not required by this thin path. Existing bundle validation,
