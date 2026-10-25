@@ -330,6 +330,57 @@ class GitHubRestTransport:
             request.add_header("Content-Type", "application/json")
         return request
 
+    def _access_document(self, path: str) -> dict[str, Any]:
+        """One bounded authenticated observation; never retain its raw body."""
+        response: object | None = None
+        status = None
+        try:
+            response = self._opener.open(self._build_request("GET", path), timeout=self._timeout)
+            status = _status_code(response)
+            if 300 <= status <= 399:
+                raise ActionPreflightError(reason_code="redirect_rejected", http_status=status)
+            if status != 200:
+                raise ActionPreflightError(reason_code="http_error", http_status=status)
+            return _strict_json_object(_read_bounded(response, preserve_transport_errors=True))
+        except ActionPreflightError:
+            raise
+        except urllib.error.HTTPError as error:
+            response = error
+            status = _status_code(error)
+            raise ActionPreflightError(
+                reason_code="redirect_rejected" if 300 <= status <= 399 else "http_error",
+                http_status=status,
+            ) from None
+        except (TimeoutError, ssl.SSLError, urllib.error.URLError, OSError) as error:
+            raise ActionPreflightError(reason_code=_transport_reason_code(error),
+                                       http_status=status) from None
+        except _ResponseError:
+            raise ActionPreflightError(reason_code="response_invalid", http_status=status) from None
+        except Exception:
+            raise ActionPreflightError(reason_code="unexpected_error") from None
+        finally:
+            _close(response)
+
+    def get_execution_access(self, repository: str, expected_login: str) -> dict[str, Any]:
+        """Observe the selected account and repo permission with this credential.
+
+        A positive result does not promise that branch rules allow a merge.
+        No credential lookup, authority issuance or mutation occurs here.
+        """
+        repository = _validate_repository(repository)
+        if (type(expected_login) is not str
+                or re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?", expected_login) is None):
+            raise ActionExecutionError("explicit expected GitHub login is invalid")
+        identity = self._access_document("user")
+        if type(identity.get("login")) is not str or identity["login"] != expected_login:
+            raise ActionPreflightError(reason_code="response_invalid")
+        metadata = self._access_document(f"repos/{repository}")
+        permissions = metadata.get("permissions")
+        if (type(metadata.get("full_name")) is not str or metadata["full_name"] != repository
+                or type(permissions) is not dict or permissions.get("push") is not True):
+            raise ActionPreflightError(reason_code="response_invalid")
+        return {"login": expected_login, "repository": repository, "can_push": True}
+
     def get_pull_request(self, repository: str, pull_request: int) -> dict[str, Any]:
         repository = _validate_repository(repository)
         pull_request = _validate_pull_request(pull_request)
