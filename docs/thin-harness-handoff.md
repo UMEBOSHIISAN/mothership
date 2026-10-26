@@ -107,6 +107,16 @@ and the clean worktree head must match the expected head. The existing Session
 callbacks reobserve before review/preflight/mutation. These are bounded,
 best-effort observations, not a lock, sandbox, revocation fence or coverage of
 ignored files. Symlinks, submodules and oversized trees are rejected.
+In the updated local source candidate, finite limits are 1,024 names,
+16 MiB per regular file and 64 MiB of accepted file content per tree pass.
+Content is hashed incrementally with reads of at most 64 KiB; the file bytes
+are not accumulated in memory. Both tree passes and the existing no-follow,
+metadata, identity and status checks remain. A rejecting pass can read one
+additional bounded file before the aggregate-size rejection. These are not
+whole-observation I/O or elapsed-time limits. Older fixed pins, including the
+installed `ad733ca` runtime, retain the previous 1 MiB/file and 16 MiB/tree limits.
+Source observation of a larger worktree does not qualify that old installation
+or establish a live operation, Receipt, independent Verification or human acceptance.
 The observer invokes the trusted host's `/usr/bin/git` with a fixed
 `/usr/bin:/bin` child PATH; caller PATH cannot select its Git binary. Missing
 system Git stops observation, without a searched or automatic fallback.
