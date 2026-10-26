@@ -89,10 +89,11 @@ recovery: no re-execution; no reconsume
 
 読むだけで実行権限は作られません。Harness候補はbundleを保持する経路で、`result.jsonl`とは別です。
 
-2026-10-24には、固定ソースから作った3wheelと専用prefixで、Harness経路の既存4ケースと
-入力読取3回帰をmacOS arm64 / Python 3.12.14で確認しました。別プロセスで保存証跡を再読し、
-元の記録が変わらないことも確認しています。[導入した版と検証範囲](docs/thin-harness-handoff.md#installed-offline-check-2026-10-24)を参照してください。
-合成入力・模擬通信の実測であり、実canary・人の受入・公開mirrorの検証とは別です。
+2026-10-26には、`4b2b7a2`の3wheelを新しいvenvへ導入し、既存21テスト（入力読取3回帰を含む）と
+Harnessの合成4ケース、保存証跡の別プロセス再読を確認しました。大きな実worktreeの読取も、導入版で確認しています。
+[導入した版と検証範囲](docs/thin-harness-handoff.md#installed-offline-check-2026-10-26)を参照してください。
+合成入力・模擬通信と読取専用の実測であり、実canary・人の受入・公開mirrorの検証とは別です。
+[2026-10-24の旧pinによる確認](docs/thin-harness-handoff.md#installed-offline-check-2026-10-24)も再現用に保持しています。
 
 ### 保存済みの結果を読む
 
