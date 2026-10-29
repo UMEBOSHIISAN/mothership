@@ -33,11 +33,23 @@ authentication. Use a clean matching worktree and a new private run directory:
 ```
 
 Input and stderr must be foreground terminals; stdout may be saved separately.
-The token is entered with hidden terminal input and passed to the existing
-transport in memory. If hidden input is unavailable, the command stops. It does
-not read credentials from environment/settings/clipboard, create a token, select
-another account or save the token. Never paste a token into a chat or command
-argument.
+By default the token is entered with hidden terminal input and passed to the
+existing transport in memory. If hidden input is unavailable, the command stops.
+Never paste a token into a chat or command argument.
+
+In a source candidate that includes the optional `--gh-auth` flag, adding it to
+the live command explicitly selects the locally installed GitHub CLI credential
+for `--expected-login`. The CLI is invoked without automatic token refresh; its
+credential is passed only in memory to the same transport. The child environment
+does not inherit token overrides or debug settings. Hosts using `GH_CONFIG_DIR`
+or `XDG_CONFIG_HOME` stop rather than silently selecting a different store.
+Missing CLI, unsupported flag,
+timeout, invalid output, wrong identity or insufficient permission stops before
+authority use; there is no other-account or manual-input fallback. Existing gh
+login configuration is not changed. `credential-source.json`, when written,
+records the gh version, selected account and caller-supplied host label, not the
+token or its hash. This flag is unavailable in the older fixed pins and does not
+change the requirement for an exact foreground human decision.
 
 Using that same credential, the transport performs at most one authenticated
 `GET /user` and one `GET /repos/{repository}` to require the selected account,

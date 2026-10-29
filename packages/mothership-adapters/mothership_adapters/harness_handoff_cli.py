@@ -60,9 +60,10 @@ def main(argv=None):
     parser.add_argument("--json", action="store_true", help="print the same structured result as result.json")
     parser.add_argument("--live-github", action="store_true", help="explicit foreground GitHub operation; never retries")
     parser.add_argument("--expected-login", help="required selected account for --live-github")
+    parser.add_argument("--gh-auth", action="store_true", help="explicitly use the selected GitHub CLI account")
     args = parser.parse_args(argv)
     if ((args.live_github and not args.expected_login)
-            or (not args.live_github and args.expected_login is not None)):
+            or (not args.live_github and (args.expected_login is not None or args.gh_auth))):
         parser.error("--live-github requires --expected-login; synthetic mode accepts neither")
     owner, failed = None, False
     try:
@@ -87,7 +88,7 @@ def main(argv=None):
         preview = validate_preview(decode_handoff_json(preview_process.stdout), args.request, interpretation)
         if read_regular(harness, 1_048_576) != harness_bytes:
             raise HandoffError("Harness executable changed")
-        transport, access = _SyntheticTransport(parameters), None
+        transport, access, credential_source = _SyntheticTransport(parameters), None, None
         if args.live_github:
             import re
             from orchestration.lib.action_authority import _validated_parameters
@@ -109,7 +110,16 @@ def main(argv=None):
                     or type(context) is not dict or type(context.get("scope")) is not list
                     or "github.merge_pr" not in context["scope"]):
                 raise HandoffError("live inputs unavailable")
-            transport, access = _manual_live_transport(parameters["repository"], args.expected_login)
+            if args.gh_auth:
+                from .gh_auth import load_secrets
+                from mothership_github.transport import GitHubRestTransport
+                token, gh_version = load_secrets("github", args.expected_login)
+                transport = GitHubRestTransport(token)
+                access = transport.get_execution_access(parameters["repository"], args.expected_login)
+                credential_source = dict(source="gh", version=gh_version,
+                                         host_id=context["host_id"], expected_login=args.expected_login)
+            else:
+                transport, access = _manual_live_transport(parameters["repository"], args.expected_login)
         executor_ref = dict(ref_id="executor:thin-handoff-live-v1" if args.live_github else "executor:thin-handoff-synthetic-v0",
                             sha256=hashlib.sha256(read_regular(__file__, 1_048_576)).hexdigest())
         owner = ThinHarnessOwner(
@@ -122,6 +132,8 @@ def main(argv=None):
         owner._write("harness-entry.json", json.dumps(dict(
             path=str(harness), sha256=hashlib.sha256(harness_bytes).hexdigest(),
             source="explicit_offline_entry", authenticated=False), sort_keys=True).encode())
+        if credential_source is not None:
+            owner._write("credential-source.json", json.dumps(credential_source, sort_keys=True).encode())
         answer = collect_response(owner.request, sys.stdin, sys.stderr, execution_access=access)
         if answer is None:
             owner.cancel()
