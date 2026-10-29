@@ -127,23 +127,21 @@ Use Python 3.12+, Git, and the reviewed candidate changes in both repositories.
 This local POSIX candidate requires `/usr/bin/git` and no-follow/nonblocking
 regular-file reads. The explicit Harness input rejects symlinked path components
 and special files; unsupported platforms stop before producing a handoff.
-Use this fixed source pair for the synthetic path:
+Use this fixed source pair for the current installed/offline check:
 
 - Mothership runtime:
-  [`e787206979b24de2df06f45caa2610c52c5b5753`](https://github.com/UMEBOSHIISAN/mothership/commit/e787206979b24de2df06f45caa2610c52c5b5753).
-  Build all three packages from this one checkout. This revision includes the
-  no-follow directory-descriptor input-read fix and was used for the installed
-  offline check below.
+  [`4b2b7a2b07aab3ac38f6745153a33ee54e013697`](https://github.com/UMEBOSHIISAN/mothership/commit/4b2b7a2b07aab3ac38f6745153a33ee54e013697).
+  Build all three packages from this one checkout. This unreleased candidate
+  includes the input-read fixes and the bounded streaming observer; it is the
+  runtime of the 2026-10-26 installed/offline check below.
 - Canonical `ume-harness-engineering`:
-  [`c0b036e091c189435564387427bf04e3930893f7`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/c0b036e091c189435564387427bf04e3930893f7).
-  This includes the thin-preview case-marker correction from `fb070f6` and
-  emits the machine handoff as UTF-8 independently of stdout locale.
-  Its installed root identity is
-  `76a8a54332f8b50face686cd5e8ebef45da17bcf3e493d8602697f1f5aa5425e`.
+  [`3edf71408ba4dc6f001fb3a1dec36e766dfafb6c`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/3edf71408ba4dc6f001fb3a1dec36e766dfafb6c).
+  The 28 declared payload files in the tested installed UME v0.2.0 prefix match
+  this commit's Git blobs. Its generated launcher is recorded separately.
 
-These pins identify source revisions, not released package versions. Access to the
-canonical Harness repository is required; its public mirror has not been promoted
-to this candidate. These runtime pins identify the tested code separately from
+These pins identify source revisions, not released package versions. Use the
+canonical Harness pin rather than assuming public-mirror parity; this check does
+not perform or qualify mirror promotion. These runtime pins identify the tested code separately from
 later documentation commits. Keep the installed file/wheel hashes with the local
 acceptance record.
 
@@ -151,8 +149,14 @@ Historical reproduction pins remain available: Mothership's input-read fix at
 [`ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc`](https://github.com/UMEBOSHIISAN/mothership/commit/ccf53f50b9ad5e4f58cfdb97ec4d356bb86cb1cc)
 and Harness
 [`2da9a0afeaf937ba95d6f8526888ffc926aaf10b`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/2da9a0afeaf937ba95d6f8526888ffc926aaf10b).
+The 2026-10-24 installed check used Mothership
+[`e787206979b24de2df06f45caa2610c52c5b5753`](https://github.com/UMEBOSHIISAN/mothership/commit/e787206979b24de2df06f45caa2610c52c5b5753)
+and Harness
+[`c0b036e091c189435564387427bf04e3930893f7`](https://github.com/UMEBOSHIISAN/ume-harness-engineering/commit/c0b036e091c189435564387427bf04e3930893f7),
+with Harness installed root identity
+`76a8a54332f8b50face686cd5e8ebef45da17bcf3e493d8602697f1f5aa5425e`.
 The earlier installed four-case evidence used Mothership `5812c253`; it does not
-verify the later input-read fix. The new check uses the exact current pair above.
+verify the later input-read fix. Do not substitute one dated check for another.
 
 Build the three wheels from the **same Mothership checkout**, using the existing
 [wheel recipe](host-adapters.md#try-the-current-candidate) with this reviewed
@@ -224,9 +228,51 @@ uses the separate `inspect-result --human` reader shown in the
 manifest entry does not prove that a write completed; keep the original files
 and do not reconstruct missing records or run the operation again.
 
+## Installed offline check (2026-10-26)
+
+The current pair above was measured on macOS arm64 / Python 3.12.15. Three
+already-built wheels from the fixed Mothership runtime were independently
+rehashed and installed once into a fresh task-local venv with
+`--no-index --no-deps --no-compile`. No duplicate build or dependency download
+was needed. Imports resolved inside that venv, not the development checkout.
+The existing installed UME v0.2.0 prefix supplied the real advisory CLI; no
+`setup`, hook connection or daily-prefix replacement was performed.
+
+| Check | Observed result |
+| --- | --- |
+| Source → wheel → installed bytes | 84 runtime/data files match the committed blobs; 97 wheel RECORD hashes checked |
+| Harness identity | 28 payload files match canonical `3edf714`; all 29 payload/launcher hashes unchanged before/after |
+| Existing installed handoff tests | 21 passed, 0 skipped; the three input-read regressions are included in 21 |
+| Existing four synthetic CLI cases | Approve: one consume and one started/finished pair, Receipt SUCCESS, Verification UNKNOWN; reject/cancel/wrong-request: no attempts |
+| Separate-process inspection | All four retained bundles re-read offline; saved artifacts/ledgers unchanged and manifest hashes match |
+| Larger real worktree | One installed-observer read at retained head `39a4e0e`; HEAD, status and index hash unchanged |
+
+The three local wheel artifacts were:
+
+| Package | Wheel SHA-256 |
+| --- | --- |
+| Core `0.5.0.dev0` | `4a834a6be935889f533ff0104410e6d0c09968d46d4b164d950e2eb5f27b1067` |
+| companion `0.3.0.dev0` | `9154acf8da26e40c5696f1ec980be835b9ce387d756cdc6ae81e54477fccf088` |
+| adapters `0.1.0.dev0` | `fe1d4dc2b64ec23291070e3c6c24089e76eb8c3d3429f8fd2b906a7add5a0de5` |
+
+These hashes identify these retained builds, not a released distribution or a
+promise of byte-identical wheels from a later build. A different Codex actor
+directly checked the immutable Mothership blobs, wheel bytes and installed
+payloads, and read the behavioral logs without rerunning the tests. The Harness
+source/payload comparison and test executions were performed by the producer.
+
+The larger-worktree check only exercised the installed observer. It did not
+start the real GitHub CLI path, request credentials or perform a merge. The
+old `ad733ca` installation and its preflight HOLD remain separate; these results
+do not upgrade its approval or establish a live Receipt or Verification. Human
+acceptance, Linux/mini, normal host setup, public-mirror promotion and real
+canary acceptance remain unverified here. The earlier six recipient cases and
+all historical pins remain unchanged. These runtime hashes precede the later
+documentation revision that records this measurement.
+
 ## Installed offline check (2026-10-24)
 
-The fixed pair above was checked on macOS arm64 with Python 3.12.14. The build
+The historical `e787206` / `c0b036e` pair was checked on macOS arm64 with Python 3.12.14. The build
 frontend used pip 26.2.2, setuptools 84.1.0 and wheel 0.48.0; the fresh venv used
 its bundled pip 25.0.1. Exact-commit source-only archives were checked
 against all tracked blob IDs and executable modes: 288 Mothership files and 73
@@ -277,6 +323,7 @@ clean committed source is not bypassed to stage an uncommitted candidate.
 Harnessは依頼整理のままです。Mothership側の明示的な入口で、実Gitの状態と具体的な
 操作を確認し、既存Sessionへ渡します。独自Lease・権限管理は追加しません。
 依頼文のhash一致は、文章と操作対象の意味が一致する証明ではありません。
-この候補は合成入力・模擬通信のローカル確認用です。上記の固定commitを組み合わせます。
+既定経路は合成入力・模擬通信のローカル確認用です。上記の固定commitを組み合わせます。
+実接続は明示的な別経路で、導入版の読取確認だけではその実行や承認を認定しません。
 実canary、公開mirrorへの反映、パッケージrelease、人の受入は別です。
 結果が不明なら、そのまま不明と表示して既存記録へ案内します。再実行で埋めません。
