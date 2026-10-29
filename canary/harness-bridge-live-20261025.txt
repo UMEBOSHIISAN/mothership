@@ -1,0 +1,3 @@
+Harness bridge explicit live-path canary.
+Scope: a dedicated non-main test branch only.
+No business data, settings, workflow or runtime change.
