@@ -279,9 +279,13 @@ Mothership binds a human decision to bounded authority for one external action.
 The thin Harness candidate keeps request preview and uses host-native work control.
 An [explicit local handoff](docs/thin-harness-handoff.md) connects real Git observation,
 exact operation review, the existing Session, separate readback, a foreground result
-and offline reread. It uses synthetic interpretation and transports, adds no custom
-Lease, and claims neither live canary acceptance nor automatic public-release
-integration. The supplemental bridge passes local lease observations only and remains
+and offline reread. Its default uses synthetic interpretation and transports.
+The updated source also has an
+[explicit GitHub live entry](docs/thin-harness-handoff.md#explicit-live-github-entry),
+with same-credential account/permission observation, exact foreground review, one
+attempt and separate readback. This unreleased addition is absent from older pins;
+it adds no custom Lease and claims no live canary or human acceptance.
+The supplemental bridge passes local lease observations only and remains
 a historical compatibility route; the current public releases have no
 automatic runtime bridge.
 The optional GitHub companion provides execution, receipt conversion,

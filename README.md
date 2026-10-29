@@ -242,7 +242,10 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 薄いHarness候補は依頼整理を担い、ローカル作業の権限・実行にはホスト標準機能を使います。
 [明示的なhandoff候補](docs/thin-harness-handoff.md)は、実Git観測、具体的な操作の判断、
 既存Session、独立readback、同じ入口への結果表示と保存再読を接続します。
-現在は合成入力・模擬通信のローカル経路です。独自Leaseは追加せず、実canaryの完了を主張しません。
+既定は合成入力・模擬通信のローカル経路です。
+更新版ソースには[明示的なGitHub実接続](docs/thin-harness-handoff.md#explicit-live-github-entry)もあります。
+同じ認証での本人・repo権限確認、端末でのexact request確認、1回の実行と独立readbackを分けます。
+未リリースの追加で、旧固定pinには含まれません。独自Leaseは追加せず、実canaryや人間受入の完了を主張しません。
 現在の公開版同士に自動接続はありません。
 旧Lease依存の補助bridgeはlocal lease観測をCore contextへ渡すだけで、過去版の互換経路として残しています。
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。

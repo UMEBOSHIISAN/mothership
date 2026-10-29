@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 
 from mothership.contracts import loads_strict
@@ -161,13 +162,28 @@ def write_complete(stream, text):
         raise _invalid() from None
 
 
-def collect_response(request, input_stream, output_stream):
+def _checked_access(value, repository):
+    checked = _detach(value)
+    if (type(checked) is not dict or set(checked) != {"login", "repository", "can_push"}
+            or checked["repository"] != repository or checked["can_push"] is not True
+            or type(checked["login"]) is not str
+            or re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?", checked["login"]) is None):
+        raise _invalid()
+    return checked
+
+
+def collect_response(request, input_stream, output_stream, *, execution_access=None):
     """One exact foreground response; test terminal doubles are synthetic."""
     try:
         if not input_stream.isatty() or not output_stream.isatty():
             raise _invalid()
-        write_complete(output_stream, json.dumps(request, ensure_ascii=True, indent=2) +
-                       "\nSYNTHETIC LOCAL RUN: type approve/reject request_id request_sha256; cancel stops.\n")
+        shown, label = request, "SYNTHETIC LOCAL RUN"
+        if execution_access is not None:
+            checked = _checked_access(execution_access, request["action"]["execution_parameters"]["repository"])
+            shown = dict(execution_mode="github_live", execution_access=checked, review_request=request)
+            label = "LIVE GITHUB RUN — one merge attempt; independent verification is separate"
+        write_complete(output_stream, json.dumps(shown, ensure_ascii=True, indent=2) +
+                       "\n" + label + ": type approve/reject request_id request_sha256; cancel stops.\n")
         line = input_stream.readline(1025)
         if len(line) > 1024 or not line.endswith("\n"):
             raise _invalid()
@@ -192,13 +208,21 @@ class ThinHarnessOwner:
     """
     def __init__(self, parameters, *, preview, raw_request, interpretation, worktree,
                  run_directory, host_context_provider, transport, executor_ref,
-                 interpretation_bytes=None):
+                 interpretation_bytes=None, execution_mode="synthetic", execution_access=None):
         from .worktree_observer import GitWorktreeObserver
         self._preview = validate_preview(preview, raw_request, interpretation)
         original_interpretation = _json(interpretation) if interpretation_bytes is None else interpretation_bytes
         if decode_handoff_json(original_interpretation) != interpretation:
             raise _invalid()
         self._parameters, self._executor_ref = _detach(parameters), _detach(executor_ref)
+        if type(execution_mode) is not str or execution_mode not in {"synthetic", "github_live"}:
+            raise _invalid()
+        self._execution_mode = execution_mode
+        self._execution_access = None
+        if execution_mode == "github_live":
+            self._execution_access = _checked_access(execution_access, self._parameters["repository"])
+        elif execution_access is not None:
+            raise _invalid()
         self._provider = host_context_provider
         self._response = self._diagnostic = self._readback = None
         self._readback_attempted = self._saved = False
@@ -222,6 +246,8 @@ class ThinHarnessOwner:
             self._write("interpretation.json", original_interpretation)
             self._write("preview.json", _json(self._preview))
             self._write("observation.json", _json(self._baseline))
+            if self._execution_access is not None:
+                self._write("execution-access.json", _json(self._execution_access))
             self._session = MergeReviewSession(
                 self._parameters, context_provider=self._context,
                 authority_path=self.authority_path, attempts_path=self.attempts_path,
@@ -315,7 +341,18 @@ class ThinHarnessOwner:
             raise _invalid() from None
 
     def readback(self, *, opener):
-        if not callable(opener) or self._readback_attempted:
+        if not callable(opener):
+            raise _invalid()
+        return self._readback_once(opener=opener)
+
+    def readback_github(self):
+        """Explicit default public readback, available only for selected live mode."""
+        if self._execution_mode != "github_live":
+            raise _invalid()
+        return self._readback_once(opener=None)
+
+    def _readback_once(self, *, opener):
+        if self._readback_attempted:
             raise _invalid()
         original = self.export()
         if original["missing"] != ["verification"]:
@@ -343,20 +380,32 @@ class ThinHarnessOwner:
                        retry_allowed=False, inspection=inspect_evidence(bundle),
                        diagnostic=self._diagnostic, human=text,
                        run_directory=str(self.root), session_state=self._session.state)
+        live = self._execution_mode == "github_live"
+        if live:
+            outcome.update(schema_version="thin-harness-handoff-result.v1", local_only=False,
+                           execution_mode="github_live", execution_access=self._execution_access)
         self._write("result.json", _json(outcome))
-        self._write("RESULT.md", ("# Local injected handoff\n\n" + text +
-                                   "\nNo live or human acceptance claim. No retry.\n").encode())
+        title = "# Explicit GitHub handoff" if live else "# Local injected handoff"
+        limit = ("\nSelected live mode does not prove an effect or human acceptance. No retry.\n" if live else
+                 "\nNo live or human acceptance claim. No retry.\n")
+        self._write("RESULT.md", (title + "\n\n" + text + limit).encode())
         for path in (self.authority_path, self.attempts_path):
             try:
                 self._artifacts[path.name] = _hash(read_regular(path, 262144))
             except FileNotFoundError:
                 pass
-        self._write("manifest.json", _json(dict(
+        manifest = dict(
             schema_version="thin-harness-handoff-manifest.v0", source_authenticated=False,
             live_verified=False, request_id=self.request["request_id"],
             request_sha256=self.request["request_sha256"],
             action_id=self.request["action"]["action_id"], action_sha256=self.request["action_sha256"],
-            preview_target_equivalence="not_verified", artifacts=dict(self._artifacts))))
+            preview_target_equivalence="not_verified", artifacts=dict(self._artifacts))
+        if live:
+            del manifest["live_verified"]
+            manifest.update(schema_version="thin-harness-handoff-manifest.v1", execution_mode="github_live",
+                            verification_status=outcome["inspection"]["verification_status"],
+                            verification_transport=sidecar.get("transport") if sidecar is not None else None)
+        self._write("manifest.json", _json(manifest))
         return outcome
 
     def __copy__(self):

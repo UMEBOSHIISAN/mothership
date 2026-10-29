@@ -70,6 +70,95 @@ class _HostileValue:
 
 
 class TransportTests(unittest.TestCase):
+    def execution_access(self, transport, repository="owner/repo", login="Operator"):
+        method = getattr(transport, "get_execution_access", None)
+        self.assertTrue(callable(method), "bounded execution-access preflight is missing")
+        return method(repository, login)
+
+    def test_execution_access_projects_same_credential_user_and_repository(self):
+        responses = [FakeResponse(json.dumps({"login": "Operator", "email": "not-retained"})),
+                     FakeResponse(json.dumps({"full_name": "owner/repo", "permissions": {"push": True}}))]
+        pending, calls = list(responses), []
+        class Opener:
+            def open(self, request, timeout):
+                calls.append((request, timeout))
+                return pending.pop(0)
+        result = self.execution_access(_transport(Opener()))
+        self.assertEqual({"login": "Operator", "repository": "owner/repo", "can_push": True}, result)
+        self.assertEqual(["https://api.github.com/user", "https://api.github.com/repos/owner/repo"],
+                         [request.full_url for request, _ in calls])
+        self.assertEqual(["GET", "GET"], [request.get_method() for request, _ in calls])
+        self.assertEqual([3.0, 3.0], [timeout for _, timeout in calls])
+        self.assertEqual(1, len({request.get_header("Authorization") for request, _ in calls}))
+        self.assertTrue(all(response.closed for response in responses))
+
+    def test_execution_access_wrong_login_stops_before_repository_get(self):
+        response = FakeResponse('{"login":"Other"}')
+        opener = FakeOpener(response)
+        with self.assertRaises(ActionPreflightError):
+            self.execution_access(_transport(opener))
+        self.assertEqual(1, len(opener.requests))
+        self.assertTrue(response.closed)
+
+    def test_execution_access_requires_exact_repository_and_boolean_write_permission(self):
+        for payload in ({"full_name": "other/repo", "permissions": {"push": True}},
+                        {"full_name": "owner/repo"},
+                        {"full_name": "owner/repo", "permissions": []},
+                        *({"full_name": "owner/repo", "permissions": {"push": value}}
+                          for value in (False, 1, "true", None))):
+            with self.subTest(payload=payload):
+                responses = [FakeResponse('{"login":"Operator"}'), FakeResponse(json.dumps(payload))]
+                pending, calls = list(responses), []
+                class Opener:
+                    def open(self, request, timeout):
+                        calls.append(request)
+                        return pending.pop(0)
+                with self.assertRaises(ActionPreflightError):
+                    self.execution_access(_transport(Opener()))
+                self.assertEqual(2, len(calls))
+                self.assertTrue(all(response.closed for response in responses))
+
+    def test_execution_access_invalid_selection_does_not_read_credentials_or_network(self):
+        for repository, login in (("bad", "Operator"), ("owner/repo", "bad/name"),
+                                  ("owner/repo", "Operator\n"), ("owner/repo", True),
+                                  ("owner/repo", "x" * 40)):
+            with self.subTest(repository=repository, login=login):
+                opener = FakeOpener(error=AssertionError("must not send"))
+                with self.assertRaises(ActionExecutionError):
+                    self.execution_access(_transport(opener), repository, login)
+                self.assertEqual([], opener.requests)
+
+    def test_execution_access_http_redirect_and_network_failure_are_bounded(self):
+        for status in (302, 401, 403, 500):
+            with self.subTest(status=status):
+                response = FakeResponse(b"private response must not be exposed", status)
+                opener = FakeOpener(response)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    self.execution_access(_transport(opener))
+                self.assertEqual("GitHub preflight failed", str(raised.exception))
+                self.assertEqual(status, raised.exception.http_status)
+                self.assertEqual(1, len(opener.requests))
+                self.assertTrue(response.closed)
+        for error in (TimeoutError("private"), ssl.SSLError("private"),
+                      urllib.error.URLError("private"), OSError("private")):
+            with self.subTest(error=type(error).__name__):
+                opener = FakeOpener(error=error)
+                with self.assertRaises(ActionPreflightError) as raised:
+                    self.execution_access(_transport(opener))
+                self.assertEqual("GitHub preflight failed", str(raised.exception))
+                self.assertEqual(1, len(opener.requests))
+
+    def test_execution_access_rejects_malformed_or_oversized_identity(self):
+        for body in (b'{"login":"Operator","login":"Other"}', b"[]", b"invalid",
+                     b'{"login":1}', b'{"login":"Operator "}', b" " * (1024 * 1024 + 1)):
+            with self.subTest(body=body[:40]):
+                response = FakeResponse(body)
+                opener = FakeOpener(response)
+                with self.assertRaises(ActionPreflightError):
+                    self.execution_access(_transport(opener))
+                self.assertEqual(1, len(opener.requests))
+                self.assertTrue(response.closed)
+
     def test_preflight_error_has_only_closed_safe_metadata(self):
         error = ActionPreflightError(
             _HostileValue(), reason_code="http_error", http_status=401

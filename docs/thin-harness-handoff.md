@@ -1,12 +1,84 @@
-# Thin Harness handoff — local synthetic candidate
+# Thin Harness handoff — explicit source candidate
 
 This opt-in path connects a non-executing Harness preview to one retained
 `MergeReviewSession`, injected execution, separate readback, a foreground result
-and offline evidence inspection. It is a local candidate, not a released or live
-GitHub integration. The normal Harness command and its presentation hooks still
+and offline evidence inspection. The default route is local and synthetic. This
+updated, unreleased source also has the explicitly selected live route described
+below; the older fixed source pins do not include it. The normal Harness command and its presentation hooks still
 do not execute work. No custom Lease, managed mode or approval token is added.
 
-## What the path means
+## Explicit live GitHub entry
+
+Build Core, companion and adapters from the same reviewed revision containing
+`--live-github`. The older `e787206` setup and the historical pins below support
+the synthetic route only. Record the actual source and installed wheel identity;
+do not add the new flag to an old installation and call it qualified.
+
+The entry still uses an explicit offline interpretation. It does not invoke a
+model, choose a PR from prose, install hooks or connect a normal chat implicitly.
+The operator supplies the exact approved parameters and current host-context
+file. The context is caller supplied; its fields are not host or human identity
+authentication. Use a clean matching worktree and a new private run directory:
+
+```sh
+/path/to/reviewed-venv/bin/mothership-harness-handoff \
+  --harness-cli /path/to/installed-prefix/bin/ume-harness \
+  --request 'Inspect the explicitly selected canary PR' \
+  --interpretation-file /path/to/interpretation.json \
+  --parameters /path/to/approved-parameters.json \
+  --worktree /path/to/clean-canary-worktree \
+  --run-directory /path/to/new-private-run \
+  --host-context /path/to/current-host-context.json \
+  --live-github --expected-login YOUR_REVIEWED_ACCOUNT --json
+```
+
+Input and stderr must be foreground terminals; stdout may be saved separately.
+The token is entered with hidden terminal input and passed to the existing
+transport in memory. If hidden input is unavailable, the command stops. It does
+not read credentials from environment/settings/clipboard, create a token, select
+another account or save the token. Never paste a token into a chat or command
+argument.
+
+Using that same credential, the transport performs at most one authenticated
+`GET /user` and one `GET /repos/{repository}` to require the selected account,
+exact repository and boolean write permission. It keeps only that small
+projection. Write permission does not guarantee that branch rules allow a merge.
+The terminal then displays `LIVE GITHUB RUN`, the account observation and the
+retained request. Respond only to that exact request/digest. There is no `--yes`,
+automatic answer, saved approval restoration or retry.
+
+After approval, the existing executor rechecks the PR and attempts at most one
+merge PUT with the expected head. The expected base is a preflight observation,
+not an atomic base-SHA condition on the GitHub PUT. Qualify on an explicitly
+approved, dedicated canary base before considering a business PR or main.
+Independent tokenless readback performs at most the existing two public GETs;
+the repository must be publicly observable for this verifier.
+
+Live mode saves `thin-harness-handoff-result.v1` and
+`thin-harness-handoff-manifest.v1`, identifying the selected mode and account
+observation. Synthetic mode retains its v0 formats and never reads a credential
+or reaches GitHub. Mode selection is not verification: inspect the Receipt,
+independent Verification and readback provenance separately. Source authentication
+and structural inspection limits stay unchanged. Feed `original.json` or
+`verified.json` to the existing evidence reader, not the result/manifest summary.
+
+| Live outcome | Exit | Meaning |
+| --- | --- | --- |
+| Receipt SUCCESS and independent CONFIRMED | 0 | Both corresponding reports are retained; this is not generic production certification. |
+| Explicit reject or cancel | 0 | Deliberate stop, with no execution attempt. |
+| UNKNOWN, MISMATCH, failed/incomplete execution or persistence/display failure | 2 | Retain the evidence and reconcile; do not replay, reconsume or renew. |
+
+A PUT response may be lost after GitHub commits. An UNKNOWN Receipt and a later
+CONFIRMED observation can therefore coexist; the command still returns 2 and
+does not rewrite the execution report. Same-second ambiguity remains UNKNOWN.
+Do not adjust clocks, wait for a desired status or issue another PUT for green
+output. Existing files are kept on failure, including partial artifacts.
+
+This source change is not evidence that a live canary, normal-host hook migration,
+human usability acceptance or release/public-mirror promotion has occurred. Those
+operations require their concrete target approvals and measured evidence.
+
+## What the default synthetic path means
 
 ![Explicit local handoff and separate result return; synthetic path, not live acceptance](../assets/readme/en/ume-stack-responsibility.svg)
 
@@ -98,7 +170,7 @@ exist and must be outside the observed worktree.
 
 Run in a foreground terminal. After checking the full displayed request, type
 `approve REQUEST_ID REQUEST_SHA256`, `reject REQUEST_ID REQUEST_SHA256`, or `cancel`.
-There is no `--yes`, saved-answer restoration or live transport option. The
+The default synthetic route has no `--yes`, saved-answer restoration or live transport. The
 command uses an injected synthetic merge and deliberately unavailable synthetic
 readback: executor `SUCCESS` and independent `UNKNOWN` remain different. No
 token, GitHub request or model call is used. Exit 0 means the local workflow and

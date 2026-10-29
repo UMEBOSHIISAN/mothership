@@ -1468,5 +1468,208 @@ class AdapterEvidenceCLITests(EvidenceFixture):
         self.assertEqual("invalid bounded evidence input\n", stderr.getvalue())
 
 
+class HarnessLiveCLITests(unittest.TestCase):
+    """Exercise the real entry/owner/transport, doubling only terminal and HTTP."""
+
+    def setUp(self):
+        import test_harness_handoff as fixtures
+        self.fixtures = fixtures
+        self.fixture = fixtures.HandoffOwnerTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.root = self.fixture.root
+        self.serial = 0
+        self.harness = self.root / "harness"
+        payload = json.dumps(fixtures.preview(), ensure_ascii=True)
+        self.harness.write_text("#!/bin/sh\nprintf '%s\\n' '" + payload + "'\n")
+        self.harness.chmod(0o700)
+        for name, value in (("interpretation", fixtures.INTERPRETATION),
+                            ("parameters", self.fixture.parameters), ("context", fixtures.CONTEXT)):
+            (self.root / (name + ".json")).write_text(json.dumps(value))
+
+    def run_handoff(self, *, live=True, decision="approve", login="Operator",
+                    permission=True, verification="CONFIRMED", token_error=None,
+                    non_tty=False, put_error=False, context_changes=None, context_drift=False,
+                    extra_args=()):
+        import getpass
+        from mothership_adapters.harness_handoff_cli import main
+        fixtures = self.fixtures
+        self.serial += 1
+        run = self.root / ("run-" + str(self.serial))
+        stderr, stdout, calls = fixtures.Terminal(), io.StringIO(), []
+        fixed = datetime.datetime(2026, 10, 25, tzinfo=datetime.UTC)
+        state = {"put": False}
+        if context_changes is not None:
+            (self.root / "context.json").write_text(json.dumps({**fixtures.CONTEXT, **context_changes}))
+
+        class Input(fixtures.Terminal):
+            def isatty(self):
+                return not non_tty
+
+            def readline(self, limit=-1):
+                if decision == "cancel":
+                    return "cancel\n"
+                shown, _ = json.JSONDecoder().raw_decode(stderr.getvalue())
+                request = shown.get("review_request", shown)
+                if context_drift:
+                    (self_root / "context.json").write_text(json.dumps({**fixtures.CONTEXT, "runtime_generation": "changed"}))
+                request_id = "wrong" if decision == "wrong" else request["request_id"]
+                return ("reject" if decision == "reject" else "approve") + " " + request_id + " " + request["request_sha256"] + "\n"
+
+        def http(_opener, request, *args, **kwargs):
+            method, url = request.get_method(), request.full_url
+            calls.append((method, url, request.get_header("Authorization")))
+            if url == "https://api.github.com/user":
+                payload = {"login": login}
+            elif url == "https://api.github.com/repos/example/repo":
+                payload = {"full_name": "example/repo", "permissions": {"push": permission}}
+            elif method == "PUT":
+                state["put"] = True
+                if put_error:
+                    raise TimeoutError("private failure")
+                payload = {"merged": True, "sha": "b" * 40}
+            elif url.endswith("/pulls/7"):
+                stamp = fixed + datetime.timedelta(seconds=0 if verification == "UNKNOWN" else 5)
+                head = "a" * 40 if state["put"] and verification == "MISMATCH" else self.fixture.parameters["expected_head_sha"]
+                payload = dict(url=url, number=7, title="synthetic canary", draft=False,
+                               updated_at="2026-10-25T00:00:06Z", state="closed" if state["put"] else "open",
+                               merged=state["put"], merged_at=stamp.strftime("%Y-%m-%dT%H:%M:%SZ") if state["put"] else None,
+                               head={"sha": head}, base={"ref": "canary-base", "repo": {"full_name": "example/repo"}},
+                               merge_commit_sha="b" * 40 if state["put"] else None)
+            elif url.endswith("/git/commits/" + "b" * 40):
+                payload = {"sha": "b" * 40, "parents": [{"sha": "c" * 40}, {"sha": self.fixture.parameters["expected_head_sha"]}]}
+            else:
+                raise AssertionError("unexpected network path")
+            response = io.BytesIO(json.dumps(payload).encode())
+            response.status, response.headers, response.url = 200, {}, url
+            response.geturl = lambda: url
+            return response
+
+        self_root = self.root
+        argv = ["--harness-cli", str(self.harness), "--request", fixtures.REQUEST,
+                "--interpretation-file", str(self.root / "interpretation.json"),
+                "--parameters", str(self.root / "parameters.json"), "--host-context", str(self.root / "context.json"),
+                "--worktree", str(self.fixture.worktree), "--run-directory", str(run), "--json"]
+        if live:
+            argv += ["--live-github", "--expected-login", "Operator"]
+        argv += list(extra_args)
+        secret = "synthetic-" + "credential-sentinel"
+        def prompt(*args, **kwargs):
+            if token_error == "warning":
+                import warnings
+                warnings.warn("hidden input unavailable", getpass.GetPassWarning)
+            if token_error == "interrupt":
+                raise KeyboardInterrupt()
+            return secret
+        with mock.patch("sys.stdin", Input()), mock.patch("sys.stderr", stderr), mock.patch("sys.stdout", stdout), \
+             mock.patch("getpass.getpass", side_effect=prompt) as hidden, \
+             mock.patch("urllib.request.OpenerDirector.open", new=http), \
+             mock.patch("orchestration.lib.action_authority._utc_now", return_value=fixed), \
+             mock.patch("orchestration.lib.action_authority_ledger._utc_now", return_value=fixed), \
+             mock.patch("mothership_github.receipts._utc_now", side_effect=[fixed, fixed + datetime.timedelta(seconds=1)]), \
+             mock.patch("mothership_github.verification._utc_now", return_value=fixed + datetime.timedelta(seconds=10)):
+            try:
+                code = main(argv)
+            except SystemExit as error:
+                code = int(error.code)
+        self.assertNotIn(secret, stdout.getvalue() + stderr.getvalue())
+        if run.exists():
+            for path in run.iterdir():
+                if path.is_file():
+                    self.assertNotIn(secret.encode(), path.read_bytes())
+        return code, run, calls, hidden.call_count, stderr.getvalue()
+
+    def test_harness_live_entry_uses_one_put_and_independent_default_readback(self):
+        code, run, calls, hidden, shown = self.run_handoff()
+        self.assertEqual(0, code, shown)
+        result = json.loads((run / "result.json").read_bytes())
+        self.assertEqual("thin-harness-handoff-result.v1", result["schema_version"])
+        self.assertEqual("github_live", result["execution_mode"])
+        self.assertFalse(result["local_only"])
+        self.assertEqual("CONFIRMED", result["inspection"]["verification_status"])
+        self.assertFalse(result["inspection"]["external_effect_verified"])
+        self.assertEqual(1, hidden)
+        self.assertEqual(1, sum(method == "PUT" for method, _, _ in calls))
+        self.assertLessEqual(len(calls), 6)
+        self.assertTrue(all(auth is None for _, _, auth in calls[-2:]))
+        self.assertIn("LIVE GITHUB", shown)
+        self.assertIsNone(json.loads((run / "original.json").read_bytes())["verification"])
+        self.assertEqual("default_tokenless", json.loads((run / "readback-evidence.json").read_bytes())["transport"])
+
+    def test_harness_live_unknown_or_mismatch_stops_without_reexecution(self):
+        for status in ("UNKNOWN", "MISMATCH"):
+            with self.subTest(status=status):
+                code, run, calls, _, shown = self.run_handoff(verification=status)
+                self.assertEqual(2, code, shown)
+                self.assertTrue(run.is_dir(), "a partial live result must retain its run directory")
+                self.assertEqual(status, json.loads((run / "result.json").read_bytes())["inspection"]["verification_status"])
+                self.assertEqual(1, sum(method == "PUT" for method, _, _ in calls))
+
+    def test_harness_live_reject_cancel_and_wrong_request_do_not_attempt(self):
+        for decision in ("reject", "cancel", "wrong"):
+            with self.subTest(decision=decision):
+                code, run, calls, _, shown = self.run_handoff(decision=decision)
+                self.assertEqual(2 if decision == "wrong" else 0, code, shown)
+                self.assertFalse(any(method == "PUT" for method, _, _ in calls))
+                self.assertFalse((run / "attempts.jsonl").exists())
+
+    def test_harness_live_wrong_identity_or_permission_stops_before_authority(self):
+        for changes in ({"login": "Other"}, {"permission": False}):
+            with self.subTest(changes=changes):
+                code, run, calls, _, shown = self.run_handoff(**changes)
+                self.assertEqual(2, code, shown)
+                self.assertFalse(run.exists())
+                self.assertFalse(any(method == "PUT" for method, _, _ in calls))
+
+    def test_harness_live_hidden_input_failure_and_non_tty_have_no_effect(self):
+        for changes in ({"token_error": "warning"}, {"token_error": "interrupt"}, {"non_tty": True}):
+            with self.subTest(changes=changes):
+                code, run, calls, _, shown = self.run_handoff(**changes)
+                self.assertEqual(2, code, shown)
+                self.assertEqual([], calls)
+                self.assertFalse(run.exists())
+
+    def test_harness_live_ambiguous_put_is_not_retried(self):
+        code, run, calls, _, shown = self.run_handoff(put_error=True)
+        self.assertEqual(2, code, shown)
+        self.assertEqual(1, sum(method == "PUT" for method, _, _ in calls))
+        self.assertTrue((run / "attempts.jsonl").exists())
+        # The remote may commit before its response is lost. Keep the UNKNOWN
+        # executor report even when the independent readback confirms the merge.
+        inspection = json.loads((run / "result.json").read_bytes())["inspection"]
+        self.assertEqual("UNKNOWN", inspection["receipt_status"])
+        self.assertEqual("CONFIRMED", inspection["verification_status"])
+
+    def test_harness_live_context_validation_precedes_credential_input(self):
+        code, run, calls, hidden, shown = self.run_handoff(context_changes={"host_id": None})
+        self.assertEqual(2, code, shown)
+        self.assertEqual(0, hidden)
+        self.assertEqual([], calls)
+        self.assertFalse(run.exists())
+
+    def test_harness_live_flags_cannot_be_silently_ignored_by_synthetic_mode(self):
+        code, run, calls, hidden, shown = self.run_handoff(live=False, extra_args=["--expected-login", ""])
+        self.assertEqual(2, code, shown)
+        self.assertEqual([], calls)
+        self.assertEqual(0, hidden)
+        self.assertFalse(run.exists())
+
+    def test_harness_live_context_drift_stops_before_decision_and_attempt(self):
+        code, run, calls, _, shown = self.run_handoff(context_drift=True)
+        self.assertEqual(2, code, shown)
+        self.assertFalse(any(method == "PUT" for method, _, _ in calls))
+        self.assertFalse((run / "authority.jsonl").exists())
+        self.assertFalse((run / "attempts.jsonl").exists())
+
+    def test_harness_synthetic_default_never_reads_credentials_or_network(self):
+        code, run, calls, hidden, shown = self.run_handoff(live=False)
+        self.assertEqual(0, code, shown)
+        self.assertEqual([], calls)
+        self.assertEqual(0, hidden)
+        result = json.loads((run / "result.json").read_bytes())
+        self.assertEqual("thin-harness-handoff-result.v0", result["schema_version"])
+        self.assertTrue(result["local_only"])
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
