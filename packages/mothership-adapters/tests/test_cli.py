@@ -1596,6 +1596,62 @@ class HarnessLiveCLITests(unittest.TestCase):
         self.assertIsNone(json.loads((run / "original.json").read_bytes())["verification"])
         self.assertEqual("default_tokenless", json.loads((run / "readback-evidence.json").read_bytes())["transport"])
 
+    def test_explicit_gh_auth_uses_same_transport_without_hidden_prompt(self):
+        with mock.patch("mothership_adapters.gh_auth.load_secrets", return_value=("synthetic-credential-sentinel", "2.103.3")):
+            code, run, calls, hidden, shown = self.run_handoff(extra_args=["--gh-auth"])
+        self.assertEqual(0, code, shown)
+        self.assertEqual(0, hidden)
+        self.assertEqual(1, sum(method == "PUT" for method, _, _ in calls))
+        self.assertEqual("CONFIRMED", json.loads((run / "result.json").read_bytes())["inspection"]["verification_status"])
+        self.assertTrue(all(auth is None for _, _, auth in calls[-2:]))
+        meta = json.loads((run / "credential-source.json").read_bytes())
+        self.assertEqual({"source": "gh", "version": "2.103.3", "host_id": "synthetic", "expected_login": "Operator"}, meta)
+
+    def test_gh_auth_failure_never_falls_back_or_executes(self):
+        from mothership_adapters.gh_auth import GhAuthError
+        with mock.patch("mothership_adapters.gh_auth.load_secrets", side_effect=GhAuthError("unavailable")):
+            code, run, calls, hidden, shown = self.run_handoff(extra_args=["--gh-auth"])
+        self.assertEqual(2, code, shown)
+        self.assertEqual(0, hidden)
+        self.assertEqual([], calls)
+        self.assertFalse(run.exists())
+
+    def test_gh_auth_flag_is_rejected_in_synthetic_mode(self):
+        code, run, calls, hidden, shown = self.run_handoff(live=False, extra_args=["--gh-auth"])
+        self.assertEqual(2, code, shown)
+        self.assertEqual([], calls)
+        self.assertEqual(0, hidden)
+        self.assertFalse(run.exists())
+
+    def test_gh_auth_wrong_identity_or_permission_stops_before_authority(self):
+        for change in ({"login": "Other"}, {"permission": False}):
+            with self.subTest(change=change), mock.patch(
+                "mothership_adapters.gh_auth.load_secrets", return_value=("synthetic-credential-sentinel", "2.103.3")
+            ):
+                code, run, calls, hidden, shown = self.run_handoff(extra_args=["--gh-auth"], **change)
+                self.assertEqual(2, code, shown)
+                self.assertEqual(0, hidden)
+                self.assertFalse(any(method == "PUT" for method, _, _ in calls))
+                self.assertFalse(run.exists())
+
+    def test_gh_auth_context_failure_precedes_credential_acquisition(self):
+        with mock.patch("mothership_adapters.gh_auth.load_secrets") as load:
+            code, run, calls, hidden, shown = self.run_handoff(
+                context_changes={"host_id": None}, extra_args=["--gh-auth"])
+        self.assertEqual(2, code, shown)
+        self.assertEqual(0, load.call_count)
+        self.assertEqual(0, hidden)
+        self.assertEqual([], calls)
+        self.assertFalse(run.exists())
+
+    def test_gh_auth_ambiguous_put_does_not_retry(self):
+        with mock.patch("mothership_adapters.gh_auth.load_secrets", return_value=("synthetic-credential-sentinel", "2.103.3")):
+            code, run, calls, hidden, shown = self.run_handoff(put_error=True, extra_args=["--gh-auth"])
+        self.assertEqual(2, code, shown)
+        self.assertEqual(0, hidden)
+        self.assertEqual(1, sum(method == "PUT" for method, _, _ in calls))
+        self.assertEqual("UNKNOWN", json.loads((run / "result.json").read_bytes())["inspection"]["receipt_status"])
+
     def test_harness_live_unknown_or_mismatch_stops_without_reexecution(self):
         for status in ("UNKNOWN", "MISMATCH"):
             with self.subTest(status=status):
