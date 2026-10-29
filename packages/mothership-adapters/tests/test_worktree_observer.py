@@ -210,9 +210,97 @@ class WorktreeObserverTests(unittest.TestCase):
         with patch.object(os, 'O_NOFOLLOW', 0):
             self.rejected()
 
+    def test_small_tree_keeps_original_fingerprint(self):
+        (self.root / 'work.txt').chmod(0o644)
+        # SHA256 of canonical [[hex('work.txt'), 420, SHA256(b'original\n')]].
+        self.assertEqual(self.observer().observe()['tree_sha256'],
+                         '5cac21e1aef0b33e1b3875aaaad46c1fd06efc126def11c65f5799009af77f19')
+
+    def test_large_files_and_tree_include_trailing_bytes(self):
+        (self.root / 'work.txt').chmod(0o644)
+        for number in range(3):
+            target = self.root / f'large-{number}.bin'
+            target.write_bytes(b'a' * (10 * 1024 * 1024))
+            target.chmod(0o644)
+        self.git('add', '.')
+        self.git('-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid',
+                 'commit', '-m', 'large fixture')
+        observer = self.observer()
+        try:
+            before = observer.observe()
+        except ValueError:
+            self.fail('bounded 30MiB tree with 10MiB regular files must be observed')
+        self.assertIs(before['clean'], True)
+        # Independently derived canonical entries, including original work.txt.
+        self.assertEqual(before['tree_sha256'],
+                         '75d00bed2f3211f1ed52ccb954920ba4bb941f76d27e0ff925e894fdfe0c0700')
+        target = self.root / 'large-2.bin'
+        with target.open('r+b') as stream:
+            stream.seek(-1, os.SEEK_END)
+            stream.write(b'b')
+        dirty = observer.observe()
+        with target.open('r+b') as stream:
+            stream.seek(-1, os.SEEK_END)
+            stream.write(b'c')
+        changed = observer.observe()
+        self.assertEqual(dirty['status_sha256'], changed['status_sha256'])
+        self.assertNotEqual(before['tree_sha256'], dirty['tree_sha256'])
+        self.assertNotEqual(dirty['tree_sha256'], changed['tree_sha256'])
+
+    def probe_reads(self, sizes, *, max_piece=None, after_first=None):
+        real_fdopen = os.fdopen
+
+        class Reader:
+            def __init__(self, stream):
+                self.stream, self.first = stream, True
+
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+
+            def read(self, size=-1):
+                sizes.append(size)
+                data = self.stream.read(size if max_piece is None else min(size, max_piece))
+                if self.first and after_first is not None:
+                    self.first = False
+                    after_first()
+                return data
+
+        return patch('mothership_adapters.worktree_observer.os.fdopen',
+                     side_effect=lambda *a, **kw: Reader(real_fdopen(*a, **kw)))
+
+    def test_content_reads_have_bounded_chunk_requests(self):
+        sizes = []
+        with self.probe_reads(sizes):
+            observed = self.observer().observe()
+        self.assertIs(observed['clean'], True)
+        self.assertTrue(sizes)
+        self.assertTrue(all(0 < size <= 65536 for size in sizes), sizes)
+
+    def test_short_reads_are_hashed_until_eof(self):
+        (self.root / 'work.txt').chmod(0o644)
+        with self.probe_reads([], max_piece=3):
+            observed = self.observer().observe()
+        self.assertEqual(observed['tree_sha256'],
+                         '5cac21e1aef0b33e1b3875aaaad46c1fd06efc126def11c65f5799009af77f19')
+
+    def test_growth_and_truncation_during_stream_are_rejected(self):
+        target = self.root / 'work.txt'
+        for size in (0, 128 * 1024 + 1):
+            with self.subTest(size=size):
+                target.write_bytes(b'x' * (128 * 1024))
+                def mutate():
+                    with target.open('r+b') as stream:
+                        stream.truncate(size)
+                with self.probe_reads([], after_first=mutate):
+                    self.rejected()
+
     def test_per_file_byte_limit(self):
         target = self.root / 'work.txt'
-        target.write_bytes(b'x' * 1_048_576)
+        target.write_bytes(b'x' * 16_777_216)
         self.assertIs(self.observer().observe()['clean'], False)
         with target.open('ab') as stream:
             stream.write(b'x')
@@ -220,8 +308,8 @@ class WorktreeObserverTests(unittest.TestCase):
 
     def test_total_byte_limit(self):
         (self.root / 'work.txt').write_bytes(b'')
-        for number in range(16):
-            (self.root / f'file-{number}').write_bytes(b'x' * 1_048_576)
+        for number in range(4):
+            (self.root / f'file-{number}').write_bytes(b'x' * 16_777_216)
         self.assertIs(self.observer().observe()['clean'], False)
         (self.root / 'work.txt').write_bytes(b'x')
         self.rejected()

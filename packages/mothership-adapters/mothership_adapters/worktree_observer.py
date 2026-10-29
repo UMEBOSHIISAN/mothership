@@ -19,8 +19,9 @@ from mothership.contracts import canonical_json_sha256
 
 _ERROR = 'worktree observation unavailable'
 _MAX_NAMES = 1024
-_MAX_FILE = 1_048_576
-_MAX_TREE = 16_777_216
+_MAX_FILE = 16_777_216
+_MAX_TREE = 67_108_864
+_READ_CHUNK = 65_536
 _GIT_EXECUTABLE = '/usr/bin/git'
 _GIT_PATH = '/usr/bin:/bin'
 _COMPONENT = r'[A-Za-z0-9_][A-Za-z0-9_.-]*'
@@ -182,14 +183,25 @@ class GitWorktreeObserver:
                 before = os.fstat(file_descriptor)
                 if not stat.S_ISREG(before.st_mode) or before.st_size > _MAX_FILE:
                     raise ValueError(_ERROR)
+                digest = hashlib.sha256()
+                size = 0
                 with os.fdopen(file_descriptor, 'rb', closefd=False) as stream:
-                    raw = stream.read(_MAX_FILE + 1)
+                    while True:
+                        chunk = stream.read(min(_READ_CHUNK, _MAX_FILE + 1 - size))
+                        if type(chunk) is not bytes:
+                            raise ValueError(_ERROR)
+                        if not chunk:
+                            break
+                        size += len(chunk)
+                        if size > _MAX_FILE:
+                            raise ValueError(_ERROR)
+                        digest.update(chunk)
                 after = os.fstat(file_descriptor)
                 fields = ('st_dev', 'st_ino', 'st_mode', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
-                if (len(raw) > _MAX_FILE or any(
+                if (size != before.st_size or any(
                         getattr(before, field) != getattr(after, field) for field in fields)):
                     raise ValueError(_ERROR)
-                return raw, stat.S_IMODE(before.st_mode)
+                return size, stat.S_IMODE(before.st_mode), digest.hexdigest()
             finally:
                 os.close(file_descriptor)
         finally:
@@ -200,14 +212,14 @@ class GitWorktreeObserver:
         total = 0
         for raw_name in names:
             try:
-                raw, mode = self._read_regular(root_descriptor, raw_name)
+                size, mode, digest = self._read_regular(root_descriptor, raw_name)
             except FileNotFoundError:
                 entries.append([raw_name.hex(), 'missing'])
             else:
-                total += len(raw)
+                total += size
                 if total > _MAX_TREE:
                     raise ValueError(_ERROR)
-                entries.append([raw_name.hex(), mode, hashlib.sha256(raw).hexdigest()])
+                entries.append([raw_name.hex(), mode, digest])
         return canonical_json_sha256(entries)
 
     def observe(self):
