@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
   <title id="title">Responsibility split for humans and AI sharing work</title>
-  <desc id="desc">Explicit local candidate with synthetic input and transport, no custom Lease. Separate execution and observation return to the original entry and remain available for offline reread. Live canary and publication are not accepted.</desc>
+  <desc id="desc">Explicit route: synthetic by default, one isolated #70 live result, no custom Lease. Result returns to the entry and is saved for reread. Normal host, public mirror and human usability remain unverified.</desc>
   <style>
     .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
@@ -31,9 +31,9 @@
     <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>
     <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
     <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
-    <text class="state" x="360" y="542" text-anchor="middle">EXPLICIT HANDOFF / LOCAL CANDIDATE</text>
+    <text class="state" x="360" y="542" text-anchor="middle">EXPLICIT HANDOFF / BOUNDED RESULT</text>
     <text class="small" x="360" y="574" text-anchor="middle">Preview → real Git observation → retained Session</text>
-    <text class="small" x="360" y="602" text-anchor="middle">Synthetic input and transport / no custom Lease</text>
+    <text class="small" x="360" y="602" text-anchor="middle">Synthetic default / #70 isolated live path</text>
   </g>
 
   <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>
@@ -57,5 +57,5 @@
   <path data-role="result-return" d="M690 956 H706 V150 H665" fill="none" stroke="#237e91" stroke-width="3" stroke-dasharray="8 6"/>
   <path d="M660 150 L674 142 L674 158 Z" fill="#237e91"/>
 
-  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1038">Solid = existing parts / dashed = explicit local candidate</tspan><tspan x="360" y="1068">Result returns to the entry / saved for offline reread</tspan><tspan x="360" y="1098">github.merge_pr / synthetic path / 2026-10-23</tspan></text>
+  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1038">Solid = existing parts / dashed = explicit opt-in</tspan><tspan x="360" y="1068">Result returns to the entry / saved for offline reread</tspan><tspan x="360" y="1098">github.merge_pr / isolated #70 / 2026-10-29</tspan></text>
 </svg>

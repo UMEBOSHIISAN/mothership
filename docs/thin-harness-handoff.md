@@ -86,16 +86,56 @@ does not rewrite the execution report. Same-second ambiguity remains UNKNOWN.
 Do not adjust clocks, wait for a desired status or issue another PUT for green
 output. Existing files are kept on failure, including partial artifacts.
 
-This source change is not evidence that a live canary, normal-host hook migration,
-human usability acceptance or release/public-mirror promotion has occurred. Those
-operations require their concrete target approvals and measured evidence.
+The bounded live canary below is evidence for one explicitly selected route. It
+does not establish normal-host hook migration, human usability acceptance, a
+published package or release/public-mirror promotion.
+
+## Bounded live canary (2026-10-29)
+
+An authorized run used the explicit `--live-github --gh-auth` route to merge
+[PR #70](https://github.com/UMEBOSHIISAN/mothership/pull/70) once into the
+dedicated `e2e/harness-bridge-live-20261025-base` branch, not main. The selected
+head was `39a4e0efd0a104b8c7958c8373937a4a0942684e`. Public GitHub data
+shows merge commit [`b6c350b`](https://github.com/UMEBOSHIISAN/mothership/commit/b6c350b2c6f9e45d25bc2e9af3231096a60d1378)
+with the expected base and head as parents.
+
+The current PR description still contains pre-execution HOLD wording despite
+the later run recorded below; the public PR supports the merge and parent
+relationship only. The decision, consume, Receipt and Verification claims
+below come from retained private records.
+
+The retained private run recorded one foreground human decision, one consume,
+one attempt start and finish, a `SUCCESS` Receipt, and an independent tokenless
+readback `CONFIRMED` with reason `merge_confirmed`. A separate process reread
+the saved bundle and sidecar; structural bindings matched. The offline reader
+still reports `source-unverified` and `external_effect_verified: false` because
+it does not itself observe GitHub. The public merge is a separate observation;
+the private records are not a public, independently reproducible lifecycle.
+
+The runtime was a local source candidate based on `4b2b7a2b07aab3ac38f6745153a33ee54e013697`
+with the GitHub CLI authentication change. It was run with existing isolated
+Core/companion packages; this particular combined candidate was not installed
+from three newly built wheels. The integrated main at
+`58612dacc2aaf232de290b22b0716ec9118a8b99` subsequently includes PRs
+#69, #71, #72 and #73, and its push CI completed 12/12 successfully. That CI
+does not replay the live canary or qualify a release, normal host, Harness CI,
+human usability, or medical use. Do not repeat the merge for reproduction.
+
+On 2026-10-30, the three packages from an archive of that exact integrated
+main SHA were built as wheels and installed into a fresh Python 3.12 virtual
+environment with `--no-index --no-deps`. `pip check` passed; the installed
+`mothership-evidence inspect-result --human` returned the expected exits for
+all six retained offline cases (0 for cases 01–05, 2 for case 06). The
+installed Harness handoff CLI exposed its explicit live and GitHub CLI auth
+options. This qualifies those offline distribution checks only; the integrated
+wheel installation did not repeat the live canary.
 
 ## What the default synthetic path means
 
-![Explicit local handoff and separate result return; synthetic path, not live acceptance](../assets/readme/en/ume-stack-responsibility.svg)
+![Explicit local handoff and separate result return; the default is synthetic and one isolated live route was exercised](../assets/readme/en/ume-stack-responsibility.svg)
 
-The diagram is an explanation of the local candidate. Its return path means the
-foreground result and retained evidence, not a successful live GitHub operation.
+The diagram explains the opt-in boundary and result return. The default remains
+synthetic; the bounded #70 live result above is separate evidence for one route.
 
 ```text
 Explicit request + offline interpretation
@@ -337,5 +377,6 @@ Harnessは依頼整理のままです。Mothership側の明示的な入口で、
 依頼文のhash一致は、文章と操作対象の意味が一致する証明ではありません。
 既定経路は合成入力・模擬通信のローカル確認用です。上記の固定commitを組み合わせます。
 実接続は明示的な別経路で、導入版の読取確認だけではその実行や承認を認定しません。
-実canary、公開mirrorへの反映、パッケージrelease、人の受入は別です。
+隔離した#70の実canaryは上記の1経路で確認しました。公開mirrorへの反映、
+パッケージrelease、通常設定、人の使いやすさの受入は別です。
 結果が不明なら、そのまま不明と表示して既存記録へ案内します。再実行で埋めません。

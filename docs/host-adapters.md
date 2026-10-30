@@ -13,26 +13,31 @@ route is documented separately below.
 
 ## Install the source candidate in one checkout
 
-For the new local, non-Lease Harness handoff, use the separate
-[thin handoff guide](thin-harness-handoff.md). The historical pins below do not
-include that uncommitted candidate; no published install pin is implied.
+For the explicit non-Lease Harness handoff, use the separate
+[thin handoff guide](thin-harness-handoff.md). The integrated source baseline
+below includes the live option and GitHub CLI authentication, but is not a
+published package or a qualification of normal host settings. Historical pins
+retain their original scope.
 
 ### Try the current candidate
 
-For the reader through PR #59, use the unreleased source baseline
-`fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646`. It includes the six retained inputs,
-legacy/v1 saved-result reading, and the optional expected-action digest check.
-It also includes readback/inspect-sidecar, explicit JavaScript callback modes,
-Python `SessionError.diagnostic`, and opt-in direct Node diagnostic forwarding.
-This is a fixed snapshot, not a promise to include later changes or a published
-release. Review the source and record the exact revision. Start in a new directory:
+For the integrated, unreleased source baseline after PRs #69, #71, #72 and #73,
+use `58612dacc2aaf232de290b22b0716ec9118a8b99`. It includes the six retained
+inputs, legacy/v1 saved-result reading, expected-action digest checks, explicit
+Harness handoff and optional GitHub CLI authentication. The push CI for this
+exact SHA passed 12/12 jobs. This is a fixed source snapshot, not a published
+release or a repeat of the isolated live canary. On 2026-10-30, an archive of
+this exact SHA built and installed all three wheels in a fresh Python 3.12
+virtual environment; `pip check` and the six retained offline reader cases
+passed. This does not qualify a normal host or live operation. Review the
+source and record the exact revision. Start in a new directory:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-candidate
 cd mothership-candidate
-git fetch origin fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646
+git fetch origin 58612dacc2aaf232de290b22b0716ec9118a8b99
 git rev-parse --verify FETCH_HEAD
-git checkout --detach fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646
+git checkout --detach 58612dacc2aaf232de290b22b0716ec9118a8b99
 git rev-parse --verify HEAD
 
 python3 -m venv .build-venv
@@ -56,6 +61,15 @@ later is required; all three wheels must come from this same checkout. Build-too
 installation may use the network; the local wheel install fetches no dependencies,
 and result inspection is offline. Use the explicit `.venv/bin/` paths to avoid a
 different installed reader. No Node or optional SDK extras are needed for reading.
+
+### Reproduce the PR #59 reader baseline
+
+The earlier fixed reader baseline remains
+`fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646`. To reproduce its reader,
+replace the SHA in both `git fetch` and `git checkout --detach` above with this
+value, then use the same three-wheel recipe. It includes v1 and expected-digest
+reading, but not the later explicit live Harness route, GitHub CLI authentication
+or `--explain-error`. Keep its result separate from the integrated-source check.
 
 ### Reproduce the PR #56 reader
 

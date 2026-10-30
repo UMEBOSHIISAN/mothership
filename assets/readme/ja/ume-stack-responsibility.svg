@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1120" role="img" aria-labelledby="title desc">
   <title id="title">人間とAIが仕事を分け合うための責務分担</title>
-  <desc id="desc">明示的なローカル候補。合成入力・模擬通信で、独自Leaseは使いません。 実行報告と独立観測を元の入口へ返し、保存して再読します。実canary・公開は未受入です。</desc>
+  <desc id="desc">明示起動の経路。既定は合成、#70の隔離実接続を1件確認。独自Leaseなし。 結果を元の入口へ返して保存・再読。通常設定・公開mirror・人の受入は未確認。</desc>
   <style>
     .title { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
     .label { font: 700 28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17332d; }
@@ -31,9 +31,9 @@
     <path d="M360 485 V625" stroke="#7356a8" stroke-width="5" stroke-dasharray="14 12"/>
     <path d="M350 610 L360 628 L370 610" fill="#7356a8"/>
     <rect x="60" y="510" width="600" height="105" rx="18" fill="#eee8fb" stroke="#7356a8" stroke-width="3" stroke-dasharray="12 10"/>
-    <text class="state" x="360" y="542" text-anchor="middle">明示handoff / ローカル候補</text>
+    <text class="state" x="360" y="542" text-anchor="middle">明示handoff / 限定実証</text>
     <text class="small" x="360" y="574" text-anchor="middle">依頼整理 → 実Git観測 → 保持Session</text>
-    <text class="small" x="360" y="602" text-anchor="middle">合成入力・模擬通信 / 独自Leaseなし</text>
+    <text class="small" x="360" y="602" text-anchor="middle">既定は合成 / #70は隔離実接続</text>
   </g>
 
   <rect x="45" y="630" width="630" height="225" rx="26" fill="#d9efe8" stroke="#176b58" stroke-width="5"/>
@@ -57,5 +57,5 @@
   <path data-role="result-return" d="M690 956 H706 V150 H665" fill="none" stroke="#237e91" stroke-width="3" stroke-dasharray="8 6"/>
   <path d="M660 150 L674 142 L674 158 Z" fill="#237e91"/>
 
-  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1038">実線 = 既存部品 / 破線 = 明示ローカル候補</tspan><tspan x="360" y="1068">結果を元の入口へ返す / 保存して再読</tspan><tspan x="360" y="1098">github.merge_pr / 合成経路 / 2026-10-23</tspan></text>
+  <text class="legend" x="360" text-anchor="middle"><tspan x="360" y="1038">実線 = 既存部品 / 破線 = 明示起動</tspan><tspan x="360" y="1068">結果を元の入口へ返す / 保存して再読</tspan><tspan x="360" y="1098">github.merge_pr / #70隔離実証 / 2026-10-29</tspan></text>
 </svg>

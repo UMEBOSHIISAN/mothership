@@ -1,6 +1,6 @@
 # Mothership
 
-> 未リリースのソース候補です。公開済みv0.4.2や実運用の証拠ではありません。
+> 未リリースのソース候補です。隔離した1件の実証はありますが、公開済みv0.4.2や一般運用の保証ではありません。
 
 [English](README.en.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -85,7 +85,7 @@ recovery: no re-execution; no reconsume
 | --- | --- | --- |
 | 参照consumerの `result.jsonl` | `inspect-result --human` | 実行報告・Receipt・独立観測・未提供の記録 |
 | export済みevidence bundle | `inspect --human` | 含まれるrequest・判断・consume・結果の対応 |
-| Harnessから始めるローカル候補 | [明示handoffの手順](docs/thin-harness-handoff.md) | 合成入力・模擬通信で、元の入口への結果返却と保存再読 |
+| Harnessから始める明示handoff | [明示handoffの手順](docs/thin-harness-handoff.md) | 既定の合成経路と、隔離した1件の実接続結果 |
 
 読むだけで実行権限は作られません。Harness候補はbundleを保持する経路で、`result.jsonl`とは別です。
 
@@ -95,12 +95,22 @@ Harnessの合成4ケース、保存証跡の別プロセス再読を確認しま
 合成入力・模擬通信と読取専用の実測であり、実canary・人の受入・公開mirrorの検証とは別です。
 [2026-10-24の旧pinによる確認](docs/thin-harness-handoff.md#installed-offline-check-2026-10-24)も再現用に保持しています。
 
+2026-10-29には、明示的なHarness→Mothership経路で[隔離PR #70](https://github.com/UMEBOSHIISAN/mothership/pull/70)を
+専用の非mainブランチへ1回マージしました。実行側のReceiptは`SUCCESS`、別のtokenless readbackは
+`CONFIRMED`で、保存物を別プロセスから再読しました。公開GitHubで確認できるのはPRのマージと
+merge commitの親関係です。承認・consume・Receipt・Verificationの記録は非公開で、公開物だけで
+再現・出所認証できるという主張ではありません。[実証の範囲](docs/thin-harness-handoff.md#bounded-live-canary-2026-10-29)を参照してください。
+PR本文には実行前の保留記述が残っています。後日の実行記録との時点差と、公開情報で確認できる範囲は上記の実証記録に明記しました。
+統合後の`58612da`から3つのwheelを隔離導入し、保存結果の既存6ケースをオフラインで確認しました。
+実証に用いたsource candidateと、後からmainへ取り込まれた版は区別します。通常設定、公開mirror、
+人の使いやすさ、Harness CI、医療用途の受入はこの1件では確認していません。
+
 ### 保存済みの結果を読む
 
 最初の読み取り経路は、呼出し元が保持・exportした既存の記録をターミナルで読む方法です。
 Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要です。
 [host adapter guideの現行候補setup](docs/host-adapters.md#try-the-current-candidate)で、
-`fd8d4f0`の完全SHAに固定し、同じcheckoutから作った3つのwheelを新しいvenvへ導入します。
+統合後の固定source SHAに合わせ、同じcheckoutから作った3つのwheelを新しいvenvへ導入します。
 v1と期待digest照合を含むreader用の手順です。過去再現用の旧pinは別に保持しています。
 
 コマンド: `mothership-evidence inspect --human < existing-bundle.json`
@@ -246,7 +256,8 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 既定は合成入力・模擬通信のローカル経路です。
 更新版ソースには[明示的なGitHub実接続](docs/thin-harness-handoff.md#explicit-live-github-entry)もあります。
 同じ認証での本人・repo権限確認、端末でのexact request確認、1回の実行と独立readbackを分けます。
-未リリースの追加で、旧固定pinには含まれません。独自Leaseは追加せず、実canaryや人間受入の完了を主張しません。
+未リリースの追加で、旧固定pinには含まれません。独自Leaseは追加していません。
+隔離した#70の実canaryは1経路だけの結果で、人間の使いやすさや通常設定の受入ではありません。
 現在の公開版同士に自動接続はありません。
 旧Lease依存の補助bridgeはlocal lease観測をCore contextへ渡すだけで、過去版の互換経路として残しています。
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。

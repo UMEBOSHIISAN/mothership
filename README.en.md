@@ -1,6 +1,6 @@
 # Mothership
 
-> This is an unreleased source candidate, not published v0.4.2 or live-operation proof.
+> This is an unreleased source candidate. One isolated live path was exercised; it is not published v0.4.2 or general operational assurance.
 
 [日本語](README.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -99,7 +99,7 @@ Choose the reader for the retained format. Keep missing records missing; no conv
 | --- | --- | --- |
 | Saved `result.jsonl` | `inspect-result --human` | Report, Receipt, observation and missing records |
 | Exported evidence bundle | `inspect --human` | Supplied request, decision, consume and result binding |
-| Local Harness candidate | [Handoff guide](docs/thin-harness-handoff.md) | Synthetic result return and reread |
+| Explicit Harness handoff | [Handoff guide](docs/thin-harness-handoff.md) | Default synthetic route and one isolated live result |
 
 Reading grants no execution authority. The Harness candidate retains bundles,
 which are different from the reference consumer's `result.jsonl`.
@@ -111,6 +111,22 @@ also read the larger retained worktree. See the [installed revisions and scope](
 These are synthetic offline and read-only measurements, separate from live canary,
 human acceptance and public-mirror qualification. The [2026-10-24 check and old pins](docs/thin-harness-handoff.md#installed-offline-check-2026-10-24)
 remain available for reproduction.
+
+On 2026-10-29, the explicit Harness→Mothership path merged
+[isolated PR #70](https://github.com/UMEBOSHIISAN/mothership/pull/70) once into a
+dedicated non-main branch. The executor Receipt was `SUCCESS`, separate tokenless
+readback was `CONFIRMED`, and retained evidence was reread in another process.
+Public GitHub evidence establishes the merge and its parent commits; the decision,
+consume, Receipt and Verification records are private and cannot be independently
+reproduced or source-authenticated from the public material alone. See the
+[bounded result and limits](docs/thin-harness-handoff.md#bounded-live-canary-2026-10-29).
+The PR description retains a pre-run HOLD snapshot; the handoff guide explains
+its timing and the narrower public corroboration. Three wheels from integrated
+main `58612da` were installed in isolation, and all six retained saved-result
+cases passed offline.
+The source candidate used for the canary is distinct from the code later merged
+into main. Normal host setup, public mirror, human usability acceptance, Harness
+CI and medical use were not qualified by this one result.
 
 ### Read an existing result
 
@@ -124,7 +140,7 @@ The optional three-package source-candidate setup is described in
 Reading retained results requires the Core, companion, and adapters from that
 same-checkout setup. It is opt-in and does not by itself qualify a live host or
 external effect.
-That recipe pins the complete SHA for `fd8d4f0` and installs three locally built
+That recipe pins the integrated source SHA and installs three locally built
 wheels into a fresh venv, including v1 and expected-digest reader support.
 Historical reproduction pins remain separate.
 
@@ -284,8 +300,9 @@ and offline reread. Its default uses synthetic interpretation and transports.
 The updated source also has an
 [explicit GitHub live entry](docs/thin-harness-handoff.md#explicit-live-github-entry),
 with same-credential account/permission observation, exact foreground review, one
-attempt and separate readback. This unreleased addition is absent from older pins;
-it adds no custom Lease and claims no live canary or human acceptance.
+attempt and separate readback. This unreleased addition is absent from older pins
+and adds no custom Lease. The isolated #70 canary covers one selected route; it
+does not establish human usability or normal-host acceptance.
 The supplemental bridge passes local lease observations only and remains
 a historical compatibility route; the current public releases have no
 automatic runtime bridge.
