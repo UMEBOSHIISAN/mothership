@@ -42,6 +42,13 @@ class _ExpectedActionError(EvidenceError):
         self.action_unavailable = action_unavailable
 
 
+class _ExpectedInputError(EvidenceError):
+    """Valid saved records do not match the separately retained input digest."""
+
+    def __init__(self):
+        super().__init__("invalid bounded evidence input")
+
+
 def _version(rows: list[dict[str, object]]) -> str:
     """Select one closed row format before any row-specific validation."""
 
@@ -219,12 +226,15 @@ def _verification(frozen, execution, row):
 
 
 def inspect_saved_result(
-    raw: bytes | str, *, expected_action_sha256: object = None
+    raw: bytes | str, *, expected_action_sha256: object = None,
+    expected_input_sha256: object = None
 ) -> dict[str, object]:
     """Validate all supplied saved events before returning a detached summary."""
     try:
         if expected_action_sha256 is not None:
             expected_action_sha256 = _require_digest(expected_action_sha256)
+        if expected_input_sha256 is not None:
+            expected_input_sha256 = _require_digest(expected_input_sha256)
         encoded, rows = _rows(raw)
         version = _version(rows)
         action = execution = verification = sidecar = None
@@ -261,6 +271,9 @@ def inspect_saved_result(
             action is None or checked_action_sha256 != expected_action_sha256
         ):
             raise _ExpectedActionError(action_unavailable=action is None)
+        input_sha256 = hashlib.sha256(encoded).hexdigest()
+        if expected_input_sha256 is not None and input_sha256 != expected_input_sha256:
+            raise _ExpectedInputError()
         receipt = None if verification is None else verification["receipt"]
         observed = None if verification is None else verification["verification"]
         binding = (
@@ -271,7 +284,7 @@ def inspect_saved_result(
             else "positional only; no action/run ID in execution row"
         )
         view = {
-            "format": "reference-result-jsonl", "input_sha256": hashlib.sha256(encoded).hexdigest(),
+            "format": "reference-result-jsonl", "input_sha256": input_sha256,
             "record_count": len(rows), "action": action,
             "execution_status": None if execution is None else execution["status"],
             "receipt_status": None if receipt is None else receipt["status"],
@@ -296,10 +309,14 @@ def inspect_saved_result(
 
 
 def summarize_saved_result(
-    raw: bytes | str, *, expected_action_sha256: object = None
+    raw: bytes | str, *, expected_action_sha256: object = None,
+    expected_input_sha256: object = None
 ) -> str:
     """Explain recorded layers and missing evidence, without observing an effect."""
-    view = inspect_saved_result(raw, expected_action_sha256=expected_action_sha256)
+    view = inspect_saved_result(
+        raw, expected_action_sha256=expected_action_sha256,
+        expected_input_sha256=expected_input_sha256,
+    )
     action = view["action"]
     target = "target: unavailable in supplied input"
     if action is not None:
