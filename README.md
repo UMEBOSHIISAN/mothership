@@ -503,6 +503,12 @@ Pillowは画像生成時だけ必要で、Mothershipの実行時依存関係に�
 オフラインのAuthority Core walkthroughを追加しました。
 runtimeのAuthority Core挙動、承認受理条件、対応操作profileはv0.4.1から変更していません。
 
+現行ソース候補の画像生成用pinはPillow 13.0.0です。この更新では既存のGIF・PNGを再生成せず、
+commit済みの画像bytesとそのchecksumを保持します。新pinで再生成した画像はbytesと画素が異なるため、
+既存画像を再生成するときは更新前のsource revision `57e967a`、Pillow 12.3.0、
+同等のbuild環境を使い、
+`SHA256SUMS`でbytesの一致を確認してください。
+
 **0.5.0.dev0 source candidateでの追加**
 
 `build_review_request()` と `validate_review_response()` を使う純粋なportable review seamを追加しました。
