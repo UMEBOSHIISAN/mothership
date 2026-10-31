@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -691,10 +692,11 @@ expect_rejected("os.fdopen", lambda: os.fdopen(write_fd, "wb"))
 os.close(write_fd)
 assert before_sentinels == {path: raw_bytes(path) for path in sentinel_paths}
 
-raise SystemExit(main(["inspect-result", "--human"]))
+raise SystemExit(main(["inspect-result", "--human", "--expect-input-sha256", sys.argv[3]]))
 """
         result = _run(
-            [binary, "-I", "-c", script, sentinel_paths["authority"], sentinel_paths["attempts"]],
+            [binary, "-I", "-c", script, sentinel_paths["authority"], sentinel_paths["attempts"],
+             hashlib.sha256(raw).hexdigest()],
             cwd=self.root,
             home=environment,
             timeout=60,

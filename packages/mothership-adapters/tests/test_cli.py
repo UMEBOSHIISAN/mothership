@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import copy
 import datetime
@@ -480,7 +481,8 @@ class SavedResultCLITests(EvidenceFixture):
              mock.patch("orchestration.lib.action_authority_ledger.consume_action", side_effect=AssertionError("consume forbidden")), \
              mock.patch("mothership_github.executor.execute_action_merge_pr", side_effect=AssertionError("execution forbidden")):
             code, text, error = self.run_saved(
-                raw, expected_action_sha256=self.request["action_sha256"]
+                raw, expected_action_sha256=self.request["action_sha256"],
+                extra_args=("--expect-input-sha256", hashlib.sha256(raw).hexdigest()),
             )
         self.assertEqual(0, code, error)
         self.assertEqual(before_raw, raw)
@@ -656,6 +658,90 @@ class SavedResultCLITests(EvidenceFixture):
             raw, expected_action_sha256=expected, output=BrokenWriter()
         )[0])
         self.assertEqual(first, self.run_saved(raw, expected_action_sha256=expected))
+
+    def test_expected_input_match_preserves_legacy_v1_prefixes_and_six_cases(self):
+        inputs = [self.encode_rows(rows[:n])
+                  for rows in (self.saved_rows(), self.v1_rows(self.saved_rows()))
+                  for n in range(4)]
+        inputs += [p.read_bytes() for p in sorted(
+            (pathlib.Path(__file__).resolve().parents[3] / "examples" / "saved-results").glob("case-*.jsonl"))]
+        for raw in inputs:
+            expected = hashlib.sha256(raw).hexdigest()
+            for human in (False, True):
+                with self.subTest(raw=raw[:20], human=human):
+                    self.assertEqual(self.run_saved(raw, human=human), self.run_saved(
+                        raw, human=human, extra_args=("--expect-input-sha256", expected)))
+            # Even a matching checksum must not accept the invalid sixth case.
+            if raw in inputs[:8]:
+                self.assertEqual(inspect_saved_result(raw), inspect_saved_result(
+                    raw, expected_input_sha256=expected))
+                self.assertEqual(summarize_saved_result(raw), summarize_saved_result(
+                    raw.decode(), expected_input_sha256=expected))
+
+    def test_expected_input_rejects_same_action_replacement_and_clean_truncation(self):
+        for rows in (self.saved_rows(), self.v1_rows(self.saved_rows())):
+            raw = self.encode_rows(rows)
+            expected = hashlib.sha256(raw).hexdigest()
+            alternate = self.encode_rows(rows).replace(b'": ', b'":  ')
+            self.assertEqual(inspect_saved_result(raw)["action"], inspect_saved_result(alternate)["action"])
+            for changed in (alternate, *[self.encode_rows(rows[:n]) for n in range(3)]):
+                for human in (False, True):
+                    self.assertEqual((2, "", "invalid bounded evidence input\n"), self.run_saved(
+                        changed, human=human, extra_args=("--expect-input-sha256", expected)))
+                    self.assert_saved_rejection(self.run_saved(changed, human=human,
+                        extra_args=("--expect-input-sha256", expected, "--explain-error")),
+                        "expected_input_mismatch", "separately retained")
+
+    def test_expected_input_does_not_bypass_full_validation_or_action_guard(self):
+        rows = self.v1_rows(self.saved_rows())
+        good = self.encode_rows(rows)
+        rows[1]["action_id"] = "PRIVATE_OTHER_ACTION"
+        for raw in (good[:-1], b"PRIVATE_NOT_JSON\n", self.encode_rows(rows)):
+            for expected in (hashlib.sha256(raw).hexdigest(), "0" * 64):
+                self.assert_saved_rejection(self.run_saved(raw, extra_args=(
+                    "--expect-input-sha256", expected, "--explain-error")),
+                    "invalid_saved_result", "original")
+        for raw, code in ((good, "expected_action_mismatch"), (b"", "expected_action_unavailable")):
+            for expected in (hashlib.sha256(raw).hexdigest(), "0" * 64):
+                self.assert_saved_rejection(self.run_saved(raw, expected_action_sha256="0" * 64,
+                    extra_args=("--expect-input-sha256", expected, "--explain-error")),
+                    code, "original")
+
+    def test_expected_input_api_rejects_non_digest_values(self):
+        raw = self.encode_rows(self.saved_rows())
+        for reader in (inspect_saved_result, summarize_saved_result):
+            self.assertEqual(reader(raw), reader(raw, expected_input_sha256=None))
+            for value in ("", "A" * 64, "g" * 64, "0" * 63, True, 0, b"0" * 64):
+                with self.subTest(reader=reader.__name__, value=value), self.assertRaises(EvidenceError):
+                    reader(raw, expected_input_sha256=value)
+
+    def test_expected_input_option_rejects_before_stdin_without_leaking(self):
+        for options in (("--expect-input-sha256",), ("--expect-input-sha256", "PRIVATE_BAD"),
+                        ("--expect-input-sha256", "0" * 64, "--expect-input-sha256", "0" * 64)):
+            for explain in (False, True):
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with mock.patch("mothership_adapters.cli._read_stdin_bytes", side_effect=AssertionError("read forbidden")) as read, mock.patch(
+                    "sys.stdout", stdout), mock.patch("sys.stderr", stderr):
+                    code = evidence_cli_main(["inspect-result", *options, *(["--explain-error"] if explain else [])])
+                read.assert_not_called()
+                self.assertEqual((2, ""), (code, stdout.getvalue()))
+                if explain:
+                    self.assert_saved_rejection((code, stdout.getvalue(), stderr.getvalue()), "invalid_expectation", "command")
+                else:
+                    self.assertEqual("invalid bounded evidence input\n", stderr.getvalue())
+
+    def test_expected_input_guard_remains_stateless_after_rejection_and_output_failure(self):
+        raw = self.encode_rows(self.saved_rows())
+        options = ("--expect-input-sha256", hashlib.sha256(raw).hexdigest(), "--explain-error")
+        first = self.run_saved(raw, extra_args=options)
+        self.assertEqual(0, first[0])
+        class ShortWriter(io.StringIO):
+            def write(self, text):
+                return super().write(text[:5])
+        self.assert_saved_rejection(self.run_saved(raw, extra_args=options, output=ShortWriter()),
+                                    "output_incomplete", "destination", partial_output=True)
+        self.assertEqual(2, self.run_saved(b"", extra_args=options)[0])
+        self.assertEqual(first, self.run_saved(raw, extra_args=options))
 
     def assert_saved_rejection(self, result, code, next_check, *, partial_output=False):
         status, output, error = result
