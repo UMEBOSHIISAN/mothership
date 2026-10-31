@@ -584,6 +584,13 @@ added as a Mothership runtime dependency. An offline Authority Core walkthrough
 was added to the source documentation. Runtime Authority Core behavior, approval-acceptance
 conditions, and the supported operation profile are unchanged from v0.4.1.
 
+The current source candidate pins Pillow 13.0.0 for future image generation.
+This update retains the committed GIF and PNG bytes and their checksums; it does
+not regenerate them. Regeneration with the new pin changes encoded bytes and
+decoded pixels. To rebuild the existing images, use the pre-update source
+revision `57e967a` with Pillow 12.3.0 and an equivalent build environment;
+check byte equality with `SHA256SUMS`.
+
 **Additions in the 0.5.0.dev0 source candidate**
 
 `build_review_request()` and `validate_review_response()` provide a pure portable

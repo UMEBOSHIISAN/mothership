@@ -80,3 +80,8 @@ python3 assets/readme/source/generate_mothership_flow.py --story saved-result --
 
 出力一覧は`asset-build.toml`の`outputs`と`reader_outputs`に分けています。
 再生成後は出力bytesを確認し、既存`SHA256SUMS`へ反映します。
+Pillow 13.0.0への依存更新では、既存のGIF・PNGは再生成していません。新pinの生成候補は
+既存画像とbytes・画素が異なるため、現在の画像を再生成するときは更新前のsource revision
+`57e967a`とPillow 12.3.0、同等のbuild環境を使用し、checksumで一致を確認します。
+新生成物を採用するときに限り、
+画像と対応するchecksumを同時に更新します。
