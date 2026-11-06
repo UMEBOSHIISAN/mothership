@@ -102,6 +102,8 @@ merge commitの親関係です。承認・consume・Receipt・Verificationの記
 再現・出所認証できるという主張ではありません。[実証の範囲](docs/thin-harness-handoff.md#bounded-live-canary-2026-10-29)を参照してください。
 PR本文には実行前の保留記述が残っています。後日の実行記録との時点差と、公開情報で確認できる範囲は上記の実証記録に明記しました。
 統合後の`58612da`から3つのwheelを隔離導入し、保存結果の既存6ケースをオフラインで確認しました。
+2026-11-06には現行候補`f37c24a`でも3つのwheelを隔離導入し、`pip check`、同じ6ケース、
+保存物hashの一致・不一致、理由付き拒否を確認しました。旧pinの検証結果とは区別します。
 実証に用いたsource candidateと、後からmainへ取り込まれた版は区別します。通常設定、公開mirror、
 人の使いやすさ、Harness CI、医療用途の受入はこの1件では確認していません。
 
@@ -139,14 +141,14 @@ requestや欠けたReceiptを後付けせず、入力内のpathも読み込み�
 [期待する操作との照合](docs/host-adapters.md#check-the-expected-operation)を参照してください。
 
 同じ操作の保存物同士を取り違えないためには、引き渡し時に別に保持した保存ファイル全体のSHA-256も照合できます。
-この差分を含むsourceでは `--expect-input-sha256 "$expected_input_sha256"` を上のコマンドへ追加します。
+現行候補の固定sourceでは `--expect-input-sha256 "$expected_input_sha256"` を上のコマンドへ追加します。
 改行・空白を含む元のbytesが異なる場合や、末尾の記録が欠けた場合は説明を出さず拒否します。
 受け取ったファイルから期待値を取り直して通すのではなく、渡す時点で保持した値を使います。
 一致は送信者認証・鮮度・完了の証明ではなく、既定出力とUNKNOWNの意味は変わりません。
-現行の固定導入pin `58612da`、旧pin、公開releaseには含まれません。この差分を含むcheckoutのrevisionを確認してください。
+現行候補の固定導入pin `f37c24a`には含まれます。旧baseline `58612da`、それ以前のpin、公開releaseには含まれません。
 [保存物そのものの照合と導入範囲](docs/host-adapters.md#check-the-exact-saved-input)を参照してください。
 
-拒否理由と次のread-only checkだけを確認したい場合は、同じ更新版source candidateで
+拒否理由と次のread-only checkだけを確認したい場合は、同じ現行候補の固定sourceで
 `--explain-error`を明示し、stderrをstdoutと分けて保存します。
 
 コマンド: `mothership-evidence inspect-result --human
@@ -159,7 +161,7 @@ stderrが書き込み可能な拒否時の`rejection.json`は、固定schema `mo
 `recovery: "no re-execution; no reconsume"`だけを示し、入力のidentity・digest・pathや生の例外を含みません。
 拒否は従来どおりexit `2`で受理済みの結果を出さず、標準出力の途中出力があれば採用せず破棄します。
 受理時のstdout/stderr、既定のJSON/`--human`表示、statusは変わりません。
-このオプションはこの更新済みの未リリースsource candidateの追加で、既存の`fd8d4f0`・`f9ef944`・`91f474e`のpinや公開releaseには含まれません。
+このオプションは現行候補`f37c24a`に含まれ、旧baseline `58612da`、それ以前のpin、公開releaseには含まれません。
 既存pinと6ケースguideの入力・手順はそのままです。
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
