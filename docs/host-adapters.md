@@ -21,23 +21,26 @@ retain their original scope.
 
 ### Try the current candidate
 
-For the integrated, unreleased source baseline after PRs #69, #71, #72 and #73,
-use `58612dacc2aaf232de290b22b0716ec9118a8b99`. It includes the six retained
-inputs, legacy/v1 saved-result reading, expected-action digest checks, explicit
-Harness handoff and optional GitHub CLI authentication. The push CI for this
-exact SHA passed 12/12 jobs. This is a fixed source snapshot, not a published
-release or a repeat of the isolated live canary. On 2026-10-30, an archive of
-this exact SHA built and installed all three wheels in a fresh Python 3.12
-virtual environment; `pip check` and the six retained offline reader cases
-passed. This does not qualify a normal host or live operation. Review the
-source and record the exact revision. Start in a new directory:
+For the unreleased source snapshot verified on 2026-11-06, use
+`f37c24a348d9102de88bfcb1ce72b83cf4c94f9c`. It includes the six retained
+inputs, legacy/v1 saved-result reading, expected-action and saved-input digest
+checks, bounded rejection reasons, explicit Harness handoff and optional GitHub
+CLI authentication. The push CI for this exact SHA passed 12/12 jobs. This is a
+fixed source snapshot, not a published release or a repeat of the isolated live
+canary. On 2026-11-06, this exact SHA built and installed all three wheels in a
+fresh Python 3.12 virtual environment; `pip check` and the six retained offline
+reader cases passed. A matching saved-input digest was accepted, while a
+mismatching digest and the rejected sixth case returned exit `2` with bounded
+reasons when `--explain-error` was selected. This does not qualify a normal host
+or live operation. Review the source and record the exact revision. Start in a
+new directory:
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git mothership-candidate
 cd mothership-candidate
-git fetch origin 58612dacc2aaf232de290b22b0716ec9118a8b99
+git fetch origin f37c24a348d9102de88bfcb1ce72b83cf4c94f9c
 git rev-parse --verify FETCH_HEAD
-git checkout --detach 58612dacc2aaf232de290b22b0716ec9118a8b99
+git checkout --detach f37c24a348d9102de88bfcb1ce72b83cf4c94f9c
 git rev-parse --verify HEAD
 
 python3 -m venv .build-venv
@@ -61,6 +64,16 @@ later is required; all three wheels must come from this same checkout. Build-too
 installation may use the network; the local wheel install fetches no dependencies,
 and result inspection is offline. Use the explicit `.venv/bin/` paths to avoid a
 different installed reader. No Node or optional SDK extras are needed for reading.
+
+### Reproduce the 2026-10-30 integrated baseline
+
+The earlier fixed source snapshot remains
+`58612dacc2aaf232de290b22b0716ec9118a8b99`. To reproduce it, replace the
+SHA in both `git fetch` and `git checkout --detach` above, then build and install
+all three wheels from that checkout. The 2026-10-30 isolated install passed
+`pip check` and the six retained cases. That snapshot includes the explicit
+Harness handoff, optional GitHub CLI authentication and `--explain-error`, but
+not `--expect-input-sha256`. Keep its evidence separate from the 2026-11-06 check.
 
 ### Reproduce the PR #59 reader baseline
 
@@ -127,7 +140,7 @@ development venv:
 python -m pip install -e 'packages/mothership-adapters[agents,langgraph,mcp]'
 ```
 
-These extras pin `openai-agents==0.23.1`, `langgraph==1.2.12`, and
+These extras pin `openai-agents==0.23.1`, `langgraph==1.2.14`, and
 `mcp==2.3.0`. Record the `FETCH_HEAD` and detached `HEAD` values alongside the
 test evidence; do not reconstruct a live session from an exported JSON request.
 
@@ -355,18 +368,18 @@ input is hashed as UTF-8 bytes. Invalid expectations or mismatches raise
 reconsume or repairs. Matching proves bytes against the supplied expectation,
 not source, freshness, process exit, causation or external truth.
 
-Availability: this flag/keyword requires a source revision containing this
-change. The fixed `58612dacc2aaf232de290b22b0716ec9118a8b99` setup above
-does **not** include it. Record the exact revision, then build all three wheels
-from that same checkout using the wheel commands above in fresh build/install
-directories. Check its installed `inspect-result --help` for this flag.
+Availability: the [current fixed source snapshot](#try-the-current-candidate)
+includes this flag/keyword; the 2026-10-30 `58612da` baseline and older pins do
+not. Record the exact revision, build all three wheels from that same checkout
+in fresh build/install directories, and check the installed
+`inspect-result --help` for this flag.
 The PR #59 setup pin remains a historical reproducible baseline
 for v1/action checking, and the PR #56/PR #45 pins and six-case exercise stay
 unchanged. No published release or human acceptance is claimed for this addition.
 
 ### Explain a rejected saved result
 
-The updated local source candidate adds the opt-in `--explain-error` flag to
+The current fixed source snapshot includes the opt-in `--explain-error` flag on
 `inspect-result`. Use it with either output mode and keep the fixed diagnostic
 on stderr separate from the saved-result projection on stdout:
 
@@ -418,14 +431,12 @@ failure is `output_incomplete`. Wrong expectations are checked only after full
 input validation, so a malformed record is never reclassified as a validated
 mismatch.
 
-The flag is present only in this updated, unreleased local source candidate. It
-is not part of the existing full pins
+The flag is present in the [current fixed source snapshot](#try-the-current-candidate)
+and the 2026-10-30 `58612da` baseline. It is absent from the historical pins
 `fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646`,
-`f9ef944bf54cb413824066f968010c0aaedc47ff` or
-`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`, nor of a published release. Do
-not describe an uncommitted working-tree change as part of an older installed
-pin. Keep those historical/current pins and the original six-case recipient
-guides unchanged.
+`f9ef944bf54cb413824066f968010c0aaedc47ff` and
+`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`, and published releases.
+Keep the historical pins and the original six-case recipient guides unchanged.
 
 Human usability acceptance remains separate: give success, unconfirmed and
 stopped saved cases to a person unfamiliar with the implementation, and record

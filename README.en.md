@@ -124,6 +124,10 @@ The PR description retains a pre-run HOLD snapshot; the handoff guide explains
 its timing and the narrower public corroboration. Three wheels from integrated
 main `58612da` were installed in isolation, and all six retained saved-result
 cases passed offline.
+On 2026-11-06, three wheels from the current candidate `f37c24a` were also
+installed in isolation. `pip check`, the same six cases, matching and mismatching
+saved-input hashes, and bounded rejection reasons were checked. This is separate
+from the earlier pin's evidence.
 The source candidate used for the canary is distinct from the code later merged
 into main. Normal host setup, public mirror, human usability acceptance, Harness
 CI and medical use were not qualified by this one result.
@@ -166,18 +170,18 @@ Use the previously retained value, not one extracted from the file being checked
 A match preserves UNKNOWN and does not authenticate origin, freshness or records
 substituted within the same action. See [expected-operation checking](docs/host-adapters.md#check-the-expected-operation).
 To distinguish different saved files for the same action, also retain the whole
-file's SHA-256 separately at handoff. A source checkout containing this change accepts
+file's SHA-256 separately at handoff. The fixed current source candidate accepts
 `--expect-input-sha256 "$expected_input_sha256"` alongside the action guard.
 Changed raw bytes (including whitespace/newlines) or missing trailing records
 reject without a summary. Use the digest retained at handoff, not one recomputed
 from the received file to make it pass. Matching does not authenticate the
 sender, freshness or completion; default output and UNKNOWN remain unchanged.
-The fixed setup pin `58612da`, older pins and published releases do not include
-this addition. Check the revision of the source checkout containing this change.
+The fixed current setup pin `f37c24a` includes this addition; the earlier
+`58612da` baseline, older pins and published releases do not.
 See [exact saved-input checking](docs/host-adapters.md#check-the-exact-saved-input).
 
 To see only a fixed rejection reason and a next read-only check, opt in to
-`--explain-error` from the same updated source candidate and keep stderr
+`--explain-error` from the same fixed current source candidate and keep stderr
 separate from stdout:
 
 Command: `mothership-evidence inspect-result --human
@@ -192,9 +196,9 @@ When stderr is writable on rejection, `rejection.json` contains one JSON line wi
 identity, digests, paths or raw exception text. Rejection remains exit `2`
 without an accepted result; discard any partial stdout. Accepted stdout/stderr,
 default JSON/`--human` output and status meanings are unchanged. This option
-is added only by this updated unreleased source candidate; it is not in the
-existing `fd8d4f0`, `f9ef944` or `91f474e` pins or published releases. Keep
-those pins and the six-case guide's inputs and procedure unchanged.
+is included in the current `f37c24a` source candidate and the earlier `58612da`
+baseline; it is not in older pins or published releases. Keep the historical pins
+and the six-case guide's inputs and procedure unchanged.
 The [six retained recipient cases and guide](examples/saved-results/README.en.md)
 let a recipient read synthetic saved inputs with a pinned reader, without running
 the producer. Check the separate answer key only after recording responses.
