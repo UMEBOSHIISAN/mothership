@@ -72,9 +72,8 @@ The earlier fixed source snapshot remains
 SHA in both `git fetch` and `git checkout --detach` above, then build and install
 all three wheels from that checkout. The 2026-10-30 isolated install passed
 `pip check` and the six retained cases. That snapshot includes the explicit
-Harness handoff and optional GitHub CLI authentication, but neither
-`--expect-input-sha256` nor `--explain-error`. Keep its evidence separate from
-the 2026-11-06 check.
+Harness handoff, optional GitHub CLI authentication and `--explain-error`, but
+not `--expect-input-sha256`. Keep its evidence separate from the 2026-11-06 check.
 
 ### Reproduce the PR #59 reader baseline
 
@@ -432,8 +431,8 @@ failure is `output_incomplete`. Wrong expectations are checked only after full
 input validation, so a malformed record is never reclassified as a validated
 mismatch.
 
-The flag is present in the [current fixed source snapshot](#try-the-current-candidate).
-It is absent from the 2026-10-30 `58612da` baseline, the historical pins
+The flag is present in the [current fixed source snapshot](#try-the-current-candidate)
+and the 2026-10-30 `58612da` baseline. It is absent from the historical pins
 `fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646`,
 `f9ef944bf54cb413824066f968010c0aaedc47ff` and
 `91f474ed9ba96f5c00925d44f3dd84739d41cdc7`, and published releases.

@@ -161,7 +161,7 @@ stderrが書き込み可能な拒否時の`rejection.json`は、固定schema `mo
 `recovery: "no re-execution; no reconsume"`だけを示し、入力のidentity・digest・pathや生の例外を含みません。
 拒否は従来どおりexit `2`で受理済みの結果を出さず、標準出力の途中出力があれば採用せず破棄します。
 受理時のstdout/stderr、既定のJSON/`--human`表示、statusは変わりません。
-このオプションは現行候補`f37c24a`に含まれ、旧baseline `58612da`、それ以前のpin、公開releaseには含まれません。
+このオプションは現行候補`f37c24a`と旧baseline `58612da`に含まれ、それ以前のpinや公開releaseには含まれません。
 既存pinと6ケースguideの入力・手順はそのままです。
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。

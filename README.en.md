@@ -196,8 +196,8 @@ When stderr is writable on rejection, `rejection.json` contains one JSON line wi
 identity, digests, paths or raw exception text. Rejection remains exit `2`
 without an accepted result; discard any partial stdout. Accepted stdout/stderr,
 default JSON/`--human` output and status meanings are unchanged. This option
-is included in the current `f37c24a` source candidate; it is not in the earlier
-`58612da` baseline, older pins or published releases. Keep the historical pins
+is included in the current `f37c24a` source candidate and the earlier `58612da`
+baseline; it is not in older pins or published releases. Keep the historical pins
 and the six-case guide's inputs and procedure unchanged.
 The [six retained recipient cases and guide](examples/saved-results/README.en.md)
 let a recipient read synthetic saved inputs with a pinned reader, without running
