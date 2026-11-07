@@ -1,8 +1,10 @@
 # Mothership
 
-> This is an unreleased source candidate. One isolated live path was exercised; it is not published v0.4.2 or general operational assurance.
+> The development line is Core `0.5.0.dev0`, companion `0.3.0.dev0`, and
+> adapters `0.1.0.dev0`. Check Releases for published artifacts. One isolated
+> live path is not general operational assurance.
 
-[日本語](README.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
+[日本語](README.md) · [Releases](https://github.com/UMEBOSHIISAN/mothership/releases) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
 <p align="center">
@@ -124,7 +126,7 @@ The PR description retains a pre-run HOLD snapshot; the handoff guide explains
 its timing and the narrower public corroboration. Three wheels from integrated
 main `58612da` were installed in isolation, and all six retained saved-result
 cases passed offline.
-On 2026-11-06, three wheels from the current candidate `f37c24a` were also
+On 2026-11-06, three wheels from the then-fixed candidate `f37c24a` were also
 installed in isolation. `pip check`, the same six cases, matching and mismatching
 saved-input hashes, and bounded rejection reasons were checked. This is separate
 from the earlier pin's evidence.
@@ -140,12 +142,15 @@ already exist; this command does not create or fetch a bundle. An absent file
 does not prove that an operation or verification never occurred.
 
 The optional three-package source-candidate setup is described in
-[Try the current candidate](docs/host-adapters.md#try-the-current-candidate).
+[Reproduce the fixed source candidate](docs/host-adapters.md#try-the-current-candidate).
 Reading retained results requires the Core, companion, and adapters from that
 same-checkout setup. It is opt-in and does not by itself qualify a live host or
 external effect.
 That recipe pins the integrated source SHA and installs three locally built
 wheels into a fresh venv, including v1 and expected-digest reader support.
+If using published artifacts, follow the
+[three-wheel installation](docs/installation.md#wheel-install) and verify the
+release tag and asset hashes first.
 Historical reproduction pins remain separate.
 
 The reference consumer's `--save-result` writes a different format: `result.jsonl`.
@@ -170,18 +175,18 @@ Use the previously retained value, not one extracted from the file being checked
 A match preserves UNKNOWN and does not authenticate origin, freshness or records
 substituted within the same action. See [expected-operation checking](docs/host-adapters.md#check-the-expected-operation).
 To distinguish different saved files for the same action, also retain the whole
-file's SHA-256 separately at handoff. The fixed current source candidate accepts
-`--expect-input-sha256 "$expected_input_sha256"` alongside the action guard.
+file's SHA-256 separately at handoff. The fixed 2026-11-06 source candidate
+accepts `--expect-input-sha256 "$expected_input_sha256"` alongside the action guard.
 Changed raw bytes (including whitespace/newlines) or missing trailing records
 reject without a summary. Use the digest retained at handoff, not one recomputed
 from the received file to make it pass. Matching does not authenticate the
 sender, freshness or completion; default output and UNKNOWN remain unchanged.
-The fixed current setup pin `f37c24a` includes this addition; the earlier
-`58612da` baseline, older pins and published releases do not.
+The fixed 2026-11-06 setup pin `f37c24a` includes this addition; the earlier
+`58612da` baseline, older pins and published v0.4.2/v0.4.3.dev0 do not.
 See [exact saved-input checking](docs/host-adapters.md#check-the-exact-saved-input).
 
 To see only a fixed rejection reason and a next read-only check, opt in to
-`--explain-error` from the same fixed current source candidate and keep stderr
+`--explain-error` from the same fixed source candidate and keep stderr
 separate from stdout:
 
 Command: `mothership-evidence inspect-result --human
@@ -196,14 +201,14 @@ When stderr is writable on rejection, `rejection.json` contains one JSON line wi
 identity, digests, paths or raw exception text. Rejection remains exit `2`
 without an accepted result; discard any partial stdout. Accepted stdout/stderr,
 default JSON/`--human` output and status meanings are unchanged. This option
-is included in the current `f37c24a` source candidate and the earlier `58612da`
-baseline; it is not in older pins or published releases. Keep the historical pins
+is included in the fixed `f37c24a` source candidate and the earlier `58612da`
+baseline; it is not in older pins or published v0.4.2/v0.4.3.dev0. Keep the historical pins
 and the six-case guide's inputs and procedure unchanged.
 The [six retained recipient cases and guide](examples/saved-results/README.en.md)
 let a recipient read synthetic saved inputs with a pinned reader, without running
 the producer. Check the separate answer key only after recording responses.
 See the [same-checkout offline save-to-reader example](docs/host-adapters.md#saved-reference-results).
-V1 and the expected-digest option are not in published distributions or the
+V1 and the expected-digest option are not in published v0.4.2/v0.4.3.dev0 or the
 six-case recipient guide's historical runtime pin.
 
 The updated Python owner and Node client from the same checkout can explicitly
@@ -315,7 +320,7 @@ and offline reread. Its default uses synthetic interpretation and transports.
 The updated source also has an
 [explicit GitHub live entry](docs/thin-harness-handoff.md#explicit-live-github-entry),
 with same-credential account/permission observation, exact foreground review, one
-attempt and separate readback. This unreleased addition is absent from older pins
+attempt and separate readback. This post-v0.4.2 addition is absent from older pins
 and adds no custom Lease. The isolated #70 canary covers one selected route; it
 does not establish human usability or normal-host acceptance.
 The supplemental bridge passes local lease observations only and remains
@@ -353,7 +358,7 @@ responsibilities distinct.
   </picture>
 </p>
 
-This explanatory diagram shows the unreleased source candidate, not execution evidence.
+This explanatory diagram shows the development line, not execution evidence.
 It separates execution-route review requests, Core, the optional companion, Receipt
 adapter and independent verification from read-only inspection of saved results.
 Not all eight host/evidence routes review or execute an operation.
@@ -377,17 +382,19 @@ preserved. Missing finishes are rejected. Receipt SUCCESS is not independent ver
 
 ## Documentation
 
-### Current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
+### Development line: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
 
-This source candidate contains unreleased Core `0.5.0.dev0`, which
+This source candidate contains Core `0.5.0.dev0`, which
 preserves the v0.4.2 boundary and adds the portable review API, plus an optional
 GitHub companion `0.3.0.dev0` that requires that exact Core version, plus the
-optional same-checkout adapters package `0.1.0.dev0`. This pairing is a source
-candidate; it does not update the published v0.4.2 wheel or release tag.
+optional same-checkout adapters package `0.1.0.dev0`. Check the tag and assets
+in [GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases) to
+match a published distribution to its source. The v0.4.2 wheel and tag are
+unchanged.
 
 The current main clone includes the portable review API merged through PR #43
-and the readback / inspect-sidecar functionality merged through PR #45; main
-remains unreleased source. To pin the Core and companion runtime and run the
+and the readback / inspect-sidecar functionality merged through PR #45. Check
+main HEAD and any published tag SHA separately. To pin the Core and companion runtime and run the
 existing offline example, use the
 [portable review installation](docs/action-review.md#install-the-source-candidate).
 To reproduce the reviewed readback and inspect-sidecar runtime, use the
@@ -553,7 +560,7 @@ compatibility and history. They are not the current Authority Core path.
 
 Published v0.4.2 was a docs-only release and remains the historical public
 baseline. This source candidate retains its Authority Core contracts,
-updates the documentation and imagery, and adds the unreleased portable review API.
+updates the documentation and imagery, and adds the post-v0.4.2 portable review API.
 
 Published v0.4.2, the historical public baseline, freezes one supported external operation, checks a
 caller-attested human decision, records it in a local ledger, and permits one

@@ -21,7 +21,11 @@ retain their original scope.
 
 ### Try the current candidate
 
-For the unreleased source snapshot verified on 2026-11-06, use
+This retained heading preserves existing guide links. Its pin is the fixed
+2026-11-06 source snapshot, not a claim about today's main or any later GitHub
+Release. For a published three-wheel prerelease, use the
+[release-asset installation](installation.md#wheel-install) after checking its
+tag and hashes. To reproduce the 2026-11-06 snapshot, use
 `f37c24a348d9102de88bfcb1ce72b83cf4c94f9c`. It includes the six retained
 inputs, legacy/v1 saved-result reading, expected-action and saved-input digest
 checks, bounded rejection reasons, explicit Harness handoff and optional GitHub
@@ -375,7 +379,8 @@ in fresh build/install directories, and check the installed
 `inspect-result --help` for this flag.
 The PR #59 setup pin remains a historical reproducible baseline
 for v1/action checking, and the PR #56/PR #45 pins and six-case exercise stay
-unchanged. No published release or human acceptance is claimed for this addition.
+unchanged. This source-snapshot test does not establish human acceptance; check
+GitHub Releases separately for any published artifact containing this addition.
 
 ### Explain a rejected saved result
 
@@ -435,7 +440,8 @@ The flag is present in the [current fixed source snapshot](#try-the-current-cand
 and the 2026-10-30 `58612da` baseline. It is absent from the historical pins
 `fd8d4f0cbb80d3f87cd97ffd50f5e83468c94646`,
 `f9ef944bf54cb413824066f968010c0aaedc47ff` and
-`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`, and published releases.
+`91f474ed9ba96f5c00925d44f3dd84739d41cdc7`, and published
+v0.4.2/v0.4.3.dev0 distributions.
 Keep the historical pins and the original six-case recipient guides unchanged.
 
 Human usability acceptance remains separate: give success, unconfirmed and
@@ -705,7 +711,7 @@ exercise this connection with synthetic callbacks and temporary fixture records.
 
 ### Node Session diagnostics
 
-This unreleased addition requires the updated `owner-client.mjs` and Python
+This route requires the updated `owner-client.mjs` and Python
 owner from this same checkout. The PR #55 baseline pinned above includes this
 opt-in. Historical PR #49 and PR #45 revisions predate it; installing their
 pinned packages does not add later client/owner files.
