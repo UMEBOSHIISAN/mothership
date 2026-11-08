@@ -172,7 +172,7 @@ class AgentsAdapterTests(AgentsFixture):
             self.assertEqual([], self.transport.puts)
 
             result = await adapter.resume(self.response())
-            self.assertEqual(1, len(self.transport.gets))
+            self.assertEqual(2, len(self.transport.gets))
             self.assertEqual(1, len(self.transport.puts))
             self.assertEqual(self.session.request, result["request"])
             self.assertEqual("approve", result["response"]["decision"])
