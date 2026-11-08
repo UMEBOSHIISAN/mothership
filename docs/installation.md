@@ -13,10 +13,10 @@ the v0.4.2 documentation and offline walkthrough added after v0.4.1; the
 walkthrough is a source-checkout example and is not part of either the v0.4.1
 or v0.4.2 release tag or wheel.
 
-The published v0.4.2 release remains the historical baseline. The remote default
+The published v0.4.2 release remains the historical stable baseline. The remote default
 branch includes the portable review API merged through PR #43 and readback /
-inspect-sidecar functionality merged through PR #45. This main checkout remains
-unreleased source. To read saved results, including v1 and optional expected-action
+inspect-sidecar functionality merged through PR #45. A main checkout and a
+published release tag are separate revisions; compare their SHAs. To read saved results, including v1 and optional expected-action
 digest checking, use the [current three-wheel reader setup](host-adapters.md#try-the-current-candidate).
 It builds Core, companion and adapters from one fixed checkout and installs them
 into a fresh venv. The historical PR #56 and PR #45 reproduction recipes remain
@@ -56,6 +56,30 @@ Mothership has not been claimed as available on a package index.
 The walkthrough was added to source after v0.4.1 and is absent from both the
 v0.4.1 and v0.4.2 release tags and wheels. It is not an installed CLI command.
 Use `mothership verify` for the wheel-only path.
+
+For the saved-result reader, install **three matching wheels** into a fresh
+environment. Use this recipe only after the intended version is actually listed
+in [GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases) and
+its source tag and asset hashes have been checked. The Core-only example above
+does not provide `mothership-evidence`:
+
+```sh
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --no-index --no-deps \
+  mothership_control_plane-0.5.0.dev0-py3-none-any.whl \
+  mothership_github-0.3.0.dev0-py3-none-any.whl \
+  mothership_adapters-0.1.0.dev0-py3-none-any.whl
+.venv/bin/python -m pip check
+.venv/bin/mothership verify
+.venv/bin/mothership-evidence inspect-result --help
+```
+
+Verify each downloaded wheel against the release's separately retained
+`SHA256SUMS` before installation. These wheels provide the Python modules and
+entry points; Node host wrappers and the Dots skill are source-tree files, not
+wheel contents. Optional SDK extras require their own dependency installation.
+The [fixed source setup](host-adapters.md#try-the-current-candidate) remains
+available for reproducing a prior candidate without a published release.
 
 ## Editable development install
 

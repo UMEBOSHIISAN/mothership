@@ -2,6 +2,20 @@
 
 ## 0.5.0.dev0 — portable action review candidate
 
+- Add the offline `inspect-result` reader for saved reference results. It keeps
+  legacy and v1 records distinct, checks optional separately retained action
+  and input digests, and gives bounded rejection reasons and next read-only
+  checks without inventing missing approval or consume evidence.
+- Add an explicit Harness handoff through the retained Session, with a
+  synthetic default and opt-in GitHub CLI authentication for one bounded live
+  route. The 2026-10-29 isolated PR #70 canary is one observed route, not
+  general host acceptance or a medical qualification.
+- Expose finite Session failure diagnostics in Python and an opt-in Node owner
+  path. Preserve UNKNOWN, no automatic retry, and no authority from evidence
+  inspection. Keep optional host and Node wrapper tests in the CI matrix.
+- Fail closed before filesystem access when required no-follow flags are
+  unavailable. Keep the six synthetic recipient cases and three-wheel
+  distribution tests as regression evidence.
 - Add pure `build_review_request()` and `validate_review_response()` APIs and
   closed JSON schemas. Bind review responses to the live frozen action, its
   expiry, request ID and host-supplied session/actor/generation/scope context.
@@ -22,7 +36,8 @@
   transport. Preserve no retry, terminal UNKNOWN and separate Verification;
   no full gateway, Dots runtime, credential or live-effect qualification follows.
   Context checks are best-effort observations, not atomic revocation fences or
-  durable cross-process resume. No new operation profile or release is included.
+  durable cross-process resume. No new operation profile is included; tagged
+  GitHub Releases, not this changelog entry, determine publication status.
 
 ## 0.4.3.dev0 — local Option A candidate
 

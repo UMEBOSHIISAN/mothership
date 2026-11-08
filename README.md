@@ -1,8 +1,9 @@
 # Mothership
 
-> 未リリースのソース候補です。隔離した1件の実証はありますが、公開済みv0.4.2や一般運用の保証ではありません。
+> 開発ラインはCore `0.5.0.dev0`、companion `0.3.0.dev0`、adapters `0.1.0.dev0`です。
+> 配布状況はReleasesで確認してください。隔離した1件の実証は一般運用の保証ではありません。
 
-[English](README.en.md) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
+[English](README.en.md) · [Releases](https://github.com/UMEBOSHIISAN/mothership/releases) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
 <p align="center">
@@ -102,7 +103,7 @@ merge commitの親関係です。承認・consume・Receipt・Verificationの記
 再現・出所認証できるという主張ではありません。[実証の範囲](docs/thin-harness-handoff.md#bounded-live-canary-2026-10-29)を参照してください。
 PR本文には実行前の保留記述が残っています。後日の実行記録との時点差と、公開情報で確認できる範囲は上記の実証記録に明記しました。
 統合後の`58612da`から3つのwheelを隔離導入し、保存結果の既存6ケースをオフラインで確認しました。
-2026-11-06には現行候補`f37c24a`でも3つのwheelを隔離導入し、`pip check`、同じ6ケース、
+2026-11-06には当時の固定候補`f37c24a`でも3つのwheelを隔離導入し、`pip check`、同じ6ケース、
 保存物hashの一致・不一致、理由付き拒否を確認しました。旧pinの検証結果とは区別します。
 実証に用いたsource candidateと、後からmainへ取り込まれた版は区別します。通常設定、公開mirror、
 人の使いやすさ、Harness CI、医療用途の受入はこの1件では確認していません。
@@ -111,8 +112,9 @@ PR本文には実行前の保留記述が残っています。後日の実行記
 
 最初の読み取り経路は、呼出し元が保持・exportした既存の記録をターミナルで読む方法です。
 Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要です。
-[host adapter guideの現行候補setup](docs/host-adapters.md#try-the-current-candidate)で、
-統合後の固定source SHAに合わせ、同じcheckoutから作った3つのwheelを新しいvenvへ導入します。
+[host adapter guideの固定source setup](docs/host-adapters.md#try-the-current-candidate)で、
+記録されたsource SHAに合わせ、同じcheckoutから作った3つのwheelを新しいvenvへ導入します。
+公開された配布物を使う場合は[3-wheelの導入手順](docs/installation.md#wheel-install)とrelease assetのhashを確認します。
 v1と期待digest照合を含むreader用の手順です。過去再現用の旧pinは別に保持しています。
 
 コマンド: `mothership-evidence inspect --human < existing-bundle.json`
@@ -141,14 +143,14 @@ requestや欠けたReceiptを後付けせず、入力内のpathも読み込み�
 [期待する操作との照合](docs/host-adapters.md#check-the-expected-operation)を参照してください。
 
 同じ操作の保存物同士を取り違えないためには、引き渡し時に別に保持した保存ファイル全体のSHA-256も照合できます。
-現行候補の固定sourceでは `--expect-input-sha256 "$expected_input_sha256"` を上のコマンドへ追加します。
+2026-11-06以後の固定sourceでは `--expect-input-sha256 "$expected_input_sha256"` を上のコマンドへ追加します。
 改行・空白を含む元のbytesが異なる場合や、末尾の記録が欠けた場合は説明を出さず拒否します。
 受け取ったファイルから期待値を取り直して通すのではなく、渡す時点で保持した値を使います。
 一致は送信者認証・鮮度・完了の証明ではなく、既定出力とUNKNOWNの意味は変わりません。
-現行候補の固定導入pin `f37c24a`には含まれます。旧baseline `58612da`、それ以前のpin、公開releaseには含まれません。
+2026-11-06の固定導入pin `f37c24a`には含まれます。旧baseline `58612da`、それ以前のpin、公開済みv0.4.2／v0.4.3.dev0には含まれません。
 [保存物そのものの照合と導入範囲](docs/host-adapters.md#check-the-exact-saved-input)を参照してください。
 
-拒否理由と次のread-only checkだけを確認したい場合は、同じ現行候補の固定sourceで
+拒否理由と次のread-only checkだけを確認したい場合は、同じ固定sourceで
 `--explain-error`を明示し、stderrをstdoutと分けて保存します。
 
 コマンド: `mothership-evidence inspect-result --human
@@ -161,12 +163,12 @@ stderrが書き込み可能な拒否時の`rejection.json`は、固定schema `mo
 `recovery: "no re-execution; no reconsume"`だけを示し、入力のidentity・digest・pathや生の例外を含みません。
 拒否は従来どおりexit `2`で受理済みの結果を出さず、標準出力の途中出力があれば採用せず破棄します。
 受理時のstdout/stderr、既定のJSON/`--human`表示、statusは変わりません。
-このオプションは現行候補`f37c24a`と旧baseline `58612da`に含まれ、それ以前のpinや公開releaseには含まれません。
+このオプションは2026-11-06の固定pin `f37c24a`と旧baseline `58612da`に含まれ、それ以前のpinや公開済みv0.4.2／v0.4.3.dev0には含まれません。
 既存pinと6ケースguideの入力・手順はそのままです。
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
 [同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。
-v1と期待digest照合は公開済み配布物や、6ケース受入ガイドの旧pinには含まれません。
+v1と期待digest照合は公開済みv0.4.2／v0.4.3.dev0や、6ケース受入ガイドの旧pinには含まれません。
 
 更新した同一checkoutのPython ownerとNode clientでは、`sessionDiagnostics: true`を
 明示すると、停止段階・不明点・次の確認先をNode側でも読めます。
@@ -266,7 +268,7 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 既定は合成入力・模擬通信のローカル経路です。
 更新版ソースには[明示的なGitHub実接続](docs/thin-harness-handoff.md#explicit-live-github-entry)もあります。
 同じ認証での本人・repo権限確認、端末でのexact request確認、1回の実行と独立readbackを分けます。
-未リリースの追加で、旧固定pinには含まれません。独自Leaseは追加していません。
+v0.4.2以後の追加で、旧固定pinには含まれません。独自Leaseは追加していません。
 隔離した#70の実canaryは1経路だけの結果で、人間の使いやすさや通常設定の受入ではありません。
 現在の公開版同士に自動接続はありません。
 旧Lease依存の補助bridgeはlocal lease観測をCore contextへ渡すだけで、過去版の互換経路として残しています。
@@ -300,7 +302,7 @@ Mothershipは、AIを止めることではなく、人間が具体的な仕事�
   </picture>
 </p>
 
-これは未リリースのソース候補の仕組みの図解です。実行系のreview request、Core、任意companion、
+これは開発ラインの仕組みの図解です。実行系のreview request、Core、任意companion、
 Receipt adapter、別経路の独立確認と、保存結果の読取専用経路を区別しています。
 8つのhost/evidence routeすべてが実行・承認を行うわけではありません。
 local checksの説明であり、GIFそのものは実行証拠ではありません。
@@ -333,13 +335,14 @@ finish欠落は拒否します。ReceiptのSUCCESSだけでは独立確認にな
 - [ledger tests](tests/test_action_authority_ledger.py) — 再利用と台帳履歴のテスト
 - [external-action tests](tests/test_external_action_contracts.py) — 外部操作の記録形式のテスト
 
-### current source candidate: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
+### 開発ライン: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
 
 このソース候補には、v0.4.2の境界を保持してportable review APIを加えた
-未リリースのCore `0.5.0.dev0`、それに厳密に依存する任意導入のGitHub companion
+Core `0.5.0.dev0`、それに厳密に依存する任意導入のGitHub companion
 `0.3.0.dev0`、および同じcheckoutで利用する任意導入のadapters
-`0.1.0.dev0`が含まれます。この組み合わせは候補の対応関係であり、公開済みv0.4.2の
-wheelやrelease tagを更新したものではありません。
+`0.1.0.dev0`が含まれます。公開配布物とソースの対応は、
+[GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases)のtagとassetで確認してください。
+v0.4.2のwheelやtagは変更されません。
 
 Coreは `github.merge_pr` のexact parameterを検証して `FrozenAction`へ固定し、
 caller-attestedな判断を照合して、信頼されたlive ledgerで一度だけconsumeします。
@@ -394,7 +397,7 @@ adaptersの `mothership-evidence readback` は、この保存済み入口を明�
 Python 3.12以上と、このリポジトリのソースcheckoutが必要です。
 まず[clone手順](docs/installation.md#clone-first-install)で取得し、リポジトリのルートで実行してください。
 公開済みv0.4.2は歴史的な公開ベースラインです。現在のmain cloneには、PR #43のportable review APIと
-PR #45のreadback / inspect-sidecar機能が含まれます。mainも未リリースのソースです。
+PR #45のreadback / inspect-sidecar機能が含まれます。mainのHEADと公開tagのSHAは別々に確認してください。
 Coreとcompanionだけのruntimeを固定して既存のオフライン例を実行する場合は、
 [portable review APIの導入手順](docs/action-review.md#install-the-source-candidate)を
 参照してください。readback / inspect-sidecarのレビュー済みruntimeを固定して試す場合は、
@@ -473,7 +476,7 @@ Frontdoor、WGM、Router、Secretaryのprotocolはlegacy 0.2互換と履歴の�
 ## HISTORICAL BASELINE: v0.4.2
 
 公開済みv0.4.2（歴史的な公開ベースライン）はdocs-onlyのリリースでした。このソース候補は
-そのAuthority Coreのruntime契約を保持し、文書・画像と未リリース候補のportable review APIを追加しています。
+そのAuthority Coreのruntime契約を保持し、文書・画像とv0.4.2以後のportable review APIを追加しています。
 
 公開済みv0.4.2（歴史的な公開ベースライン）が提供したのは、ひとつの対応済み外部操作を固定し、
 caller-attestedな人間の判断と照合し、ローカル台帳へ記録して一度だけ取り出す境界です。
