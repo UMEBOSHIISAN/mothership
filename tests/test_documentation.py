@@ -251,7 +251,8 @@ class ReadmeContractTests(unittest.TestCase):
             "任せる操作を事前に固定し",
             "オープンソースの中核実装",
             "github.merge_pr",
-            "base commit SHAは結び付けられません",
+            "GitHubのPUTにはbase SHAの原子的な条件がない",
+            "旧5値の保存記録は読取対象のまま",
             "`expires_at`はaction digestに含まれません",
             "毎回新しい `action_id` を発行",
             "表示した発行情報と期限へ応答を対応付け",
@@ -304,8 +305,8 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, english)
         self.assertNotIn("権限の受け渡しを具体的に閉じた", self.text)
         self.assertNotIn("closed end to end", english)
-        self.assertIn("5つの実行パラメータ", self.text)
-        self.assertIn("five execution parameters", english)
+        self.assertIn("6つの実行パラメータ", self.text)
+        self.assertIn("six execution parameters", english)
         self.assertIn("issue a fresh `action_id` for every freeze", english)
         self.assertIn("correlate", english)
         self.assertIn("the response to the exact live issuance and displayed expiry", english)

@@ -1,7 +1,8 @@
 # Portable action review API
 
-**Status: source-candidate API for Core `0.5.0.dev0`.** The optional GitHub
-companion is paired at `0.3.0.dev0`; optional adapters are `0.1.0.dev0`.
+**Status: source-candidate API for Core `0.5.0.dev1`.** The optional GitHub
+companion is paired at `0.3.0.dev1`; optional adapters are `0.1.0.dev1`.
+The pinned dev0 installation below remains a historical reproduction recipe.
 Their bounded local qualification is recorded in the [integration catalog](integrations.md),
 with setup in the [host adapter guide](host-adapters.md). Published `v0.4.2`
 remains the historical public release.

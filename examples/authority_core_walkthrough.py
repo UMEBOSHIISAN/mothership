@@ -22,6 +22,7 @@ PARAMETERS = {
     "pull_request": 5,
     "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
     "expected_base": "main",
+    "expected_base_sha": "b" * 40,
     "merge_method": "merge",
 }
 

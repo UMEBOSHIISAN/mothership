@@ -11,6 +11,11 @@ examples below use synthetic transport and caller-provided context; they do not
 use API keys, account login, or a live GitHub endpoint. The explicit `readback`
 route is documented separately below.
 
+The unpublished dev1 source candidate requires `expected_base_sha` for every
+new live merge action and retains historical five-field records for reading.
+The fixed install recipe below deliberately reproduces the older dev0 source
+snapshot; it does not install this working candidate.
+
 ## Install the source candidate in one checkout
 
 For the explicit non-Lease Harness handoff, use the separate
@@ -471,6 +476,7 @@ parameters = {
     "pull_request": 7,
     "expected_head_sha": "a" * 40,
     "expected_base": "main",
+    "expected_base_sha": "d" * 40,
     "merge_method": "merge",
 }
 context = {
@@ -486,7 +492,7 @@ class SyntheticTransport:
         assert (repository, pull_request) == ("example/repo", 7)
         return {
             "http_status": 200, "state": "open", "merged": False,
-            "head_sha": "a" * 40, "base_ref": "main",
+            "head_sha": "a" * 40, "base_ref": "main", "base_sha": "d" * 40,
         }
 
     def merge_pull_request(self, **received):

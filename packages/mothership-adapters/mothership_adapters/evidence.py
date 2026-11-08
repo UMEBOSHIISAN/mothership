@@ -125,6 +125,10 @@ _READBACK_GUIDANCE = {
         "compare retained commit parents with expected head; "
         "no automatic retry/re-execution/reconsume"
     ),
+    "base_sha_mismatch": (
+        "compare frozen expected_base_sha with retained merge commit first parent, if provided; "
+        "no automatic retry/re-execution/reconsume"
+    ),
     "invalid_pr_observation": (
         "check PR visibility and retained observation completeness; cause remains unknown; "
         "no request auto-run; no automatic retry/re-execution/reconsume"
@@ -358,7 +362,16 @@ def _validate_decision(
     request: dict[str, object],
     response: dict[str, object] | None,
 ) -> dict[str, object]:
-    decision = _copy_checked_contract("authority-action-approval", value)
+    if type(value) is not dict:
+        raise _invalid()
+    version = value.get("schema_version")
+    if version == "authority-action-approval.v0":
+        kind = "authority-action-approval"
+    elif version == "authority-action-approval.v1":
+        kind = "authority-action-approval.v1"
+    else:
+        raise _invalid()
+    decision = _copy_checked_contract(kind, value)
     action = request["action"]
     if (
         decision["action"] != action
@@ -372,6 +385,12 @@ def _validate_decision(
     if recorded >= expires:
         raise _invalid()
     if response is not None and decision["decision"] != response["decision"]:
+        raise _invalid()
+    if kind == "authority-action-approval.v1" and (
+        decision["request_id"] != request["request_id"]
+        or decision["request_sha256"] != request["request_sha256"]
+        or decision["host_context"] != request["host_context"]
+    ):
         raise _invalid()
     return decision
 

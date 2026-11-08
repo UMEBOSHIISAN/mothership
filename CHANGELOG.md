@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0.dev1 — reviewed decision binding and merge preconditions (unpublished)
+
+- Record retained review request ID, canonical digest and closed host context in
+  a new v1 approval ledger row. Revalidate the binding on ledger and evidence
+  reads; keep direct Core v0 decisions and historical rows readable. This does
+  not authenticate a human identity.
+- Require an expected base commit SHA for new `github.merge_pr` actions. Check
+  it at initial and pre-dispatch GET and compare it with the observed merge
+  commit's first parent during independent read-back. Historical five-field
+  actions remain read-only. GitHub PUT has no atomic base-SHA condition.
+- Recheck live expiry after durable attempt start and immediately before the
+  one PUT. A late or drifted attempt remains unresolved without a PUT, retry,
+  reconsume, or authority renewal. The check does not prove GitHub received the
+  request before expiry.
+- Pair Core `0.5.0.dev1`, companion `0.3.0.dev1`, and adapters `0.1.0.dev1`
+  from one checkout. The published `v0.5.0.dev0` assets are unchanged.
+
 ## 0.5.0.dev0 — portable action review candidate
 
 - Add the offline `inspect-result` reader for saved reference results. It keeps

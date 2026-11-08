@@ -23,6 +23,7 @@ const PARAMETERS = {
   pull_request: 7,
   expected_head_sha: "a".repeat(40),
   expected_base: "main",
+  expected_base_sha: "c".repeat(40),
   merge_method: "merge",
 };
 const CONTEXT = {
@@ -60,6 +61,7 @@ function makeClient(temp, options = {}) {
         merged: false,
         head_sha: PARAMETERS.expected_head_sha,
         base_ref: PARAMETERS.expected_base,
+        base_sha: PARAMETERS.expected_base_sha,
       })),
     [aliases === "snake" ? "merge_pull_request" : "mergePullRequest"]:
       mergePullRequest ?? (async (_parameters) => ({
@@ -95,6 +97,7 @@ function getResult() {
     merged: false,
     head_sha: PARAMETERS.expected_head_sha,
     base_ref: PARAMETERS.expected_base,
+    base_sha: PARAMETERS.expected_base_sha,
   };
 }
 
@@ -318,6 +321,49 @@ test("real child diagnostic preserves missing finish after one synthetic merge",
   }
 });
 
+test("real child diagnostic preserves a failed second GET when finish cannot be saved", async () => {
+  const temp = await mkdtemp(resolve(tmpdir(), "mothership-diagnostic-second-get-"));
+  const attempts = resolve(temp, "attempts.jsonl");
+  let gets = 0;
+  let puts = 0;
+  let startedBytes;
+  const client = makeClient(temp, {
+    sessionDiagnostics: true,
+    getPullRequest: async () => {
+      gets++;
+      if (gets === 2) {
+        startedBytes = await readFile(attempts, "utf8");
+        await chmod(attempts, 0o400);
+        throw new Error("secret-second-get");
+      }
+      return getResult();
+    },
+    mergePullRequest: async () => { puts++; return mergeResult(); },
+  });
+  try {
+    await assert.rejects(() => approveAndExecute(client), (error) => {
+      assert.deepEqual(error.diagnostic, {
+        code: "pre_dispatch_transport_failed", phase: "pre_dispatch_transport",
+        authority_use: "unknown", external_effect: "unknown",
+        next_check: "authority_and_attempt_records", retry_allowed: false,
+      });
+      assert.doesNotMatch(JSON.stringify(error), /secret-second-get/);
+      return true;
+    });
+    assert.equal(gets, 2);
+    assert.equal(puts, 0);
+    assert.equal(await readFile(attempts, "utf8"), startedBytes);
+    assert.equal(startedBytes.trim().split("\n").length, 1);
+    await assert.rejects(() => client.execute(PARAMETERS));
+    assert.equal(gets, 2);
+    assert.equal(puts, 0);
+  } finally {
+    await client.close();
+    await chmod(attempts, 0o600).catch(() => {});
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 const BAD_DIAGNOSTICS = [
   { ...PREFLIGHT_DIAGNOSTIC, token: "secret" },
   { ...PREFLIGHT_DIAGNOSTIC, phase: "success" },
@@ -386,7 +432,7 @@ test("terminal diagnostic example explains three stopped calls without live effe
   for (const [mode, phase, gets, merges] of [
     ["review", "review_validation", 0, 0],
     ["preflight", "preflight_transport", 1, 0],
-    ["finish", "mutation_returned", 1, 1],
+    ["finish", "mutation_returned", 2, 1],
   ]) {
     const { stdout, stderr } = await execFileAsync(process.execPath,
       [resolve(ROOT, "examples/owner_diagnostic_terminal.mjs"), mode],
@@ -487,6 +533,9 @@ test("diagnostic parser accepts the finite Session phase tuples", async () => {
     ["companion_execution", "unknown", "authority_and_attempt_records"],
     ["preflight_transport", "unknown", "authority_and_attempt_records"],
     ["preflight_returned", "unknown", "authority_and_attempt_records"],
+    ["pre_dispatch_guard", "unknown", "authority_and_attempt_records"],
+    ["pre_dispatch_transport", "unknown", "authority_and_attempt_records"],
+    ["pre_dispatch_returned", "unknown", "authority_and_attempt_records"],
     ["mutation_guard", "unknown", "authority_and_attempt_records"],
     ["mutation_transport", "unknown", "authority_and_attempt_records"],
     ["mutation_returned", "unknown", "authority_and_attempt_records"],
@@ -529,7 +578,10 @@ for (const [shape, modeOptions] of [
     try {
       const result = await approveAndExecute(client);
       assert.equal(result.receipt.status, "SUCCESS");
-      assert.deepEqual(getCalls, [[PARAMETERS.repository, PARAMETERS.pull_request]]);
+      assert.deepEqual(getCalls, [
+        [PARAMETERS.repository, PARAMETERS.pull_request],
+        [PARAMETERS.repository, PARAMETERS.pull_request],
+      ]);
       assert.deepEqual(mergeCalls, [[
         PARAMETERS.repository,
         PARAMETERS.pull_request,
@@ -556,7 +608,10 @@ test("undefined callback modes default to positional for the real child", async 
   try {
     const result = await approveAndExecute(client);
     assert.equal(result.receipt.status, "SUCCESS");
-    assert.deepEqual(getCalls, [[PARAMETERS.repository, PARAMETERS.pull_request]]);
+    assert.deepEqual(getCalls, [
+      [PARAMETERS.repository, PARAMETERS.pull_request],
+      [PARAMETERS.repository, PARAMETERS.pull_request],
+    ]);
     assert.deepEqual(mergeCalls, [[
       PARAMETERS.repository,
       PARAMETERS.pull_request,
@@ -582,10 +637,11 @@ test("explicit object modes pass one detached payload to high-arity callbacks", 
   try {
     const result = await approveAndExecute(client);
     assert.equal(result.receipt.status, "SUCCESS");
-    assert.deepEqual(getCalls, [[{
+    const expectedGet = [{
       repository: PARAMETERS.repository,
       pull_request: PARAMETERS.pull_request,
-    }]]);
+    }];
+    assert.deepEqual(getCalls, [expectedGet, expectedGet]);
     assert.deepEqual(mergeCalls, [[{
       repository: PARAMETERS.repository,
       pull_request: PARAMETERS.pull_request,
@@ -619,9 +675,10 @@ test("independent captured modes survive later transport mode mutation", async (
       transport.mergePullRequestMode = null;
       const result = await approveAndExecute(client);
       assert.equal(result.receipt.status, "SUCCESS");
-      assert.deepEqual(getCalls, [current.getMode === "object"
+      const expectedGet = current.getMode === "object"
         ? [{ repository: PARAMETERS.repository, pull_request: PARAMETERS.pull_request }]
-        : [PARAMETERS.repository, PARAMETERS.pull_request]]);
+        : [PARAMETERS.repository, PARAMETERS.pull_request];
+      assert.deepEqual(getCalls, [expectedGet, expectedGet]);
       assert.deepEqual(mergeCalls, [current.mergeMode === "object"
         ? [{
             repository: PARAMETERS.repository,
@@ -659,10 +716,11 @@ for (const constructor of ["object", "positional"]) {
       try {
         const result = await approveAndExecute(client);
         assert.equal(result.receipt.status, "SUCCESS");
-        assert.deepEqual(getCalls, [[{
+        const expectedGet = [{
           repository: PARAMETERS.repository,
           pull_request: PARAMETERS.pull_request,
-        }]]);
+        }];
+        assert.deepEqual(getCalls, [expectedGet, expectedGet]);
         assert.deepEqual(mergeCalls, [[
           PARAMETERS.repository,
           PARAMETERS.pull_request,
@@ -729,7 +787,7 @@ test("argument-ignoring wrappers continue to work with positional defaults", asy
   try {
     const result = await approveAndExecute(client);
     assert.equal(result.receipt.status, "SUCCESS");
-    assert.equal(getCalls.length, 1);
+    assert.equal(getCalls.length, 2);
     assert.equal(mergeCalls.length, 1);
   } finally {
     await client.close();
@@ -759,6 +817,24 @@ for (const constructor of ["object", "positional"]) {
     }
   }
 }
+
+test("owner refuses a missing or malformed base SHA before preparing authority", async () => {
+  for (const [invalid, code] of [
+    [Object.fromEntries(Object.entries(PARAMETERS).filter(([key]) => key !== "expected_base_sha")), "protocol"],
+    [{ ...PARAMETERS, expected_base_sha: "C".repeat(40) }, "parameters"],
+  ]) {
+    const temp = await mkdtemp(resolve(tmpdir(), "mothership-owner-base-sha-"));
+    const client = makeClient(temp);
+    try {
+      await assert.rejects(() => client.prepare(invalid, EXECUTOR_REF),
+        (error) => error instanceof OwnerClientError && error.code === code);
+      assert.deepEqual(await readdir(temp), []);
+    } finally {
+      await client.close();
+      await rm(temp, { recursive: true, force: true });
+    }
+  }
+});
 
 test("one real child carries prepare/review/execute and exposes measured cleanup", async () => {
   const temp = await mkdtemp(resolve(tmpdir(), "mothership-owner-node-"));
@@ -870,6 +946,7 @@ test("asynchronous stdin EPIPE rejects execution and leaves no live child", asyn
         merged: false,
         head_sha: PARAMETERS.expected_head_sha,
         base_ref: PARAMETERS.expected_base,
+        base_sha: PARAMETERS.expected_base_sha,
       };
     },
     mergePullRequest: async () => {
@@ -947,6 +1024,7 @@ test("GET callback parameters are bound to the retained action before host dispa
         merged: false,
         head_sha: PARAMETERS.expected_head_sha,
         base_ref: PARAMETERS.expected_base,
+        base_sha: PARAMETERS.expected_base_sha,
       };
     },
   });

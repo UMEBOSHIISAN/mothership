@@ -217,8 +217,9 @@ Use Harness's standard installer with a **new dedicated prefix**. Do not run
 `setup`, connect hooks, replace a daily installation or edit the public mirror.
 
 Inputs are explicit: a prepared clean synthetic worktree, an operation JSON with
-exactly `repository`, `pull_request`, `expected_head_sha`, `expected_base` and
-`merge_method`, and complete host context. The context example below is synthetic;
+exactly `repository`, `pull_request`, `expected_head_sha`, `expected_base`,
+`expected_base_sha` and `merge_method`, and complete host context. The base SHA
+must be observed from the target PR before approval. The context example below is synthetic;
 it does not authenticate a person or grant permission. The run directory must not
 exist and must be outside the observed worktree.
 

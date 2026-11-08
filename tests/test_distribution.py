@@ -129,6 +129,7 @@ parameters = {
     "pull_request": 5,
     "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
     "expected_base": "main",
+    "expected_base_sha": "b" * 40,
     "merge_method": "merge",
 }
 frozen = freeze_action("act-pkg-001", "github.merge_pr", parameters)
@@ -146,7 +147,7 @@ print("AUTHORITY_FACADE_OK")
             metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
             metadata = archive.read(metadata_name).decode("utf-8")
         self.assertIn("Name: mothership-control-plane\n", metadata)
-        self.assertIn("Version: 0.5.0.dev0\n", metadata)
+        self.assertIn("Version: 0.5.0.dev1\n", metadata)
         self.assertIn("Requires-Python: >=3.12\n", metadata)
         self.assertIn("License-Expression: MIT\n", metadata)
         runtime_requirements = [

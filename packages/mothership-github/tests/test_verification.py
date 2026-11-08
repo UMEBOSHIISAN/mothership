@@ -78,6 +78,7 @@ def _action(action_id: str = "act-readback"):
                 "pull_request": 7,
                 "expected_head_sha": _HEAD,
                 "expected_base": "main",
+                "expected_base_sha": _BASE,
                 "merge_method": "merge",
             },
         )
@@ -508,6 +509,51 @@ class VerificationProducerTests(unittest.TestCase):
             [request.full_url for request, _ in opener.requests],
         )
         self.assertFalse(any(request.has_header("Authorization") for request, _ in opener.requests))
+
+    def test_first_parent_mismatch_is_not_confirmed_after_success_receipt(self):
+        verify_merge_pr = self.import_api()
+        action = _action("act-retargeted-base")
+        receipt = _receipt(action)
+        changed_commit = _commit_payload(parents=[{"sha": "d" * 40}, {"sha": _HEAD}])
+        opener = ReadBackOpener([_pr_payload(), changed_commit])
+        with mock.patch(
+            "mothership_github.verification._utc_now",
+            return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+        ):
+            result = verify_merge_pr(action, receipt, opener=opener)
+        self.assertEqual("SUCCESS", receipt["status"])
+        self.assertEqual("MISMATCH", result["verification"]["status"])
+        self.assertEqual("base_sha_mismatch", result["evidence"]["reason"])
+        self.assertEqual(2, len(opener.requests))
+
+    def test_historical_five_field_record_remains_readable(self):
+        verify_recorded_merge_pr = self.import_recorded_api()
+        recorded_action = {
+            "action_id": "act-historical-five",
+            "operation": "github.merge_pr",
+            "execution_parameters": {
+                "repository": "owner/repo", "pull_request": 7,
+                "expected_head_sha": _HEAD, "expected_base": "main",
+                "merge_method": "merge",
+            },
+            "display": {
+                "target": "PR #7 -> main",
+                "scope": f"repository=owner/repo; expected_head_sha={_HEAD}; expected_base=main; merge_method=merge",
+                "excluded_operations": ["squash", "rebase", "force_push", "branch_delete"],
+                "consequence_if_approved": "PR #7 changes will be integrated into main.",
+            },
+        }
+        receipt = _receipt(_action("act-unrelated-fixture-source"))
+        receipt["action_id"] = recorded_action["action_id"]
+        receipt["action_sha256"] = canonical_json_sha256(recorded_action)
+        opener = ReadBackOpener([_pr_payload(), _commit_payload()])
+        with mock.patch(
+            "mothership_github.verification._utc_now",
+            return_value=datetime.datetime(2026, 9, 27, 0, 0, 10, tzinfo=datetime.UTC),
+        ):
+            result = verify_recorded_merge_pr(recorded_action, receipt, opener=opener)
+        self.assertEqual("CONFIRMED", result["verification"]["status"])
+        self.assertEqual("merge_confirmed", result["evidence"]["reason"])
 
     def test_long_action_id_does_not_change_evidence_reference_or_fail_schema(self):
         verify_merge_pr = self.import_api()

@@ -24,7 +24,8 @@ class _SyntheticTransport:
         if (repository, pull_request) != (self.parameters["repository"], self.parameters["pull_request"]):
             raise ValueError("synthetic target differs")
         return dict(http_status=200, state="open", merged=False,
-                    head_sha=self.parameters["expected_head_sha"], base_ref=self.parameters["expected_base"])
+                    head_sha=self.parameters["expected_head_sha"], base_ref=self.parameters["expected_base"],
+                    base_sha=self.parameters["expected_base_sha"])
 
     def merge_pull_request(self, **parameters):
         expected = {k: self.parameters[k] for k in (

@@ -32,6 +32,7 @@ PARAMETERS = {
     "pull_request": 5,
     "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
     "expected_base": "main",
+    "expected_base_sha": "b" * 40,
     "merge_method": "merge",
 }
 EXECUTOR_REF = {"ref_id": "executor:synthetic", "sha256": "b" * 64}
@@ -203,6 +204,32 @@ class EvidenceFixture(unittest.TestCase):
 
 
 class EvidenceTests(EvidenceFixture):
+    def test_reviewed_decision_bundle_preserves_request_binding(self) -> None:
+        reviewed = copy.deepcopy(self.decision)
+        reviewed.update(
+            schema_version="authority-action-approval.v1",
+            request_id=self.request["request_id"],
+            request_sha256=self.request["request_sha256"],
+            host_context=copy.deepcopy(self.request["host_context"]),
+        )
+        try:
+            bundle = self.full(decision=reviewed)
+        except EvidenceError:
+            self.fail("valid reviewed decision was rejected")
+        self.assertEqual(["verification"], inspect_evidence(bundle)["missing"])
+        self.assertEqual(reviewed, bundle["decision"])
+
+    def test_reviewed_decision_rejects_substituted_request_context(self) -> None:
+        reviewed = copy.deepcopy(self.decision)
+        reviewed.update(
+            schema_version="authority-action-approval.v1",
+            request_id=self.request["request_id"],
+            request_sha256=self.request["request_sha256"],
+            host_context={**self.request["host_context"], "session_id": "other"},
+        )
+        with self.assertRaises(EvidenceError):
+            self.full(decision=reviewed)
+
     def test_export_and_inspection_preserve_nested_inputs_and_fixture_files(self) -> None:
         bundle, sidecar = self._readback_artifacts()
         inputs = {
@@ -533,6 +560,7 @@ class EvidenceTests(EvidenceFixture):
             ("receipt_not_finished", "receipt finished_at"),
             ("head_or_base_mismatch", "expected_head_sha/expected_base"),
             ("merge_topology_mismatch", "commit parents"),
+            ("base_sha_mismatch", "expected_base_sha"),
             ("invalid_pr_observation", "PR visibility"),
             ("invalid_commit_observation", "merge_commit_sha"),
             ("unmerged_pr", "state/merged/merged_at"),
