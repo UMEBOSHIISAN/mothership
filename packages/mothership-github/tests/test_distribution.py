@@ -174,7 +174,7 @@ class BuiltCompanionDistributionTests(unittest.TestCase):
         ]
         self.assertEqual([], core_requirements)
         self.assertEqual(
-            ["Requires-Dist: mothership-control-plane==0.5.0.dev0"],
+            ["Requires-Dist: mothership-control-plane==0.5.0.dev1"],
             companion_requirements,
         )
         for module in (
@@ -366,8 +366,8 @@ else:
         ]
         self.assertEqual(
             [
-                "Requires-Dist: mothership-control-plane==0.5.0.dev0",
-                "Requires-Dist: mothership-github==0.3.0.dev0",
+                "Requires-Dist: mothership-control-plane==0.5.0.dev1",
+                "Requires-Dist: mothership-github==0.3.0.dev1",
             ],
             adapter_requirements,
         )

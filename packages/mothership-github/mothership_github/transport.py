@@ -422,6 +422,8 @@ class GitHubRestTransport:
                 or not isinstance(base, Mapping)
                 or type(head.get("sha")) is not str
                 or type(base.get("ref")) is not str
+                or type(base.get("sha")) is not str
+                or _SHA_PATTERN.fullmatch(base["sha"]) is None
             ):
                 raise ActionPreflightError(
                     reason_code="response_invalid", http_status=status
@@ -432,6 +434,7 @@ class GitHubRestTransport:
                 "merged": merged,
                 "head_sha": head["sha"],
                 "base_ref": base["ref"],
+                "base_sha": base["sha"],
             }
         except ActionPreflightError:
             raise

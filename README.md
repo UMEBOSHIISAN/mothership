@@ -1,7 +1,7 @@
 # Mothership
 
-> 開発ラインはCore `0.5.0.dev0`、companion `0.3.0.dev0`、adapters `0.1.0.dev0`です。
-> 配布状況はReleasesで確認してください。隔離した1件の実証は一般運用の保証ではありません。
+> このソース候補はCore `0.5.0.dev1`、companion `0.3.0.dev1`、adapters `0.1.0.dev1`です。
+> 公開済みの`v0.5.0.dev0`とは別の未公開候補です。隔離した1件の実証は一般運用の保証ではありません。
 
 [English](README.en.md) · [Releases](https://github.com/UMEBOSHIISAN/mothership/releases) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -219,10 +219,10 @@ AIチャットアプリや完成済みの業務システムではありません
 | 項目 | source candidateで実装していること | 実装・認証していないこと |
 | --- | --- | --- |
 | identity | caller-attested decisionを保持 | 人間の本人確認は行いません |
-| decision event | 同じactionへ複数のdecision eventを記録できる | 一つのterminal decision、supersede、revoke |
+| decision event | 同じactionへ複数のdecision eventを記録できる | 人間の本人認証、supersede、revoke |
 | consume | 同じaction IDは同じ台帳履歴内で一度だけconsumeできる | コピー・復元した台帳をまたぐglobal replay防止 |
-| action scope | `github.merge_pr`の5つのexact parameterを固定 | base commit SHAのbind、任意operation |
-| expiry | CoreのTTLを検査し、review requestでは期限もdigestへbind | action digestへの期限bind、host側の失効fence |
+| action scope | 新規`github.merge_pr`でbase commit SHAを含む6値を固定 | GitHub PUTでのbase SHA原子照合、任意operation |
+| expiry | CoreのTTLとcompanionのPUT直前の期限を検査 | GitHub受信時刻の原子保証、host側の失効fence |
 | portable review | action・expiry・host contextをrequest/responseへcanonicalにbind | 実際のeffect境界、lease/revocation、永続resume |
 | execution | 別executor向けdata、companionのattempt/Receipt adapter | Core内のexecutor、credential、retry、daemon、callback |
 | verification | Receipt/Verificationのshapeとbinding、read-back producer | verifier、人間identity、外部真実、read-only認証 |
@@ -231,11 +231,13 @@ AIチャットアプリや完成済みの業務システムではありません
 
 本実装は、本番運用または規制対象の高リスク用途への適合を認証するものではありません。
 一回限りの再利用拒否は、ひとつの信頼されたローカル台帳履歴に限られます。
+reviewed Sessionのv1台帳には、元requestのID・digest・host contextを記録して再読時に照合します。
+直接Coreのv0判断記録と旧記録は読めますが、どちらも人間本人の認証にはなりません。
 
 ## 現在の参照profile
 
 最初のcurrent reference profileは `github.merge_pr` です。
-これはMothershipの用途全体ではなく、5つの実行パラメータの固定、判断との照合、
+これはMothershipの用途全体ではなく、6つの実行パラメータの固定、判断との照合、
 台帳記録、一回限りのconsume境界を具体化した最初の実装例です。
 
 現在固定する値:
@@ -244,9 +246,13 @@ AIチャットアプリや完成済みの業務システムではありません
 - pull request number
 - expected head SHA
 - expected base branch name
+- expected base commit SHA
 - merge method
 
-base commit SHAは結び付けられません。`expires_at`はaction digestに含まれませんが、portable review requestの
+新規実行では最初とPUT直前のGETでbase SHAを照合し、独立readbackではmerge commitの第1親とも照合します。
+GitHubのPUTにはbase SHAの原子的な条件がないため、その間の競合は排除できません。
+旧5値の保存記録は読取対象のままで、新しい実行権限としては使えません。
+`expires_at`はaction digestに含まれませんが、portable review requestの
 digestには期限とhost contextが含まれます。request digestは署名ではなく相関値です。
 統合側は毎回新しい `action_id` を発行し、表示した発行情報と期限へ応答を対応付け、
 遅延または再利用された応答を拒否してください。
@@ -306,6 +312,7 @@ Mothershipは、AIを止めることではなく、人間が具体的な仕事�
 Receipt adapter、別経路の独立確認と、保存結果の読取専用経路を区別しています。
 8つのhost/evidence routeすべてが実行・承認を行うわけではありません。
 local checksの説明であり、GIFそのものは実行証拠ではありません。
+図中のversion表記は公開済みdev0の制作時点です。dev1で追加した台帳v1・base SHA照合・実行直前の期限検査は上記の本文を参照してください。
 動きを抑える設定または600px以下の画面では、同じ意味の縦型静止ポスターを表示します。
 
 対応済みの実行パラメータを固定してから、人間の判断として渡された応答を
@@ -335,12 +342,12 @@ finish欠落は拒否します。ReceiptのSUCCESSだけでは独立確認にな
 - [ledger tests](tests/test_action_authority_ledger.py) — 再利用と台帳履歴のテスト
 - [external-action tests](tests/test_external_action_contracts.py) — 外部操作の記録形式のテスト
 
-### 開発ライン: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
+### 未公開候補: Core 0.5.0.dev1 + companion 0.3.0.dev1 + adapters 0.1.0.dev1
 
 このソース候補には、v0.4.2の境界を保持してportable review APIを加えた
-Core `0.5.0.dev0`、それに厳密に依存する任意導入のGitHub companion
-`0.3.0.dev0`、および同じcheckoutで利用する任意導入のadapters
-`0.1.0.dev0`が含まれます。公開配布物とソースの対応は、
+Core `0.5.0.dev1`、それに厳密に依存する任意導入のGitHub companion
+`0.3.0.dev1`、および同じcheckoutで利用する任意導入のadapters
+`0.1.0.dev1`が含まれます。公開配布物とソースの対応は、
 [GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases)のtagとassetで確認してください。
 v0.4.2のwheelやtagは変更されません。
 
@@ -475,8 +482,9 @@ Frontdoor、WGM、Router、Secretaryのprotocolはlegacy 0.2互換と履歴の�
 
 ## HISTORICAL BASELINE: v0.4.2
 
-公開済みv0.4.2（歴史的な公開ベースライン）はdocs-onlyのリリースでした。このソース候補は
-そのAuthority Coreのruntime契約を保持し、文書・画像とv0.4.2以後のportable review APIを追加しています。
+公開済みv0.4.2（歴史的な公開ベースライン）はdocs-onlyのリリースでした。
+この候補は旧記録の読取互換を保ちますが、新規live mergeのパラメータは6値へ変更しています。
+portable review APIはv0.4.2以後に追加されました。
 
 公開済みv0.4.2（歴史的な公開ベースライン）が提供したのは、ひとつの対応済み外部操作を固定し、
 caller-attestedな人間の判断と照合し、ローカル台帳へ記録して一度だけ取り出す境界です。

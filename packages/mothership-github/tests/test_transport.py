@@ -16,6 +16,7 @@ from mothership_github.transport import (
 
 
 _HEAD = "a" * 40
+_BASE = "c" * 40
 _MERGE_SHA = "b" * 40
 
 
@@ -199,7 +200,7 @@ class TransportTests(unittest.TestCase):
                     "state": "open",
                     "merged": False,
                     "head": {"sha": _HEAD},
-                    "base": {"ref": "main"},
+                    "base": {"ref": "main", "sha": _BASE},
                 }
             )
         )
@@ -212,12 +213,25 @@ class TransportTests(unittest.TestCase):
                 "merged": False,
                 "head_sha": _HEAD,
                 "base_ref": "main",
+                "base_sha": _BASE,
             },
             result,
         )
         self.assertEqual(1, len(opener.requests))
         self.assertEqual("GET", opener.requests[0][0].get_method())
         self.assertTrue(response.closed)
+
+    def test_get_refuses_missing_or_malformed_base_commit(self):
+        for base in ({"ref": "main"}, {"ref": "main", "sha": "not-a-sha"},
+                     {"ref": "main", "sha": _BASE.upper()}):
+            with self.subTest(base=base):
+                response = FakeResponse(json.dumps({
+                    "number": 1, "state": "open", "merged": False,
+                    "head": {"sha": _HEAD}, "base": base,
+                }))
+                with self.assertRaises(ActionPreflightError):
+                    _transport(FakeOpener(response)).get_pull_request("owner/repo", 1)
+                self.assertTrue(response.closed)
 
     def test_get_http_error_categories_preserve_status_without_leaking_error_data(self):
         for status in (401, 403, 500):

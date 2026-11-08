@@ -24,6 +24,7 @@ EXECUTION_PARAMETERS = {
     "pull_request": 5,
     "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
     "expected_base": "main",
+    "expected_base_sha": "b" * 40,
     "merge_method": "merge",
 }
 
@@ -32,7 +33,7 @@ EXPECTED_DISPLAY = {
     "scope": (
         "repository=UMEBOSHIISAN/mothership; "
         "expected_head_sha=e2161c0c27af68221ad507a05583a5fbdaecefe1; "
-        "expected_base=main; merge_method=merge"
+        "expected_base=main; expected_base_sha=" + "b" * 40 + "; merge_method=merge"
     ),
     "excluded_operations": ["squash", "rebase", "force_push", "branch_delete"],
     "consequence_if_approved": "PR #5 changes will be integrated into main.",
@@ -46,6 +47,19 @@ class ActionAuthorityTests(unittest.TestCase):
             "github.merge_pr",
             copy.deepcopy(parameters if parameters is not None else EXECUTION_PARAMETERS),
         )
+
+    def test_new_live_action_requires_and_displays_exact_base_sha(self) -> None:
+        with self.assertRaises(MalformedActionError):
+            self.freeze(parameters={key: value for key, value in EXECUTION_PARAMETERS.items()
+                                    if key != "expected_base_sha"})
+        parameters = dict(EXECUTION_PARAMETERS)
+        frozen = self.freeze(parameters=parameters)
+        self.assertEqual("b" * 40, frozen.action["execution_parameters"]["expected_base_sha"])
+        self.assertIn("expected_base_sha=" + "b" * 40, frozen.action["display"]["scope"])
+        changed = self.freeze(parameters={**parameters, "expected_base_sha": "c" * 40})
+        self.assertNotEqual(frozen.action_sha256, changed.action_sha256)
+        with self.assertRaises(MalformedActionError):
+            self.freeze(parameters={**parameters, "expected_base_sha": "B" * 40})
 
     def test_freeze_accepts_only_executable_action_inputs_and_derives_exact_display(self) -> None:
         self.assertEqual(
@@ -68,6 +82,7 @@ class ActionAuthorityTests(unittest.TestCase):
             "pull_request": 6,
             "expected_head_sha": "f" * 40,
             "expected_base": "release",
+            "expected_base_sha": "f" * 40,
         }
         for name, value in changes.items():
             with self.subTest(name=name):
@@ -113,6 +128,23 @@ class ActionAuthorityTests(unittest.TestCase):
         self.assertRegex(action_sha256(action), r"\A[0-9a-f]{64}\Z")
         with self.assertRaises(MalformedActionError):
             action_sha256({**action, "expires_at": "2030-01-01T00:00:00Z"})
+
+    def test_historical_five_parameter_action_remains_readable(self) -> None:
+        old_parameters = {key: value for key, value in EXECUTION_PARAMETERS.items()
+                          if key != "expected_base_sha"}
+        old_display = copy.deepcopy(EXPECTED_DISPLAY)
+        old_display["scope"] = old_display["scope"].replace(
+            "; expected_base_sha=" + "b" * 40, ""
+        )
+        old_action = {
+            "action_id": "act-legacy-merge-pr-001",
+            "operation": "github.merge_pr",
+            "execution_parameters": old_parameters,
+            "display": old_display,
+        }
+        self.assertEqual(canonical_json_sha256(old_action), action_sha256(old_action))
+        with self.assertRaises(MalformedActionError):
+            self.freeze(parameters=old_parameters)
 
     def test_freeze_generates_fixed_ten_minute_deadline_excluded_from_digest(self) -> None:
         before = datetime.datetime.now(datetime.UTC)
@@ -172,7 +204,7 @@ class ActionAuthorityTests(unittest.TestCase):
                 "scope": (
                     "repository=UMEBOSHIISAN/mothership; "
                     "expected_head_sha=e2161c0c27af68221ad507a05583a5fbdaecefe1; "
-                    "expected_base=main; merge_method=merge"
+                    "expected_base=main; expected_base_sha=" + "b" * 40 + "; merge_method=merge"
                 ),
                 "excluded_operations": ["squash", "rebase", "force_push", "branch_delete"],
                 "consequence_if_approved": "PR #6 changes will be integrated into main.",
@@ -268,7 +300,7 @@ class ActionAuthorityTests(unittest.TestCase):
                 "scope": (
                     "repository=UMEBOSHIISAN/mothership; "
                     "expected_head_sha=e2161c0c27af68221ad507a05583a5fbdaecefe1; "
-                    "expected_base=main; merge_method=merge"
+                    "expected_base=main; expected_base_sha=" + "b" * 40 + "; merge_method=merge"
                 ),
                 "excluded_operations": ["squash", "rebase", "force_push", "branch_delete"],
                 "consequence_if_approved": "PR #6 changes will be integrated into main.",

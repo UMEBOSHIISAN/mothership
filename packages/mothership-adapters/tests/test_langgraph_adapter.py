@@ -22,6 +22,7 @@ PARAMETERS = {
     "pull_request": 7,
     "expected_head_sha": "a" * 40,
     "expected_base": "main",
+    "expected_base_sha": "d" * 40,
     "merge_method": "merge",
 }
 CONTEXT = {
@@ -47,6 +48,7 @@ class SyntheticTransport:
             "merged": False,
             "head_sha": PARAMETERS["expected_head_sha"],
             "base_ref": PARAMETERS["expected_base"],
+            "base_sha": PARAMETERS["expected_base_sha"],
         }
 
     def merge_pull_request(self, **parameters: object) -> dict[str, object]:
@@ -97,7 +99,7 @@ class LangGraphAdapterTests(LangGraphFixture):
         result = adapter.resume(
             self.response(), thread_id="thread-1", interrupt_id=prepared["interrupt_id"]
         )
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
         self.assertEqual(1, len(self.transport.puts))
         self.assertEqual(self.session.request, result["request"])
         self.assertEqual("approve", result["response"]["decision"])

@@ -1,7 +1,7 @@
 # Integration catalog
 
-**Status: bounded source-candidate catalog for Core `0.5.0.dev0`, companion
-`0.3.0.dev0`, and optional adapters `0.1.0.dev0`.** The catalog records eight
+**Status: bounded unpublished source-candidate catalog for Core `0.5.0.dev1`, companion
+`0.3.0.dev1`, and optional adapters `0.1.0.dev1`.** The catalog records eight
 finite routes around one exact action profile. A local check demonstrates the
 selected seam and its retained state; it does not certify a provider, gateway,
 credential, live GitHub effect, or a host's complete coverage.
@@ -34,8 +34,9 @@ unchanged historical adapter, not the current thin Harness requirement.
 | **Evidence export and inspection** — detached bounded bundle and saved reference JSONL | `mothership_adapters.evidence`, `saved_result`, and `mothership-evidence` CLI, including `inspect --human` and separate `inspect-result --human` | Deterministic evidence and offline CLI checks cover status separation, missing records, bounded display, and incomplete output | Records are caller-attested and source-unverified; no source authentication, authority, ledger discovery, or effect proof. Saved JSONL never becomes a fabricated portable-review bundle. [Retained recipient cases](../examples/saved-results/README.en.md) are synthetic; human/live-host acceptance is separate |
 
 The eight rows share the same exact operation: `github.merge_pr` with
-`repository`, `pull_request`, `expected_head_sha`, `expected_base`, and
-`merge_method`. A route may prepare or inspect a review, but no route turns a
+`repository`, `pull_request`, `expected_head_sha`, `expected_base`,
+`expected_base_sha`, and `merge_method` for new live execution. Historical
+five-field records remain readable. A route may prepare or inspect a review, but no route turns a
 generic `execute` call into authority. Future operations need a new reviewed
 profile, exact parameter schema, executor, transport owner, and independent
 observation path.

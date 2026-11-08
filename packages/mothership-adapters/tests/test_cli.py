@@ -131,7 +131,7 @@ class SavedResultCLITests(EvidenceFixture):
                     code, projection, error = self.run_saved(
                         raw_cases[name],
                         human=False,
-                        expected_action_sha256=self.request["action_sha256"],
+                        expected_action_sha256=json.loads(raw_cases[name].splitlines()[0])["action_sha256"],
                     )
                     self.assertEqual(0, code, error)
                     view = json.loads(projection)
@@ -533,9 +533,11 @@ class SavedResultCLITests(EvidenceFixture):
 
     def test_expected_action_digest_preserves_all_public_saved_case_outputs(self):
         root = pathlib.Path(__file__).resolve().parents[3] / "examples" / "saved-results"
-        expected = self.request["action_sha256"]
         for path in sorted(root.glob("case-*.jsonl")):
             raw = path.read_bytes()
+            # Published five-parameter records predate live base-SHA pinning.
+            expected = json.loads(raw.splitlines()[0])["action_sha256"]
+            self.assertNotIn("expected_base_sha", json.loads(raw.splitlines()[0])["action"]["execution_parameters"])
             with self.subTest(case=path.name, human=True):
                 self.assertEqual(
                     self.run_saved(raw),
@@ -1224,7 +1226,10 @@ class AdapterEvidenceCLITests(EvidenceFixture):
             pr["merged_at"] = bundle["receipt"]["started_at"]
         if kind == "mismatch":
             pr["head"]["sha"] = "d" * 40
-        commit = {"sha": "c" * 40, "parents": [{"sha": "f" * 40}, {"sha": parameters["expected_head_sha"]}]}
+        commit = {"sha": "c" * 40, "parents": [
+            {"sha": parameters.get("expected_base_sha", "f" * 40)},
+            {"sha": parameters["expected_head_sha"]},
+        ]}
         payloads = [pr, commit]
         requests = []
 
@@ -1620,7 +1625,8 @@ class HarnessLiveCLITests(unittest.TestCase):
                 payload = dict(url=url, number=7, title="synthetic canary", draft=False,
                                updated_at="2026-10-25T00:00:06Z", state="closed" if state["put"] else "open",
                                merged=state["put"], merged_at=stamp.strftime("%Y-%m-%dT%H:%M:%SZ") if state["put"] else None,
-                               head={"sha": head}, base={"ref": "canary-base", "repo": {"full_name": "example/repo"}},
+                               head={"sha": head}, base={"ref": "canary-base", "sha": "c" * 40,
+                                                        "repo": {"full_name": "example/repo"}},
                                merge_commit_sha="b" * 40 if state["put"] else None)
             elif url.endswith("/git/commits/" + "b" * 40):
                 payload = {"sha": "b" * 40, "parents": [{"sha": "c" * 40}, {"sha": self.fixture.parameters["expected_head_sha"]}]}
@@ -1676,7 +1682,7 @@ class HarnessLiveCLITests(unittest.TestCase):
         self.assertFalse(result["inspection"]["external_effect_verified"])
         self.assertEqual(1, hidden)
         self.assertEqual(1, sum(method == "PUT" for method, _, _ in calls))
-        self.assertLessEqual(len(calls), 6)
+        self.assertEqual(7, len(calls))
         self.assertTrue(all(auth is None for _, _, auth in calls[-2:]))
         self.assertIn("LIVE GITHUB", shown)
         self.assertIsNone(json.loads((run / "original.json").read_bytes())["verification"])

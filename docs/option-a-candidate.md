@@ -1,18 +1,19 @@
 # Option A source candidate
 
 This source candidate extends the earlier Option A changes on `main`; its
-development versions are not a tagged release. It preserves the published
-v0.4.2 Authority Core contracts and adds a separate portable review contract.
+development versions are not a tagged release. It preserves historical v0.4.2
+record reading while changing new live merge issuance to a six-field profile.
+The portable review contract remains separate.
 It is not a release, a migration of live grants, or evidence of real GitHub
-operation. Core is `0.5.0.dev0`; the optional GitHub companion is
-`0.3.0.dev0` and requires exactly this Core version. Other public, split and
+operation. Core is `0.5.0.dev1`; the optional GitHub companion is
+`0.3.0.dev1` and requires exactly this Core version. Other public, split and
 consolidation version pairs are not supported by this metadata.
 
 The [portable review API](action-review.md) binds a host's review response to
 the original live action, expiry and current host context. It performs no
-ledger writes or effects. The companion version change only updates its exact
-Core dependency; its executor has no host callback. Optional `mothership-adapters`
-`0.1.0.dev0` wraps the retained action and transport with best-effort fresh-context
+ledger writes or effects. The dev1 companion adds base-SHA and pre-dispatch
+checks; its executor has no host callback. Optional `mothership-adapters`
+`0.1.0.dev1` wraps the retained action and transport with best-effort fresh-context
 checks. Eight bounded routes and their local tests are recorded in the
 [integration catalog](integrations.md) and [host adapter guide](host-adapters.md).
 This is not an atomic revocation fence, full-host qualification or live effect.
@@ -36,19 +37,23 @@ are trusted I/O dependencies, intended for offline testing or controlled hosts.
 
 The companion executor accepts only a Core-issued FrozenAction, exact ledger
 paths, an approval event ID and an explicit transport. Old mutable contexts,
-input aliases and caller-supplied clocks are not supported. The executor validates
-before preflight, consumes under Core's current clock, records a durable start,
-and issues at most one mutation using the action returned by consume. The local
-FrozenAction binds the expected base branch name; preflight checks that name at
-GET time. The PUT binds expected head SHA but sends no base branch or base SHA
-condition. A PR retargeted between GET and PUT is therefore not atomically
-rejected by this client. Additional GETs would only narrow that window. Consumers
-requiring an atomic destination guarantee must treat it as an unmet adoption
-condition. Base commit SHA is not bound either.
+input aliases and caller-supplied clocks are not supported. New live issuance
+binds the expected base branch and base commit SHA. The executor checks both
+at initial GET, consumes under Core's current clock, records a durable start,
+then checks the PR again before issuing at most one mutation. After durable
+start it rechecks the live action deadline immediately before PUT. Expiry or
+destination drift leaves the attempt unresolved without sending PUT or retrying.
+The PUT binds expected head SHA but has no atomic base branch or SHA condition.
+An intervening base change can still race with PUT. Independent read-back checks
+the resulting merge commit's first parent against the frozen base SHA and reports
+a mismatch when observed; it does not retroactively prevent an effect. Consumers
+requiring an atomic destination guarantee have an unmet adoption condition.
+Historical five-field action records remain readable, but cannot be used for
+new live execution.
 
-The 10-minute TTL is a consume deadline, checked using Core's current clock.
-It is not a guarantee that PUT starts before expiry: recording the start can
-wait after consume. This candidate adds no send deadline or authority renewal.
+The 10-minute TTL is checked before consume and immediately before the client
+dispatches PUT. It does not prove GitHub received the request before expiry.
+This candidate adds no authority renewal.
 
 ## Attempt records and unresolved outcomes
 

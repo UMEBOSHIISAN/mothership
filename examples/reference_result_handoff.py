@@ -36,7 +36,7 @@ class _FixtureApproval(_Terminal):
 class _SyntheticTransport:
     def get_pull_request(self, repository, pull_request):
         return {"http_status": 200, "state": "open", "merged": False,
-                "head_sha": "a" * 40, "base_ref": "main"}
+                "head_sha": "a" * 40, "base_ref": "main", "base_sha": "d" * 40}
 
     def merge_pull_request(self, **parameters):
         return {"http_status": 200, "merged": True, "merge_commit_sha": "c" * 40}
@@ -58,7 +58,8 @@ def _synthetic_readback(request, *, timeout):
         "title": "synthetic offline handoff", "updated_at": "2026-10-20T00:00:00Z", "draft": False,
         "state": "open", "closed": False, "merged": False, "merged_at": None,
         "head": {"sha": "a" * 40, "ref": "synthetic"},
-        "base": {"ref": "main", "repo": {"full_name": "example/repo"}},
+        "base": {"ref": "main", "sha": "d" * 40,
+                 "repo": {"full_name": "example/repo"}},
         "merge_commit_sha": None,
     }
     return _Response(json.dumps(payload).encode())

@@ -24,6 +24,7 @@ PARAMETERS = {
     "pull_request": 7,
     "expected_head_sha": "a" * 40,
     "expected_base": "main",
+    "expected_base_sha": "b" * 40,
     "merge_method": "merge",
 }
 CONTEXT = {
@@ -198,16 +199,15 @@ class ChildDriver:
         get = self.read()
         self.assert_frame(get, "get", 7, None, self.action_id)
         assert {"repository", "pull_request"} == set(get["payload"])
-        self.reply_callback(
-            get,
-            {
-                "http_status": 200,
-                "state": "open",
-                "merged": False,
-                "head_sha": PARAMETERS["expected_head_sha"],
-                "base_ref": PARAMETERS["expected_base"],
-            },
-        )
+        snapshot = {
+            "http_status": 200,
+            "state": "open",
+            "merged": False,
+            "head_sha": PARAMETERS["expected_head_sha"],
+            "base_ref": PARAMETERS["expected_base"],
+            "base_sha": PARAMETERS["expected_base_sha"],
+        }
+        self.reply_callback(get, snapshot)
         callback = self.read()
         self.assert_frame(callback, "context", 8, None, self.action_id)
         if drift:
@@ -221,8 +221,15 @@ class ChildDriver:
             return result["payload"]
         else:
             self.reply_callback(callback, copy.deepcopy(CONTEXT))
+        second_get = self.read()
+        self.assert_frame(second_get, "get", 9, None, self.action_id)
+        assert get["payload"] == second_get["payload"]
+        self.reply_callback(second_get, snapshot)
+        final_context = self.read()
+        self.assert_frame(final_context, "context", 10, None, self.action_id)
+        self.reply_callback(final_context, copy.deepcopy(CONTEXT))
         merge = self.read()
-        self.assert_frame(merge, "merge", 9, None, self.action_id)
+        self.assert_frame(merge, "merge", 11, None, self.action_id)
         if merge_error:
             self.reply_callback(merge, {"code": "transport"}, frame_type="error")
         else:
@@ -232,7 +239,7 @@ class ChildDriver:
                 "merge_commit_sha": "b" * 40,
             })
         result = self.read()
-        self.assert_frame(result, "result", 10, 5, self.action_id)
+        self.assert_frame(result, "result", 12, 5, self.action_id)
         return result["payload"]
 
     def execute_success(self, *, drift=False):
@@ -259,6 +266,22 @@ class OwnerProtocolTests(unittest.TestCase):
         driver = getattr(self, "driver", None)
         if driver is not None:
             driver.close()
+
+    def test_prepare_rejects_unpinned_or_malformed_base_before_review(self):
+        missing = {key: value for key, value in PARAMETERS.items()
+                   if key != "expected_base_sha"}
+        for parameters in (missing, {**PARAMETERS, "expected_base_sha": "B" * 40}):
+            with self.subTest(parameters=parameters):
+                driver = ChildDriver()
+                self.driver = driver
+                driver.send("prepare", {"parameters": parameters, "executor_ref": EXECUTOR_REF})
+                error = driver.read()
+                self.assertEqual("error", error["type"])
+                self.assertIn(error["payload"]["code"], {"protocol", "parameters"})
+                self.assertFalse(driver.authority.exists())
+                self.assertFalse(driver.attempts.exists())
+                driver.close()
+                self.driver = None
 
     def test_opt_in_diagnostic_is_from_the_matched_session_failure(self):
         self.driver = ChildDriver(session_diagnostics=True)
@@ -379,7 +402,7 @@ class OwnerProtocolTests(unittest.TestCase):
                         ["attempt_started", "attempt_finished"],
                         [row["event_type"] for row in attempt_rows],
                     )
-                    self.assertEqual(1, driver.get_callbacks)
+                    self.assertEqual(2, driver.get_callbacks)
                     self.assertEqual(1, driver.merge_callbacks)
 
                     recovered = export_evidence(
@@ -425,13 +448,13 @@ class OwnerProtocolTests(unittest.TestCase):
                     driver.send("execute", replay_parameters)
                     replay_error = driver.read()
                     driver.assert_frame(
-                        replay_error, "error", 11, 11, driver.action_id
+                        replay_error, "error", 13, 13, driver.action_id
                     )
                     self.assertEqual({"code": "phase"}, replay_error["payload"])
                     driver.process.wait(timeout=5)
                     self.assertEqual(2, driver.process.returncode)
                     self.assertEqual(b"", driver.process.stdout.read())
-                    self.assertEqual(1, driver.get_callbacks)
+                    self.assertEqual(2, driver.get_callbacks)
                     self.assertEqual(1, driver.merge_callbacks)
                     self.assertEqual(authority_bytes, driver.authority.read_bytes())
                     self.assertEqual(attempts_bytes, driver.attempts.read_bytes())

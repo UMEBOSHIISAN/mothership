@@ -19,7 +19,7 @@ from mothership_github import executor
 
 
 PARAMETERS = dict(repository="example/repo", pull_request=7, expected_head_sha="a" * 40,
-                  expected_base="main", merge_method="merge")
+                  expected_base="main", expected_base_sha="b" * 40, merge_method="merge")
 CONTEXT = dict(host_id="test", session_id="session", actor_id="actor",
                runtime_generation="generation", scope=["github.merge_pr"])
 REF = dict(ref_id="executor:synthetic", sha256="c" * 64)
@@ -42,7 +42,7 @@ class Transport:
         self.gets.append((repository, pull_request))
         self.on_get()
         return dict(http_status=200, state="open", merged=False,
-                    head_sha=self.head, base_ref="main")
+                    head_sha=self.head, base_ref="main", base_sha="b" * 40)
 
     def merge_pull_request(self, **parameters):
         self.puts.append(parameters)
@@ -88,6 +88,15 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(["reject"], [row["decision"] for row in self.rows("authority.jsonl")])
         self.assertEqual(([], []), (self.transport.gets, self.transport.puts))
 
+    def test_review_persists_the_retained_request_binding(self):
+        request = self.session.request
+        self.approve()
+        row = self.rows("authority.jsonl")[0]
+        self.assertEqual("authority-action-approval.v1", row["schema_version"])
+        self.assertEqual(request["request_id"], row["request_id"])
+        self.assertEqual(request["request_sha256"], row["request_sha256"])
+        self.assertEqual(request["host_context"], row["host_context"])
+
     def test_one_approval_one_companion_consume_and_genuine_receipt(self):
         self.approve()
         result = self.session.execute(PARAMETERS)
@@ -101,7 +110,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(2, len(self.rows("attempts.jsonl")))
         with self.assertRaises(SessionError):
             self.session.execute(PARAMETERS)
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
 
     def test_execute_without_review_and_duplicate_review_cannot_record_or_execute(self):
         with self.assertRaises(SessionError):
@@ -254,7 +263,7 @@ class SessionTests(unittest.TestCase):
                 self.session.execute(PARAMETERS)
         self.transport.on_get = nested
         self.session.execute(PARAMETERS)
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
         self.assertEqual(1, len(self.transport.puts))
 
     def test_cancel_inside_inflight_put_does_not_hide_observed_success(self):
@@ -298,7 +307,7 @@ class SessionTests(unittest.TestCase):
         def failed_record(*args, **kwargs):
             self.session.cancel()
             raise OSError("private ledger error")
-        with patch("mothership_adapters.session.record_action_decision", side_effect=failed_record):
+        with patch("mothership_adapters.session.record_reviewed_action_decision", side_effect=failed_record):
             with self.assertRaisesRegex(SessionError, "^session failed$"):
                 self.session.review(response(self.session.request))
         self.assertEqual("failed", self.session.state)
@@ -353,7 +362,7 @@ class SessionTests(unittest.TestCase):
     def test_decision_record_failure_points_to_authority_records(self):
         def failed_record(*args, **kwargs):
             raise OSError("ledger-secret-token")
-        with patch("mothership_adapters.session.record_action_decision", side_effect=failed_record):
+        with patch("mothership_adapters.session.record_reviewed_action_decision", side_effect=failed_record):
             with self.assertRaises(SessionError) as raised:
                 self.session.review(response(self.session.request))
         diagnostic = raised.exception.diagnostic
@@ -394,6 +403,30 @@ class SessionTests(unittest.TestCase):
         self.assertEqual("authority_and_attempt_records", diagnostic["next_check"])
         self.assertNotIn("transport-secret-token", json.dumps(diagnostic))
         self.assertEqual([], self.transport.puts)
+
+    def test_post_consume_read_failure_identifies_second_get(self):
+        self.approve()
+
+        def fail_second_get():
+            if len(self.transport.gets) == 2:
+                raise OSError("post-consume-secret-token")
+
+        self.transport.on_get = fail_second_get
+        with patch("mothership_github.executor.record_attempt_finished",
+                   side_effect=OSError("finish-secret-token")):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("pre_dispatch_transport", diagnostic["phase"])
+        self.assertEqual("pre_dispatch_transport_failed", diagnostic["code"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual("authority_and_attempt_records", diagnostic["next_check"])
+        self.assertNotIn("post-consume-secret-token", json.dumps(diagnostic))
+        self.assertEqual(2, len(self.transport.gets))
+        self.assertEqual([], self.transport.puts)
+        self.assertEqual(2, len(self.rows("authority.jsonl")))
+        self.assertEqual(1, len(self.rows("attempts.jsonl")))
 
     def test_finish_write_failure_before_persist_keeps_last_transport_phase(self):
         self.approve()
@@ -454,26 +487,26 @@ class SessionTests(unittest.TestCase):
 
         self.transport.on_get = reentrant_get
         self.session.execute(PARAMETERS)
-        self.assertEqual(1, len(nested))
-        self.assertEqual("unknown", nested[0].diagnostic["phase"])
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(nested))
+        self.assertTrue(all(error.diagnostic["phase"] == "unknown" for error in nested))
+        self.assertEqual(2, len(self.transport.gets))
         self.assertEqual(1, len(self.transport.puts))
         with self.assertRaises(SessionError) as raised:
             self.session.execute(PARAMETERS)
         duplicate = raised.exception.diagnostic
         self.assertEqual("unknown", duplicate["phase"])
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
         self.assertEqual(1, len(self.transport.puts))
         self.assertIsNot(nested[0].diagnostic, duplicate)
 
     def test_decision_after_persist_failure_retains_row_and_does_not_attempt_execution(self):
-        from mothership.action_authority import record_action_decision as real_record
+        from mothership.action_authority import record_reviewed_action_decision as real_record
 
         def append_then_raise(*args, **kwargs):
             result = real_record(*args, **kwargs)
             raise OSError("decision-after-persist")
 
-        with patch("mothership_adapters.session.record_action_decision",
+        with patch("mothership_adapters.session.record_reviewed_action_decision",
                    side_effect=append_then_raise):
             with self.assertRaises(SessionError) as raised:
                 self.session.review(response(self.session.request))
@@ -564,11 +597,11 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(2, len(self.rows("authority.jsonl")))
         self.assertEqual(["attempt_started", "attempt_finished"],
                          [row["event_type"] for row in self.rows("attempts.jsonl")])
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
         self.assertEqual(1, len(self.transport.puts))
         with self.assertRaises(SessionError):
             self.session.execute(PARAMETERS)
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
         self.assertEqual(1, len(self.transport.puts))
         self.assertEqual(2, len(self.rows("attempts.jsonl")))
 

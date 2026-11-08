@@ -81,9 +81,9 @@ class DocumentationCommandTests(unittest.TestCase):
             (
                 "python3.12 -m venv .venv",
                 ".venv/bin/python -m pip install --no-index --no-deps \\",
-                "mothership_control_plane-0.5.0.dev0-py3-none-any.whl \\",
-                "mothership_github-0.3.0.dev0-py3-none-any.whl \\",
-                "mothership_adapters-0.1.0.dev0-py3-none-any.whl",
+                "mothership_control_plane-0.5.0.dev1-py3-none-any.whl \\",
+                "mothership_github-0.3.0.dev1-py3-none-any.whl \\",
+                "mothership_adapters-0.1.0.dev1-py3-none-any.whl",
                 ".venv/bin/python -m pip check",
                 ".venv/bin/mothership verify",
                 ".venv/bin/mothership-evidence inspect-result --help",
@@ -114,7 +114,7 @@ class DocumentationCommandTests(unittest.TestCase):
         expected = {
             ("-m", "mothership", "verify"): ROOT / "docs/generated/verify-output.json",
             ("-m", "mothership", "demo"): ROOT / "docs/generated/demo-output.json",
-            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.5.0.dev0.json",
+            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.5.0.dev1.json",
         }
         with tempfile.TemporaryDirectory() as directory:
             environment = _minimal_environment(Path(directory))

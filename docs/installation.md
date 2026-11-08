@@ -13,11 +13,13 @@ the v0.4.2 documentation and offline walkthrough added after v0.4.1; the
 walkthrough is a source-checkout example and is not part of either the v0.4.1
 or v0.4.2 release tag or wheel.
 
-The published v0.4.2 release remains the historical stable baseline. The remote default
+The published v0.4.2 release remains the historical stable baseline. The
+published `v0.5.0.dev0` prerelease and the unpublished dev1 source candidate
+are separate revisions. The remote default
 branch includes the portable review API merged through PR #43 and readback /
 inspect-sidecar functionality merged through PR #45. A main checkout and a
 published release tag are separate revisions; compare their SHAs. To read saved results, including v1 and optional expected-action
-digest checking, use the [current three-wheel reader setup](host-adapters.md#try-the-current-candidate).
+digest checking, use the [fixed dev0 three-wheel reader setup](host-adapters.md#try-the-current-candidate).
 It builds Core, companion and adapters from one fixed checkout and installs them
 into a fresh venv. The historical PR #56 and PR #45 reproduction recipes remain
 separate in that guide; the six-case recipient exercise retains its old reader pin.
@@ -47,7 +49,7 @@ After obtaining a reviewed wheel and its SHA-256 through a trusted channel:
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --no-deps mothership_control_plane-0.5.0.dev0-py3-none-any.whl
+python -m pip install --no-deps mothership_control_plane-0.5.0.dev1-py3-none-any.whl
 mothership verify
 ```
 
@@ -58,17 +60,19 @@ v0.4.1 and v0.4.2 release tags and wheels. It is not an installed CLI command.
 Use `mothership verify` for the wheel-only path.
 
 For the saved-result reader, install **three matching wheels** into a fresh
-environment. Use this recipe only after the intended version is actually listed
-in [GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases) and
-its source tag and asset hashes have been checked. The Core-only example above
+environment. The dev1 filenames below are an unpublished source candidate;
+use this recipe only after those exact wheels have been built and reviewed or
+listed in [GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases)
+with matching source and asset hashes. To install the already published dev0
+prerelease, use the dev0 filenames from that release instead. The Core-only example above
 does not provide `mothership-evidence`:
 
 ```sh
 python3.12 -m venv .venv
 .venv/bin/python -m pip install --no-index --no-deps \
-  mothership_control_plane-0.5.0.dev0-py3-none-any.whl \
-  mothership_github-0.3.0.dev0-py3-none-any.whl \
-  mothership_adapters-0.1.0.dev0-py3-none-any.whl
+  mothership_control_plane-0.5.0.dev1-py3-none-any.whl \
+  mothership_github-0.3.0.dev1-py3-none-any.whl \
+  mothership_adapters-0.1.0.dev1-py3-none-any.whl
 .venv/bin/python -m pip check
 .venv/bin/mothership verify
 .venv/bin/mothership-evidence inspect-result --help

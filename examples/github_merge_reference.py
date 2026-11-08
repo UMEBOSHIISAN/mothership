@@ -155,7 +155,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--repo", default=_DEFAULT_REPOSITORY)
     parser.add_argument("--pr", required=True, type=int)
     parser.add_argument("--ledger-dir", required=True)
-    # Core 0.5.0.dev0 intentionally exposes only the merge method.
+    # Core 0.5.0.dev1 intentionally exposes only the merge method.
     parser.add_argument("--merge-method", choices=("merge",), default="merge")
     parser.add_argument(
         "--verify-result",
@@ -326,7 +326,7 @@ def _validate_ledger_dir(value: object) -> Path:
     return path
 
 
-def _validate_snapshot(snapshot: object) -> tuple[str, str]:
+def _validate_snapshot(snapshot: object) -> tuple[str, str, str]:
     if not isinstance(snapshot, Mapping):
         raise ValueError
     if type(snapshot.get("http_status")) is not int or snapshot["http_status"] != 200:
@@ -337,6 +337,7 @@ def _validate_snapshot(snapshot: object) -> tuple[str, str]:
         raise ValueError
     head_sha = snapshot.get("head_sha")
     base_ref = snapshot.get("base_ref")
+    base_sha = snapshot.get("base_sha")
     if type(head_sha) is not str or _SHA_PATTERN.fullmatch(head_sha) is None:
         raise ValueError
     if (
@@ -345,7 +346,9 @@ def _validate_snapshot(snapshot: object) -> tuple[str, str]:
         or _BASE_PATTERN.fullmatch(base_ref) is None
     ):
         raise ValueError
-    return head_sha, base_ref
+    if type(base_sha) is not str or _SHA_PATTERN.fullmatch(base_sha) is None:
+        raise ValueError
+    return head_sha, base_ref, base_sha
 
 
 def _manual_token_prompt(prompt: str) -> str:
@@ -644,7 +647,7 @@ def _run_session(
             diagnostic=_preflight_diagnostic(error),
         )
     try:
-        expected_head_sha, expected_base = _validate_snapshot(snapshot)
+        expected_head_sha, expected_base, expected_base_sha = _validate_snapshot(snapshot)
     except (KeyboardInterrupt, SystemExit):
         return _terminal_failure(
             output_stream, ledger_dir, "preflight_unavailable",
@@ -668,6 +671,7 @@ def _run_session(
                 "pull_request": arguments.pr,
                 "expected_head_sha": expected_head_sha,
                 "expected_base": expected_base,
+                "expected_base_sha": expected_base_sha,
                 "merge_method": arguments.merge_method,
             },
         )

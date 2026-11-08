@@ -148,7 +148,8 @@ def _identifier(value: object, *, nullable: bool = True) -> str | None:
 
 
 def _parameters(value: object) -> dict[str, Any]:
-    data = _exact(value, {"repository", "pull_request", "expected_head_sha", "expected_base", "merge_method"})
+    data = _exact(value, {"repository", "pull_request", "expected_head_sha",
+                          "expected_base", "expected_base_sha", "merge_method"})
     if (
         type(data["repository"]) is not str
         or _REPOSITORY.fullmatch(data["repository"]) is None
@@ -159,6 +160,8 @@ def _parameters(value: object) -> dict[str, Any]:
         or _SHA.fullmatch(data["expected_head_sha"]) is None
         or type(data["expected_base"]) is not str
         or not data["expected_base"]
+        or type(data["expected_base_sha"]) is not str
+        or _SHA.fullmatch(data["expected_base_sha"]) is None
         or type(data["merge_method"]) is not str
         or data["merge_method"] not in {"merge", "squash", "rebase"}
     ):

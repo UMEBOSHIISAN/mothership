@@ -16,7 +16,8 @@ async function main() {
   const attemptsPath = resolve(temp, "attempts.jsonl");
   const parameters = {
     repository: "example/repo", pull_request: 7,
-    expected_head_sha: "a".repeat(40), expected_base: "main", merge_method: "merge",
+    expected_head_sha: "a".repeat(40), expected_base: "main",
+    expected_base_sha: "c".repeat(40), merge_method: "merge",
   };
   const context = {
     host_id: "synthetic-terminal", session_id: "example", actor_id: "example",
@@ -36,7 +37,8 @@ async function main() {
           gets++;
           if (mode === "preflight") throw new Error("private-callback");
           return { http_status: 200, state: "open", merged: false,
-            head_sha: parameters.expected_head_sha, base_ref: parameters.expected_base };
+            head_sha: parameters.expected_head_sha, base_ref: parameters.expected_base,
+            base_sha: parameters.expected_base_sha };
         },
         mergePullRequest: async () => {
           merges++;

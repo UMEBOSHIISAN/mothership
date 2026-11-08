@@ -23,7 +23,8 @@ from mothership_github.external_action import build_external_action_receipt
 
 
 PARAMETERS = dict(repository="example/repository", pull_request=7,
-                  expected_head_sha="a" * 40, expected_base="main", merge_method="merge")
+                  expected_head_sha="a" * 40, expected_base="main",
+                  expected_base_sha="c" * 40, merge_method="merge")
 CONTEXT = dict(host_id="offline-example", session_id="session-demo", actor_id="operator-demo",
                runtime_generation="generation-1", scope=["github.merge_pr"])
 
@@ -38,7 +39,7 @@ class SyntheticTransport:
     def get_pull_request(self, repository, pull_request):
         self.gets += 1
         return dict(http_status=200, state="open", merged=False,
-                    head_sha="a" * 40, base_ref="main")
+                    head_sha="a" * 40, base_ref="main", base_sha="c" * 40)
 
     def merge_pull_request(self, **parameters):
         self.puts += 1

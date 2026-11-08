@@ -111,6 +111,7 @@ class FakeTransport:
                 "merged": False,
                 "head_sha": _HEAD,
                 "base_ref": "main",
+                "base_sha": _BASE_SHA,
             }
         ]
         self.mutation = (
@@ -234,7 +235,7 @@ class ReferenceRunnerTests(unittest.TestCase):
         code, output = self.run_runner(transport)
 
         self.assertEqual(0, code)
-        self.assertEqual(2, len(transport.get_calls))
+        self.assertEqual(3, len(transport.get_calls))
         self.assertEqual(1, len(transport.put_calls))
         self.assertEqual(
             {
@@ -1256,6 +1257,7 @@ class ReferenceRunnerTests(unittest.TestCase):
         for changed in (
             {"head_sha": _OTHER_HEAD},
             {"base_ref": "release"},
+            {"base_sha": "e" * 40},
         ):
             with self.subTest(changed=changed):
                 self.ledger_dir = self.root / ("changed-" + next(iter(changed)))
@@ -1267,6 +1269,7 @@ class ReferenceRunnerTests(unittest.TestCase):
                     "merged": False,
                     "head_sha": _HEAD,
                     "base_ref": "main",
+                    "base_sha": _BASE_SHA,
                 }
                 second.update(changed)
                 transport = FakeTransport(snapshots=[FakeTransport().snapshots[0], second])
@@ -1522,13 +1525,30 @@ class ReferenceRunnerTests(unittest.TestCase):
     def test_merged_snapshot_stop_is_distinct_from_transport_failure(self):
         transport = FakeTransport(snapshots=[{
             "http_status": 200, "state": "closed", "merged": True,
-            "head_sha": _HEAD, "base_ref": "main",
+            "head_sha": _HEAD, "base_ref": "main", "base_sha": _BASE_SHA,
         }])
         code, text = self.run_runner(transport, input_stream=TTYBuffer(""))
         self.assertEqual(1, code)
         self.assertEqual({"reason_code": "snapshot_invalid", "http_status": None}, self.rows(text)[-1].get("diagnostic"))
         self.assertEqual([], transport.put_calls)
         self.assertEqual([], list(self.ledger_dir.iterdir()))
+
+    def test_missing_or_malformed_initial_base_sha_stops_before_review(self):
+        for base_sha in (None, "not-a-sha", _BASE_SHA.upper()):
+            with self.subTest(base_sha=base_sha):
+                snapshot = copy.deepcopy(FakeTransport().snapshots[0])
+                if base_sha is None:
+                    snapshot.pop("base_sha")
+                else:
+                    snapshot["base_sha"] = base_sha
+                transport = FakeTransport(snapshots=[snapshot])
+                code, text = self.run_runner(transport, input_stream=TTYBuffer(""))
+                self.assertEqual(1, code)
+                self.assertEqual({"reason_code": "snapshot_invalid", "http_status": None},
+                                 self.rows(text)[-1].get("diagnostic"))
+                self.assertEqual(1, len(transport.get_calls))
+                self.assertEqual([], transport.put_calls)
+                self.assertEqual([], list(self.ledger_dir.iterdir()))
 
     def test_preflight_interrupt_stops_without_exposing_exception_or_approval(self):
         for error in (KeyboardInterrupt("secret-interrupt"), SystemExit("secret-exit")):

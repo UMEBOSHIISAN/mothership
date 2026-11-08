@@ -1,7 +1,8 @@
 # Mothership GitHub companion — local candidate
 
-Version0.3.0.dev0 requires Core0.5.0.dev0 exactly. This is an isolated integration
-candidate, not a published package or live-operation proof.
+Version 0.3.0.dev1 requires Core 0.5.0.dev1 exactly. This is an unpublished
+integration candidate, not a live-operation proof. The published dev0 pair is
+a separate historical revision.
 
 To try the current runtime, use the [pinned candidate installation](../../docs/host-adapters.md#try-the-current-candidate).
 It installs Core, this companion and the optional adapters from one exact checkout.
@@ -48,8 +49,9 @@ example](../../examples/github_readback_verification.md).
 An injected opener is explicit synthetic/host-attested provenance for offline
 use. The default path does not discover credentials and sends no Authorization
 header. A two-request read-back is a bounded snapshot rather than an atomic
-external observation; the current action profile also leaves base commit SHA
-binding outside the producer.
+external observation. For a new six-field action, the merge commit's first
+parent is compared with the frozen base commit SHA. Historical five-field
+records remain readable without retroactive base binding.
 The verifier requires the live Core-issued `FrozenAction` in the same process;
 persisted JSON cannot reconstruct its binding. Read-back remains available
 after consume expiry because it does not consume or renew authority. The caller
@@ -97,8 +99,10 @@ The Python helper
 sidecar. A successful read-back uses at most two public tokenless GETs and has
 no credentials, retry, polling, authority, executor, ledger, or external-effect
 behavior.
-The 10-minute TTL ends eligibility to consume, not necessarily the time to start
-PUT. Expected base is checked at preflight only; PUT has no atomic base condition.
+The 10-minute TTL is checked before consume and immediately before PUT dispatch.
+Expected base branch and commit SHA are checked at initial and pre-PUT GET.
+GitHub's PUT has no atomic base condition, so an intervening change can still
+race with the request; read-back can detect a resulting first-parent mismatch.
 See [candidate limits](../../docs/option-a-candidate.md) before choosing a consumer.
 
 ## One-PR reference consumer
