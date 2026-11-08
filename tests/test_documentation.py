@@ -281,11 +281,11 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertNotIn("github.merge_pr", purpose)
         self.assertNotIn("医療製品", self.text)
 
-    def test_authority_flow_and_decision_cardinality_match_v0_4_2(self) -> None:
+    def test_authority_flow_and_decision_cardinality_match_published_scope(self) -> None:
         english = README_EN.read_text("utf-8")
 
         for phrase in (
-            "現在の公開版同士に自動接続はありません。",
+            "公開wheelだけで各hostへ自動接続されるわけではありません。",
             "補助bridgeはlocal lease観測をCore contextへ渡すだけ",
             "proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません",
             "同じactionへ複数のdecision eventを記録できる",
@@ -294,9 +294,9 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, self.text)
 
         for phrase in (
-            "the current public releases have no",
+            "the published wheels do not automatically",
             "The supplemental bridge passes",
-            "automatic runtime bridge.",
+            "general runtime bridge.",
             "Proposal and evidence are decision context, but they were not mechanically bound to a FrozenAction",
             "multiple events per action",
             "one consume per action in one trusted ledger history",

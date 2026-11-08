@@ -1,9 +1,9 @@
 # Mothership
 
-> 開発ラインはCore `0.5.0.dev0`、companion `0.3.0.dev0`、adapters `0.1.0.dev0`です。
-> 配布状況はReleasesで確認してください。隔離した1件の実証は一般運用の保証ではありません。
+> GitHub開発版 `v0.5.0.dev0` はCore `0.5.0.dev0`、companion `0.3.0.dev0`、adapters `0.1.0.dev0`の3パッケージです。
+> 安定版は `v0.4.2`。隔離した1件の実証は一般運用の保証ではありません。
 
-[English](README.en.md) · [Releases](https://github.com/UMEBOSHIISAN/mothership/releases) · [v0.4.2](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
+[English](README.en.md) · [v0.5.0.dev0 開発版](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0) · [v0.4.2 安定版](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
 
 <p align="center">
@@ -114,7 +114,9 @@ PR本文には実行前の保留記述が残っています。後日の実行記
 Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要です。
 [host adapter guideの固定source setup](docs/host-adapters.md#try-the-current-candidate)で、
 記録されたsource SHAに合わせ、同じcheckoutから作った3つのwheelを新しいvenvへ導入します。
-公開された配布物を使う場合は[3-wheelの導入手順](docs/installation.md#wheel-install)とrelease assetのhashを確認します。
+公開済みの[v0.5.0.dev0開発版](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0)を使う場合は、
+[3-wheelの導入手順](docs/installation.md#wheel-install)に進み、release assetを
+[配布物のSHA256SUMS](https://github.com/UMEBOSHIISAN/mothership/releases/download/v0.5.0.dev0/SHA256SUMS)と照合します。
 v1と期待digest照合を含むreader用の手順です。過去再現用の旧pinは別に保持しています。
 
 コマンド: `mothership-evidence inspect --human < existing-bundle.json`
@@ -124,7 +126,7 @@ v1と期待digest照合を含むreader用の手順です。過去再現用の旧
 閲覧はオフラインで、承認・実行・権限の再使用を行いません。欠けている記録は欠落のまま扱います。
 sidecarの照合や明示的なreadbackは、[詳しい読み取り手順](#結果閲覧と明示的なreadback)を参照してください。
 
-参照consumerの`--save-result`で保存した`result.jsonl`は別形式です。このreaderのソース候補では、
+参照consumerの`--save-result`で保存した`result.jsonl`は別形式です。公開済み `v0.5.0.dev0` のreaderでは、
 `mothership-evidence inspect-result --human < result.jsonl`で読みます。
 保存された実行報告・Receipt・独立観測を分け、承認やconsumeは「この保存形式には未提供」と表示します。
 requestや欠けたReceiptを後付けせず、入力内のpathも読み込みません。
@@ -147,7 +149,8 @@ requestや欠けたReceiptを後付けせず、入力内のpathも読み込み�
 改行・空白を含む元のbytesが異なる場合や、末尾の記録が欠けた場合は説明を出さず拒否します。
 受け取ったファイルから期待値を取り直して通すのではなく、渡す時点で保持した値を使います。
 一致は送信者認証・鮮度・完了の証明ではなく、既定出力とUNKNOWNの意味は変わりません。
-2026-11-06の固定導入pin `f37c24a`には含まれます。旧baseline `58612da`、それ以前のpin、公開済みv0.4.2／v0.4.3.dev0には含まれません。
+公開済み `v0.5.0.dev0` と2026-11-06の固定導入pin `f37c24a`には含まれます。
+旧baseline `58612da`、それ以前のpin、旧公開版v0.4.2／v0.4.3.dev0には含まれません。
 [保存物そのものの照合と導入範囲](docs/host-adapters.md#check-the-exact-saved-input)を参照してください。
 
 拒否理由と次のread-only checkだけを確認したい場合は、同じ固定sourceで
@@ -163,12 +166,14 @@ stderrが書き込み可能な拒否時の`rejection.json`は、固定schema `mo
 `recovery: "no re-execution; no reconsume"`だけを示し、入力のidentity・digest・pathや生の例外を含みません。
 拒否は従来どおりexit `2`で受理済みの結果を出さず、標準出力の途中出力があれば採用せず破棄します。
 受理時のstdout/stderr、既定のJSON/`--human`表示、statusは変わりません。
-このオプションは2026-11-06の固定pin `f37c24a`と旧baseline `58612da`に含まれ、それ以前のpinや公開済みv0.4.2／v0.4.3.dev0には含まれません。
+このオプションは公開済み `v0.5.0.dev0`、2026-11-06の固定pin `f37c24a`、旧baseline `58612da`に含まれ、
+それ以前のpinや旧公開版v0.4.2／v0.4.3.dev0には含まれません。
 既存pinと6ケースguideの入力・手順はそのままです。
 [保存物を受け取る人向けの6ケースと手順](examples/saved-results/README.md)では、
 producerを動かさずに、合成の保存物を固定readerで読めます。正答表は回答後に照合します。
 [同一checkoutでの保存→閲覧のオフライン例](docs/host-adapters.md#saved-reference-results)を参照してください。
-v1と期待digest照合は公開済みv0.4.2／v0.4.3.dev0や、6ケース受入ガイドの旧pinには含まれません。
+v1と期待digest照合は公開済み `v0.5.0.dev0` に含まれます。
+旧公開版v0.4.2／v0.4.3.dev0や、6ケース受入ガイドの旧pinには含まれません。
 
 更新した同一checkoutのPython ownerとNode clientでは、`sessionDiagnostics: true`を
 明示すると、停止段階・不明点・次の確認先をNode側でも読めます。
@@ -216,7 +221,7 @@ AIチャットアプリや完成済みの業務システムではありません
 [integration catalog](docs/integrations.md)、実装方法をまとめた
 [host adapter guide](docs/host-adapters.md) を追加しています。
 
-| 項目 | source candidateで実装していること | 実装・認証していないこと |
+| 項目 | 現行ソースとv0.5.0.dev0開発版で実装していること | 実装・認証していないこと |
 | --- | --- | --- |
 | identity | caller-attested decisionを保持 | 人間の本人確認は行いません |
 | decision event | 同じactionへ複数のdecision eventを記録できる | 一つのterminal decision、supersede、revoke |
@@ -270,7 +275,7 @@ Mothershipは、人間の判断をひとつの外部操作に対する限定Auth
 同じ認証での本人・repo権限確認、端末でのexact request確認、1回の実行と独立readbackを分けます。
 v0.4.2以後の追加で、旧固定pinには含まれません。独自Leaseは追加していません。
 隔離した#70の実canaryは1経路だけの結果で、人間の使いやすさや通常設定の受入ではありません。
-現在の公開版同士に自動接続はありません。
+公開wheelだけで各hostへ自動接続されるわけではありません。
 旧Lease依存の補助bridgeはlocal lease観測をCore contextへ渡すだけで、過去版の互換経路として残しています。
 任意GitHub companionは実行、receipt変換、opt-inのread-back Verification producerを担います。
 transportと実際のeffect境界は別途構成し、VerificationはReceiptとは別の記録として扱います。
@@ -335,14 +340,13 @@ finish欠落は拒否します。ReceiptのSUCCESSだけでは独立確認にな
 - [ledger tests](tests/test_action_authority_ledger.py) — 再利用と台帳履歴のテスト
 - [external-action tests](tests/test_external_action_contracts.py) — 外部操作の記録形式のテスト
 
-### 開発ライン: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
+### 公開済み開発版: Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
 
-このソース候補には、v0.4.2の境界を保持してportable review APIを加えた
-Core `0.5.0.dev0`、それに厳密に依存する任意導入のGitHub companion
-`0.3.0.dev0`、および同じcheckoutで利用する任意導入のadapters
-`0.1.0.dev0`が含まれます。公開配布物とソースの対応は、
-[GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases)のtagとassetで確認してください。
-v0.4.2のwheelやtagは変更されません。
+[v0.5.0.dev0のGitHub prerelease](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0)は、
+v0.4.2の境界を保持してportable review APIを加えたCore、厳密なバージョンで依存する任意のGitHub companion、
+同じ版の任意adaptersを、3 wheel・3 sdistとして配布しています。
+tagは `f63f86f76155381ae4e9847d4c49a9efaa4bda9f` です。
+mainのHEADと公開tagは別々に確認してください。v0.4.2のwheelやtagは変更されません。
 
 Coreは `github.merge_pr` のexact parameterを検証して `FrozenAction`へ固定し、
 caller-attestedな判断を照合して、信頼されたlive ledgerで一度だけconsumeします。
@@ -475,7 +479,7 @@ Frontdoor、WGM、Router、Secretaryのprotocolはlegacy 0.2互換と履歴の�
 
 ## HISTORICAL BASELINE: v0.4.2
 
-公開済みv0.4.2（歴史的な公開ベースライン）はdocs-onlyのリリースでした。このソース候補は
+公開済みv0.4.2（歴史的な公開ベースライン）はdocs-onlyのリリースでした。v0.5.0.dev0の開発版は
 そのAuthority Coreのruntime契約を保持し、文書・画像とv0.4.2以後のportable review APIを追加しています。
 
 公開済みv0.4.2（歴史的な公開ベースライン）が提供したのは、ひとつの対応済み外部操作を固定し、
@@ -508,13 +512,13 @@ Pillowは画像生成時だけ必要で、Mothershipの実行時依存関係に�
 オフラインのAuthority Core walkthroughを追加しました。
 runtimeのAuthority Core挙動、承認受理条件、対応操作profileはv0.4.1から変更していません。
 
-現行ソース候補の画像生成用pinはPillow 13.0.0です。この更新では既存のGIF・PNGを再生成せず、
+v0.5.0.dev0の画像生成用pinはPillow 13.0.0です。この更新では既存のGIF・PNGを再生成せず、
 commit済みの画像bytesとそのchecksumを保持します。新pinで再生成した画像はbytesと画素が異なるため、
 既存画像を再生成するときは更新前のsource revision `57e967a`、Pillow 12.3.0、
 同等のbuild環境を使い、
 `SHA256SUMS`でbytesの一致を確認してください。
 
-**0.5.0.dev0 source candidateでの追加**
+**v0.5.0.dev0開発版での追加**
 
 `build_review_request()` と `validate_review_response()` を使う純粋なportable review seamを追加しました。
 responseはhostが保持したoriginal requestとlive `FrozenAction`へ照合され、期限切れやhost contextの変更は
