@@ -124,8 +124,11 @@ jobs:
           for pattern in (
               "test_cli.py",
               "test_evidence.py",
+              "test_gh_auth.py",
+              "test_harness_handoff.py",
               "test_owner.py",
               "test_session.py",
+              "test_worktree_observer.py",
           ):
               suite.addTests(loader.discover("packages/mothership-adapters/tests", pattern=pattern))
           if suite.countTestCases() == 0:
