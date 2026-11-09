@@ -25,6 +25,7 @@ PARAMETERS = {
     "pull_request": 7,
     "expected_head_sha": "a" * 40,
     "expected_base": "main",
+    "expected_base_sha": "c" * 40,
     "merge_method": "merge",
 }
 GOOD_OBSERVATION = {
@@ -49,11 +50,13 @@ class _LocalTransport:
         self.marker = marker
         self.mode = mode
         self.barrier = barrier
+        self.get_calls = 0
 
     def get_pull_request(self, repository: str, pull_request: int) -> dict[str, object]:
+        self.get_calls += 1
         if repository != PARAMETERS["repository"] or pull_request != PARAMETERS["pull_request"]:
             raise AssertionError("preflight received a changed action target")
-        if self.barrier is not None:
+        if self.barrier is not None and self.get_calls == 1:
             self.barrier.wait(timeout=5)
         return {
             "http_status": 200,
@@ -61,6 +64,7 @@ class _LocalTransport:
             "merged": False,
             "head_sha": PARAMETERS["expected_head_sha"],
             "base_ref": PARAMETERS["expected_base"],
+            "base_sha": PARAMETERS["expected_base_sha"],
         }
 
     def _record_effect(self) -> None:

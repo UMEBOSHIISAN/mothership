@@ -21,7 +21,7 @@ from mothership.contracts import ContractError, canonical_json_sha256, validate_
 from mothership_github.transport import GitHubRestTransport
 
 PARAMS = dict(repository='owner/repo', pull_request=7, expected_head_sha='a'*40,
-              expected_base='main', merge_method='merge')
+              expected_base='main', expected_base_sha='d'*40, merge_method='merge')
 GOOD = dict(http_status=200, merged=True, merge_commit_sha='b'*40)
 
 class Transport:
@@ -31,7 +31,8 @@ class Transport:
         self.on_get=None
     def get_pull_request(self, repository, pull_request):
         if self.on_get: self.on_get()
-        return dict(http_status=200,state='open',merged=False,head_sha='a'*40,base_ref='main')
+        return dict(http_status=200,state='open',merged=False,head_sha='a'*40,
+                    base_ref='main',base_sha='d'*40)
     def merge_pull_request(self, **kwargs):
         self.puts.append(kwargs)
         if isinstance(self.response, Exception): raise self.response
@@ -231,7 +232,12 @@ class PipelineTests(unittest.TestCase):
         with self.assertRaises(ActionAuthorityError):self.execute(t)
         self.assertEqual([],t.puts);self.assertEqual(1,len(self.rows(self.authority)))
     def test_parallel_executors_send_exactly_one_put(self):
-        barrier=threading.Barrier(2,timeout=5);t=Transport();t.on_get=barrier.wait
+        barrier=threading.Barrier(2,timeout=5);t=Transport();initial_gets=0
+        def wait_initial_pair():
+            nonlocal initial_gets
+            initial_gets+=1
+            if initial_gets<=2:barrier.wait()
+        t.on_get=wait_initial_pair
         def run():
             try:return self.execute(t)
             except Exception as exc:return exc
@@ -251,7 +257,7 @@ class PipelineTests(unittest.TestCase):
                 self.methods.append(request.get_method())
                 if request.get_method() == 'GET':
                     return Response(json.dumps(dict(number=7, state='open', merged=False,
-                        head=dict(sha='a'*40), base=dict(ref='main'))).encode())
+                        head=dict(sha='a'*40), base=dict(ref='main',sha='d'*40))).encode())
                 raise mutation
         opener = Opener()
         transport = GitHubRestTransport('synthetic-token', opener=opener)
@@ -260,7 +266,7 @@ class PipelineTests(unittest.TestCase):
         rows = self.rows(self.attempts)
         self.assertEqual(2, len(rows))
         self.assertEqual('reconciliation_required', rows[1]['outcome'])
-        self.assertEqual(['GET', 'PUT'], opener.methods)
+        self.assertEqual(['GET', 'GET', 'PUT'], opener.methods)
         self.assert_consumed()
         with self.assertRaises(ActionAuthorityLedgerError): self.execute(transport)
         self.assertEqual(1, opener.methods.count('PUT'))

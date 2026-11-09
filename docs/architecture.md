@@ -93,8 +93,9 @@ validates those parameters, derives the human display from them, freezes the act
 sets a fixed ten-minute deadline. A caller cannot inject display fields. In particular, `consequence_if_approved` is
 derived presentation; it is not executable input.
 
-The current `FrozenAction` parameter set is exactly `repository`,
-`pull_request`, `expected_head_sha`, `expected_base`, and `merge_method`.
+New live `FrozenAction` issuance requires exactly `repository`, `pull_request`,
+`expected_head_sha`, `expected_base`, `expected_base_sha`, and `merge_method`.
+Historical five-field records remain valid for read-only inspection.
 
 `FrozenAction` issuance relies on interpreter-local in-memory state. The object cannot be reconstructed after
 serialization, restart, or transfer into a fresh interpreter. On POSIX, however, a child forked after issuance inherits

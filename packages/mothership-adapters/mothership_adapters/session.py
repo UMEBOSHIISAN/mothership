@@ -13,7 +13,7 @@ import re
 import threading
 import uuid
 
-from mothership.action_authority import freeze_action, record_action_decision
+from mothership.action_authority import freeze_action, record_reviewed_action_decision
 from mothership.action_review import build_review_request, validate_review_response
 from mothership.contracts import canonical_json_bytes
 from mothership_github.executor import execute_action_merge_pr
@@ -31,6 +31,9 @@ _PHASE_DIAGNOSTICS = {
     "execution_validation": ("execution_validation_failed", "review_request_and_existing_records"),
     "preflight_transport": ("preflight_transport_failed", "review_request_and_existing_records"),
     "preflight_returned": ("preflight_returned_failed", "review_request_and_existing_records"),
+    "pre_dispatch_guard": ("pre_dispatch_guard_failed", "authority_and_attempt_records"),
+    "pre_dispatch_transport": ("pre_dispatch_transport_failed", "authority_and_attempt_records"),
+    "pre_dispatch_returned": ("pre_dispatch_returned_failed", "authority_and_attempt_records"),
     "companion_execution": ("companion_execution_failed", "authority_and_attempt_records"),
     "mutation_guard": ("mutation_guard_failed", "authority_and_attempt_records"),
     "mutation_transport": ("mutation_transport_failed", "authority_and_attempt_records"),
@@ -130,8 +133,13 @@ class _GuardedTransport:
     def __init__(self, owner, tracker=None):
         self.owner = owner
         self.tracker = tracker
+        self._get_count = 0
 
     def get_pull_request(self, repository, pull_request):
+        self._get_count += 1
+        second_read = self._get_count > 1
+        if second_read and self.tracker is not None:
+            self.tracker.set("pre_dispatch_guard")
         owner = self.owner
         owner._guard()
         if canonical_json_bytes([repository, pull_request]) != canonical_json_bytes(
@@ -139,10 +147,10 @@ class _GuardedTransport:
         ):
             raise SessionError("transport parameters differ")
         if self.tracker is not None:
-            self.tracker.set("preflight_transport")
+            self.tracker.set("pre_dispatch_transport" if second_read else "preflight_transport")
         result = owner._transport.get_pull_request(repository, pull_request)
         if self.tracker is not None:
-            self.tracker.set("preflight_returned")
+            self.tracker.set("pre_dispatch_returned" if second_read else "preflight_returned")
         return result
 
     def merge_pull_request(self, **parameters):
@@ -254,15 +262,16 @@ class MergeReviewSession:
         tracker = _DiagnosticTracker("review_validation")
         try:
             retained = _detach(response)
+            current_context = _detach(self._provider())
             checked = validate_review_response(self._action, self._request, retained,
-                                               current_host_context=_detach(self._provider()))
+                                               current_host_context=current_context)
             with self._lock:
                 if self._canceled:
                     raise SessionError("session canceled")
             tracker.set("decision_record")
-            decision = record_action_decision(self._authority_path, self._action,
-                                              checked["decision"], checked["action_id"],
-                                              checked["action_sha256"])
+            decision = record_reviewed_action_decision(
+                self._authority_path, self._action, self._request, retained,
+                current_host_context=current_context)
             with self._lock:
                 self._response, self._decision = retained, decision
                 self._state = ("canceled" if self._canceled else

@@ -1,7 +1,7 @@
 # Composition guide
 
-**Current status: Core `0.5.0.dev0`, optional companion `0.3.0.dev0`, and
-optional adapters `0.1.0.dev0` source candidate; historical `v0.4.2` and 0.2
+**Current status: unpublished Core `0.5.0.dev1`, optional companion `0.3.0.dev1`, and
+optional adapters `0.1.0.dev1` source candidate; published `v0.5.0.dev0`, historical `v0.4.2` and 0.2
 provenance remain separate.** The candidate pairing is not a published release
 or host-runtime integration.
 
@@ -88,8 +88,9 @@ from Verification status, and the receipt input remains unchanged.
 The [offline example](../examples/github_readback_verification.md) uses an
 explicit synthetic opener. Its result demonstrates contract binding only; it
 does not authenticate GitHub, the executor, a human, or the method used to
-create a merge. Two GETs are a bounded non-atomic snapshot, and the current
-action profile does not bind a base commit SHA.
+create a merge. Two GETs are a bounded non-atomic snapshot. New six-field
+actions bind a base commit SHA and compare it with the merge commit's first
+parent; old five-field records remain readable without retroactive binding.
 
 ### Read back a recorded bundle
 

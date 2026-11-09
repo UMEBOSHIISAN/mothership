@@ -97,9 +97,9 @@ validation and exact receipt/verification binding:
 - `consequence-proposal.v0` is non-authorizing and non-executing. It is limited
   to the current `github.merge_pr` action shape, including its exact target,
   `expected_head_sha`, and `expected_base`. Its `state_sha256` is a
-  proposal-only state snapshot/reference. The current `FrozenAction` binds
-  exactly `repository`, `pull_request`, `expected_head_sha`, `expected_base`,
-  and `merge_method`; there is no v0 path that binds a consequence proposal to
+  proposal-only state snapshot/reference. New `FrozenAction` issuance also
+  requires `expected_base_sha`, while old five-field actions remain readable;
+  there is no v0 path that binds a consequence proposal to
   a `FrozenAction` or Action Authority. Its policy disposition is preserved as
   `ELIGIBLE`, `DENY`, or `UNKNOWN`; validation does not implement a domain
   policy engine or convert either `DENY` or `UNKNOWN` into eligibility.
@@ -162,11 +162,16 @@ The request hash is not a signature. It does not protect a host that substitutes
 both its expected request and context, or reuses issuance identifiers.
 
 Review validation is pure and repeatable; authority recording and consumption
-remain separate. Context is not persisted in ledger v0 by these helpers.
-Retain it separately if audit policy requires it. The unchanged companion has
-no host callback: validation before execution cannot guarantee that a later
-preflight, suspension or effect sees the same context. Runtime adapters must
-enforce that boundary and qualify it with actual suspend/revoke/resume tests.
+remain separate. The direct Core `record_action_decision()` API retains its v0
+row without request context. The optional `MergeReviewSession` instead records
+a v1 decision row containing the retained request ID, request digest, and closed
+host context. Each ledger read recomputes that request digest before accepting
+the row. These values are caller assertions, not proof of which human approved
+the request or authentication of the host. A copied, rewritten, or rolled-back
+ledger is not protected by this digest. The companion has no host callback:
+validation before execution cannot guarantee that a later preflight,
+suspension or effect sees the same context. Runtime adapters must enforce that
+boundary and qualify it with actual suspend/revoke/resume tests.
 No Dots or OpenClaw runtime enforcement is claimed by the offline example.
 
 The ledger is an explicit normalized local file with strict owner-only modes. Its immediate parent must be a real 0700
@@ -181,6 +186,11 @@ The one-shot consume guarantee requires one trusted, non-rollbackable live ledge
 another path, or
 rolled back or restored at the same path before consumption, creates an independent replay opportunity and must not be
 used as another authority source.
+Expiry checks use the local wall clock; clock drift or rollback is outside this
+ledger's guarantee. Historical five-field action records contain no approved
+base commit SHA, so their read-only verification cannot establish base-commit
+binding. New live issuance accepts only the `merge` method and requires the
+sixth `expected_base_sha` field.
 
 The legacy `mothership.approval` / `orchestration.lib.ledger` path remains invocation-evidence compatibility. Its
 `approval_granted`, `attempt_started`, and `attempt_finished` lifecycle is not the canonical Action Authority Plane.
@@ -200,9 +210,10 @@ automatic retry or fallback.
 Python `SessionError.diagnostic` is a finite, sanitized observation of the failing
 call. It does not read ledgers, authenticate records, certify an external effect,
 or authorize a retry. The last observed phase can precede the actual failure:
-`preflight_returned` also covers later consume/start failures, and
-`mutation_returned` can precede a failed finish write. A returned transport value
-is not proof that the external operation succeeded.
+`preflight_returned` also covers later consume/start failures,
+`pre_dispatch_guard` and `pre_dispatch_transport` identify the second read-only
+check after consume, and `mutation_returned` can precede a failed finish write.
+A returned transport value is not proof that the external operation succeeded.
 
 `authority_use` refers only to consume, not decision recording. Before entering
 the companion, `not_attempted BY THIS CALL` describes that invocation's consume

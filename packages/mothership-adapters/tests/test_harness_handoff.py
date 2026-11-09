@@ -65,7 +65,8 @@ class Transport:
         self.gets.append((repository, pull_request))
         self.on_get()
         return dict(http_status=200, state="open", merged=False,
-                    head_sha=self.parameters["expected_head_sha"], base_ref="canary-base")
+                    head_sha=self.parameters["expected_head_sha"], base_ref="canary-base",
+                    base_sha=self.parameters["expected_base_sha"])
 
     def merge_pull_request(self, **parameters):
         self.puts.append(parameters)
@@ -199,7 +200,8 @@ class HandoffOwnerTests(unittest.TestCase):
                  "-c", "core.hooksPath=/dev/null", "commit", "-m", "synthetic")
         self.parameters = dict(repository="example/repo", pull_request=7,
                                expected_head_sha=self.git("rev-parse", "HEAD").strip(),
-                               expected_base="canary-base", merge_method="merge")
+                               expected_base="canary-base", expected_base_sha="c" * 40,
+                               merge_method="merge")
         self.context = copy.deepcopy(CONTEXT)
         self.transport = Transport(self.parameters)
         self.run = self.root / "run"
@@ -315,12 +317,12 @@ class HandoffOwnerTests(unittest.TestCase):
         self.assertEqual("unknown", json.loads((self.run / "result.json").read_bytes())["diagnostic"]["external_effect"])
 
     def test_write_then_throw_recovers_only_actual_rows(self):
-        from mothership.action_authority import record_action_decision
+        from mothership.action_authority import record_reviewed_action_decision
         owner = self.owner()
         def persist_then_fail(*args, **kwargs):
-            record_action_decision(*args, **kwargs)
+            record_reviewed_action_decision(*args, **kwargs)
             raise OSError("secret")
-        with patch("mothership_adapters.session.record_action_decision", side_effect=persist_then_fail):
+        with patch("mothership_adapters.session.record_reviewed_action_decision", side_effect=persist_then_fail):
             with self.assertRaises(SessionError):
                 self.approve(owner)
         bundle = owner.export()

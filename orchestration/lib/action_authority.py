@@ -84,6 +84,9 @@ def _make_authority_core():
     ) -> FrozenAction:
         """Validate and freeze one closed github.merge_pr action instance."""
 
+        if not isinstance(execution_parameters, Mapping) or "expected_base_sha" not in execution_parameters:
+            raise MalformedActionError("new merge actions require expected_base_sha")
+
         action = _validated_action(
             {
                 "action_id": action_id,
@@ -226,13 +229,14 @@ def _validated_action(value: object) -> dict[str, object]:
 
 
 def _validated_parameters(value: object) -> dict[str, object]:
-    if not isinstance(value, Mapping) or set(value) != {
+    required = {
         "repository",
         "pull_request",
         "expected_head_sha",
         "expected_base",
         "merge_method",
-    }:
+    }
+    if not isinstance(value, Mapping) or set(value) not in (required, required | {"expected_base_sha"}):
         raise MalformedActionError("execution parameters must match the closed merge profile")
     repository = value["repository"]
     pull_request = value["pull_request"]
@@ -253,13 +257,19 @@ def _validated_parameters(value: object) -> dict[str, object]:
         raise MalformedActionError("expected_base is invalid")
     if merge_method != "merge":
         raise MalformedActionError("merge_method must be merge")
-    return {
+    checked = {
         "repository": repository,
         "pull_request": pull_request,
         "expected_head_sha": expected_head_sha,
         "expected_base": expected_base,
         "merge_method": merge_method,
     }
+    if "expected_base_sha" in value:
+        expected_base_sha = value["expected_base_sha"]
+        if type(expected_base_sha) is not str or not _HEAD_SHA.fullmatch(expected_base_sha):
+            raise MalformedActionError("expected_base_sha is invalid")
+        checked["expected_base_sha"] = expected_base_sha
+    return checked
 
 
 def _validate_action_id(value: object) -> None:
@@ -275,11 +285,15 @@ def _display_for(operation: object, parameters: object) -> dict[str, object]:
     pull_request = checked["pull_request"]
     expected_head_sha = checked["expected_head_sha"]
     expected_base = checked["expected_base"]
+    base_sha_display = (
+        f"; expected_base_sha={checked['expected_base_sha']}"
+        if "expected_base_sha" in checked else ""
+    )
     return {
         "target": f"PR #{pull_request} -> {expected_base}",
         "scope": (
             f"repository={repository}; expected_head_sha={expected_head_sha}; "
-            f"expected_base={expected_base}; merge_method=merge"
+            f"expected_base={expected_base}{base_sha_display}; merge_method=merge"
         ),
         "excluded_operations": list(_EXCLUDED_OPERATIONS),
         "consequence_if_approved": (

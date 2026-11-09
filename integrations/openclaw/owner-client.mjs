@@ -64,6 +64,7 @@ function sessionDiagnosticValue(value) {
   ]);
   const companionPhases = new Set([
     "companion_execution", "preflight_transport", "preflight_returned",
+    "pre_dispatch_guard", "pre_dispatch_transport", "pre_dispatch_returned",
     "mutation_guard", "mutation_transport", "mutation_returned",
   ]);
   let effect = "unknown";
@@ -152,11 +153,12 @@ function callbackMode(value) {
 }
 
 function parametersValue(value) {
-  const data = exactObject(value, ["repository", "pull_request", "expected_head_sha", "expected_base", "merge_method"]);
+  const data = exactObject(value, ["repository", "pull_request", "expected_head_sha", "expected_base", "expected_base_sha", "merge_method"]);
   if (typeof data.repository !== "string" || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(data.repository)
       || !Number.isSafeInteger(data.pull_request) || data.pull_request <= 0
       || typeof data.expected_head_sha !== "string" || !/^[0-9a-f]{40}$/.test(data.expected_head_sha)
       || typeof data.expected_base !== "string" || data.expected_base.length === 0
+      || typeof data.expected_base_sha !== "string" || !/^[0-9a-f]{40}$/.test(data.expected_base_sha)
       || typeof data.merge_method !== "string" || !["merge", "squash", "rebase"].includes(data.merge_method)) {
     fail("parameters");
   }
@@ -214,10 +216,11 @@ function contextValue(value) {
 }
 
 function getResultValue(value) {
-  const data = exactObject(value, ["http_status", "state", "merged", "head_sha", "base_ref"]);
+  const data = exactObject(value, ["http_status", "state", "merged", "head_sha", "base_ref", "base_sha"]);
   if (!Number.isSafeInteger(data.http_status) || typeof data.state !== "string"
       || typeof data.merged !== "boolean" || typeof data.head_sha !== "string"
-      || typeof data.base_ref !== "string") fail("transport");
+      || typeof data.base_ref !== "string" || typeof data.base_sha !== "string"
+      || !/^[0-9a-f]{40}$/.test(data.base_sha)) fail("transport");
   return data;
 }
 

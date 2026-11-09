@@ -14,7 +14,7 @@ import stat
 import typing
 import uuid
 
-from . import action_authority, canonical, contracts, jsonio
+from . import action_authority, action_review, canonical, contracts, jsonio
 from .errors import ContractError
 
 
@@ -124,6 +124,11 @@ def _validated_event(value: object) -> dict[str, object]:
     ):
         kind = "authority-action-approval"
     elif (
+        schema_version == "authority-action-approval.v1"
+        and event_type == "authority_action_approval"
+    ):
+        kind = "authority-action-approval.v1"
+    elif (
         schema_version == "authority-action-consume.v0"
         and event_type == "authority_action_consume"
     ):
@@ -135,7 +140,7 @@ def _validated_event(value: object) -> dict[str, object]:
     except ContractError:
         raise _EventValidationError("ledger row violates its closed contract") from None
 
-    if kind == "authority-action-approval":
+    if event_type == "authority_action_approval":
         action = typing.cast(dict[str, object], checked["action"])
         try:
             digest = action_authority.action_sha256(copy.deepcopy(action))
@@ -147,6 +152,19 @@ def _validated_event(value: object) -> dict[str, object]:
         expires_at = _parse_utc(checked["expires_at"])
         if expires_at <= recorded_at or expires_at > recorded_at + _APPROVAL_TTL:
             raise _EventValidationError("approval deadline relationship is invalid")
+        if kind == "authority-action-approval.v1":
+            try:
+                rebuilt = action_review._make_request(
+                    action,
+                    typing.cast(str, checked["action_sha256"]),
+                    typing.cast(str, checked["expires_at"]),
+                    checked["request_id"],
+                    checked["host_context"],
+                )
+            except (action_authority.ActionAuthorityError, ContractError, TypeError, ValueError):
+                raise _EventValidationError("approval review request is invalid") from None
+            if rebuilt["request_sha256"] != checked["request_sha256"]:
+                raise _EventValidationError("approval review request digest is invalid")
     else:
         _parse_utc(checked["consumed_at"])
         _parse_utc(checked["expires_at"])
@@ -467,37 +485,70 @@ def record_action_decision(
         transport = action_authority.validate_decision_transport(
             frozen_action, decision, action_id, action_sha256
         )
-        action = typing.cast(dict[str, object], _plain(frozen_action.action))
-        recomputed_digest = action_authority.action_sha256(copy.deepcopy(action))
-        if recomputed_digest != frozen_action.action_sha256:
-            raise action_authority.MalformedActionError(
-                "frozen action digest is invalid"
-            )
-        now = _utc_now()
-        try:
-            expires_at = _parse_utc(frozen_action.expires_at)
-        except _EventValidationError:
-            raise action_authority.MalformedActionError(
-                "frozen action expiry is invalid"
-            ) from None
-        if expires_at > now + _APPROVAL_TTL:
-            raise action_authority.MalformedActionError(
-                "frozen action expiry exceeds the fixed policy window"
-            )
-        if expires_at <= now:
-            raise action_authority.ExpiredActionError("frozen action has expired")
-        event = {
-            "schema_version": "authority-action-approval.v0",
-            "event_type": "authority_action_approval",
-            "event_id": _new_event_id(),
-            "decision": transport["decision"],
-            "approver_class": "human",
-            "action": action,
-            "action_sha256": recomputed_digest,
-            "recorded_at": _format_utc(now),
-            "expires_at": frozen_action.expires_at,
-            "max_uses": 1,
-        }
+        event = _decision_event(frozen_action, transport, _utc_now())
+        return _append_on_locked_fd(descriptor, handle, events, event, ledger_path)
+
+
+def _decision_event(
+    frozen_action: action_authority.FrozenAction,
+    transport: dict[str, str],
+    now: datetime.datetime,
+) -> dict[str, object]:
+    action = typing.cast(dict[str, object], _plain(frozen_action.action))
+    recomputed_digest = action_authority.action_sha256(copy.deepcopy(action))
+    if recomputed_digest != frozen_action.action_sha256:
+        raise action_authority.MalformedActionError("frozen action digest is invalid")
+    try:
+        expires_at = _parse_utc(frozen_action.expires_at)
+    except _EventValidationError:
+        raise action_authority.MalformedActionError("frozen action expiry is invalid") from None
+    if expires_at > now + _APPROVAL_TTL:
+        raise action_authority.MalformedActionError(
+            "frozen action expiry exceeds the fixed policy window"
+        )
+    if expires_at <= now:
+        raise action_authority.ExpiredActionError("frozen action has expired")
+    return {
+        "schema_version": "authority-action-approval.v0",
+        "event_type": "authority_action_approval",
+        "event_id": _new_event_id(),
+        "decision": transport["decision"],
+        "approver_class": "human",
+        "action": action,
+        "action_sha256": recomputed_digest,
+        "recorded_at": _format_utc(now),
+        "expires_at": frozen_action.expires_at,
+        "max_uses": 1,
+    }
+
+
+def record_reviewed_action_decision(
+    ledger_path: pathlib.Path,
+    frozen_action: action_authority.FrozenAction,
+    expected_request: object,
+    response: object,
+    *,
+    current_host_context: object,
+) -> dict[str, object]:
+    """Durably bind one caller-attested decision to its retained review request."""
+
+    request = _plain(expected_request)
+    with _locked_ledger(ledger_path) as (descriptor, handle):
+        events = _read_locked(descriptor)
+        transport = action_review.validate_review_response(
+            frozen_action,
+            request,
+            response,
+            current_host_context=current_host_context,
+        )
+        request = typing.cast(dict[str, object], request)
+        event = _decision_event(frozen_action, transport, _utc_now())
+        event.update(
+            schema_version="authority-action-approval.v1",
+            request_id=request["request_id"],
+            request_sha256=request["request_sha256"],
+            host_context=request["host_context"],
+        )
         return _append_on_locked_fd(descriptor, handle, events, event, ledger_path)
 
 
@@ -524,6 +575,10 @@ def consume_action(
         action = typing.cast(dict[str, object], approval["action"])
         if action["action_id"] != action_id or approval["action_sha256"] != action_sha256:
             raise ApprovalMismatchError("action binding differs from approval")
+        if "expected_base_sha" not in typing.cast(dict[str, object], action["execution_parameters"]):
+            raise action_authority.MalformedActionError(
+                "historical merge action cannot be consumed by this runtime"
+            )
         expires_at = _parse_utc(approval["expires_at"])
         recorded_at = _parse_utc(approval["recorded_at"])
         if now < recorded_at or now >= expires_at:

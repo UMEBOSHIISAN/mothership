@@ -1,6 +1,6 @@
 // Selected plugin-tool contract only; no global/native/client-tool interception.
 export const OPENCLAW_PIN = '6cc8bb1a4b9e97b4461c5cbd9006adf4630b9ccc';
-const keys = ['repository','pull_request','expected_head_sha','expected_base','merge_method'];
+const keys = ['repository','pull_request','expected_head_sha','expected_base','expected_base_sha','merge_method'];
 const same = (a,b) => a && Object.getPrototypeOf(a) === Object.prototype
   && Object.keys(a).length === keys.length && keys.every(k => Object.hasOwn(a,k) && a[k] === b[k]);
 const fail = () => { throw new Error('selected merge unavailable'); };
@@ -11,6 +11,7 @@ const valid = p => same(p,p)
   && fullMatch(/^[0-9a-f]{40}$/,p.expected_head_sha)
   && p.expected_base.length >= 1 && p.expected_base.length <= 128
   && fullMatch(/^[A-Za-z0-9][A-Za-z0-9._/-]*$/,p.expected_base)
+  && fullMatch(/^[0-9a-f]{40}$/,p.expected_base_sha)
   && p.merge_method === 'merge';
 
 export function createSelectedMergeTool({owner, parameters, executorRef}) {
@@ -27,7 +28,8 @@ export function createSelectedMergeTool({owner, parameters, executorRef}) {
     parameters:{type:'object',additionalProperties:false,required:keys,properties:{
       repository:{type:'string',minLength:3,pattern:'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'},pull_request:{type:'integer',minimum:1},
       expected_head_sha:{type:'string',pattern:'^[0-9a-f]{40}$'},
-      expected_base:{type:'string',minLength:1,maxLength:128,pattern:'^[A-Za-z0-9][A-Za-z0-9._/-]*$'},merge_method:{type:'string',const:'merge'},
+      expected_base:{type:'string',minLength:1,maxLength:128,pattern:'^[A-Za-z0-9][A-Za-z0-9._/-]*$'},
+      expected_base_sha:{type:'string',pattern:'^[0-9a-f]{40}$'},merge_method:{type:'string',const:'merge'},
     }},
     async execute(id, params) {
       if (phase !== 'approved') fail();

@@ -13,12 +13,14 @@ from orchestration.lib import action_authority
 
 _NOW = datetime.datetime(2026, 9, 21, 10, 0, 0, tzinfo=datetime.UTC)
 _HEAD = "a" * 40
+_BASE_SHA = "c" * 40
 _MERGE_SHA = "b" * 40
 _PARAMETERS = {
     "repository": "owner/repo",
     "pull_request": 7,
     "expected_head_sha": _HEAD,
     "expected_base": "main",
+    "expected_base_sha": _BASE_SHA,
     "merge_method": "merge",
 }
 
@@ -36,6 +38,7 @@ class FakeTransport:
             "merged": False,
             "head_sha": _HEAD,
             "base_ref": "main",
+            "base_sha": _BASE_SHA,
         }
         self.get_calls = []
         self.put_calls = []
@@ -132,6 +135,7 @@ class ExecutorTests(unittest.TestCase):
         start.assert_called_once()
         finish.assert_called_once()
         self.assertEqual(1, len(transport.put_calls))
+        self.assertEqual(2, len(transport.get_calls))
         self.assertEqual(
             {
                 "repository": "owner/repo",
@@ -174,6 +178,54 @@ class ExecutorTests(unittest.TestCase):
         self.assertEqual(1, len(transport.get_calls))
         consume.assert_not_called()
         self.assertEqual([], transport.put_calls)
+
+    def test_expiry_reached_after_attempt_start_never_dispatches_put(self):
+        transport = FakeTransport()
+        finished = mock.Mock(return_value=self.finished)
+        with (
+            mock.patch.object(action_authority, "_utc_now", side_effect=[
+                _NOW, _NOW, _NOW + datetime.timedelta(minutes=10),
+            ]),
+            mock.patch.object(executor, "consume_action", return_value=(
+                self.consume_event, copy.deepcopy(self.verified_action),
+            )) as consume,
+            mock.patch.object(executor, "record_attempt_started", return_value=self.started) as start,
+            mock.patch.object(executor, "record_attempt_finished", finished),
+        ):
+            result = executor.execute_action_merge_pr(
+                self.authority_path,
+                self.receipt_path,
+                self.frozen,
+                "event-" + "2" * 32,
+                transport,
+            )
+        consume.assert_called_once()
+        start.assert_called_once()
+        self.assertEqual([], transport.put_calls)
+        self.assertEqual("reconciliation_required", result["status"])
+        self.assertEqual("reconciliation_required", finished.call_args.args[2])
+
+    def test_expiry_reached_during_final_read_never_dispatches_put(self):
+        transport = FakeTransport()
+        finished = mock.Mock(return_value=self.finished)
+        with (
+            mock.patch.object(action_authority, "_utc_now", side_effect=[
+                _NOW, _NOW, _NOW, _NOW + datetime.timedelta(minutes=10, seconds=1),
+            ]),
+            mock.patch.object(executor, "consume_action", return_value=(
+                self.consume_event, copy.deepcopy(self.verified_action),
+            )),
+            mock.patch.object(executor, "record_attempt_started", return_value=self.started),
+            mock.patch.object(executor, "record_attempt_finished", finished),
+        ):
+            result = executor.execute_action_merge_pr(
+                self.authority_path, self.receipt_path, self.frozen,
+                "event-" + "2" * 32, transport,
+            )
+        self.assertEqual(2, len(transport.get_calls))
+        self.assertEqual([], transport.put_calls)
+        self.assertEqual("reconciliation_required", result["status"])
+        self.assertEqual("reconciliation_required", finished.call_args.args[2])
 
     def test_changed_core_returned_action_burns_authority_without_put(self):
         transport = FakeTransport()
@@ -272,6 +324,84 @@ class ExecutorTests(unittest.TestCase):
         del facts["merged"]
         with self.assertRaises(executor.ActionPreflightError):
             executor._validate_preflight(facts, _PARAMETERS)
+
+    def test_preflight_rejects_changed_base_commit_before_consume(self):
+        transport = FakeTransport(get_result={
+            **FakeTransport().get_result, "base_sha": "d" * 40,
+        })
+        with (
+            mock.patch.object(action_authority, "_utc_now", return_value=_NOW),
+            mock.patch.object(executor, "consume_action") as consume,
+        ):
+            with self.assertRaises(executor.ActionPreflightError):
+                executor.execute_action_merge_pr(
+                    self.authority_path, self.receipt_path, self.frozen,
+                    "event-" + "2" * 32, transport,
+                )
+        consume.assert_not_called()
+        self.assertEqual([], transport.put_calls)
+
+    def test_base_changes_after_consume_stops_before_put(self):
+        class RetargetedTransport(FakeTransport):
+            def get_pull_request(self, repository, pull_request):
+                result = super().get_pull_request(repository, pull_request)
+                if len(self.get_calls) == 2:
+                    result["base_sha"] = "d" * 40
+                return result
+
+        transport = RetargetedTransport()
+        finished = mock.Mock(return_value=self.finished)
+        with (
+            mock.patch.object(action_authority, "_utc_now", return_value=_NOW),
+            mock.patch.object(executor, "consume_action", return_value=(
+                self.consume_event, copy.deepcopy(self.verified_action),
+            )) as consume,
+            mock.patch.object(executor, "record_attempt_started", return_value=self.started) as start,
+            mock.patch.object(executor, "record_attempt_finished", finished),
+        ):
+            result = executor.execute_action_merge_pr(
+                self.authority_path, self.receipt_path, self.frozen,
+                "event-" + "2" * 32, transport,
+            )
+        consume.assert_called_once()
+        start.assert_called_once()
+        self.assertEqual(2, len(transport.get_calls))
+        self.assertEqual([], transport.put_calls)
+        self.assertEqual("reconciliation_required", result["status"])
+        self.assertEqual("reconciliation_required", finished.call_args.args[2])
+
+    def test_second_read_head_change_or_network_failure_never_puts(self):
+        for late in ("head_changed", "network_failure"):
+            with self.subTest(late=late):
+                class LateObservationTransport(FakeTransport):
+                    def get_pull_request(self, repository, pull_request):
+                        if len(self.get_calls) == 1 and late == "network_failure":
+                            self.get_calls.append((repository, pull_request))
+                            raise TimeoutError("late read failed")
+                        result = super().get_pull_request(repository, pull_request)
+                        if len(self.get_calls) == 2:
+                            result["head_sha"] = "d" * 40
+                        return result
+
+                transport = LateObservationTransport()
+                finished = mock.Mock(return_value=self.finished)
+                with (
+                    mock.patch.object(action_authority, "_utc_now", return_value=_NOW),
+                    mock.patch.object(executor, "consume_action", return_value=(
+                        self.consume_event, copy.deepcopy(self.verified_action),
+                    )) as consume,
+                    mock.patch.object(executor, "record_attempt_started", return_value=self.started),
+                    mock.patch.object(executor, "record_attempt_finished", finished),
+                ):
+                    result = executor.execute_action_merge_pr(
+                        self.authority_path, self.receipt_path, self.frozen,
+                        "event-" + "2" * 32, transport,
+                    )
+                consume.assert_called_once()
+                self.assertEqual(2, len(transport.get_calls))
+                self.assertEqual([], transport.put_calls)
+                self.assertEqual("reconciliation_required", result["status"])
+                self.assertEqual("reconciliation_required", finished.call_args.args[2])
 
     def test_contradictory_failure_facts_remain_unresolved(self):
         for status in (302, 409):

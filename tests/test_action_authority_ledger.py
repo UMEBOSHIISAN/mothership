@@ -17,7 +17,7 @@ import unittest
 from collections.abc import Mapping, Sequence
 from unittest import mock
 
-from orchestration.lib import action_authority, canonical, contracts, jsonio
+from orchestration.lib import action_authority, action_review, canonical, contracts, jsonio
 
 
 _TMP_ROOT = pathlib.Path(tempfile.gettempdir()).resolve() / "mothership-action-ledger-tests"
@@ -27,7 +27,15 @@ _PARAMETERS = {
     "pull_request": 5,
     "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
     "expected_base": "main",
+    "expected_base_sha": "b" * 40,
     "merge_method": "merge",
+}
+_HOST_CONTEXT = {
+    "host_id": "host-test",
+    "session_id": "session-test",
+    "actor_id": "actor-test",
+    "runtime_generation": "generation-test",
+    "scope": ["github.merge_pr"],
 }
 
 
@@ -293,6 +301,137 @@ class DecisionRecordingTests(AuthorityActionLedgerTestCase):
         self.assertEqual("approve", stored["decision"])
         self.assertEqual("UMEBOSHIISAN/mothership", stored["action"]["execution_parameters"]["repository"])
         self.assertEqual("UMEBOSHIISAN/mothership", frozen.action["execution_parameters"]["repository"])
+
+
+class ReviewedDecisionTests(AuthorityActionLedgerTestCase):
+    def reviewed_record(self, *, frozen=None, decision="approve"):
+        frozen = frozen or self.freeze()
+        recorded_at = _EPOCH + datetime.timedelta(seconds=1)
+        with (
+            mock.patch.object(action_authority, "_utc_now", return_value=recorded_at),
+            mock.patch.object(self.ledger, "_utc_now", return_value=recorded_at),
+        ):
+            request = action_review.build_review_request(
+                frozen, request_id="review-ledger-test", host_context=copy.deepcopy(_HOST_CONTEXT)
+            )
+            response = {
+                "schema_version": "authority-action-review-response.v0",
+                "request_id": request["request_id"],
+                "request_sha256": request["request_sha256"],
+                "action_id": request["action"]["action_id"],
+                "action_sha256": request["action_sha256"],
+                "decision": decision,
+            }
+            row = self.ledger.record_reviewed_action_decision(
+                self.path, frozen, request, response,
+                current_host_context=copy.deepcopy(_HOST_CONTEXT),
+            )
+        return row, request, response
+
+    def test_reviewed_approval_persists_request_binding_and_remains_consumable(self):
+        self.assertTrue(callable(getattr(self.ledger, "record_reviewed_action_decision", None)))
+        row, request, _ = self.reviewed_record()
+        self.assertEqual("authority-action-approval.v1", row["schema_version"])
+        self.assertEqual(request["request_id"], row["request_id"])
+        self.assertEqual(request["request_sha256"], row["request_sha256"])
+        self.assertEqual(_HOST_CONTEXT, row["host_context"])
+        self.assertEqual([row], self.read_events())
+        consume, action = self.consume(row)
+        self.assertEqual(row["event_id"], consume["approval_event_id"])
+        self.assertEqual(row["action"], action)
+
+    def test_reviewed_rejection_is_durable_but_not_consumable(self):
+        row, _, _ = self.reviewed_record(decision="reject")
+        self.assertEqual("reject", self.read_events()[0]["decision"])
+        with self.assertRaises(self.ledger.RejectedApprovalError):
+            self.consume(row)
+
+    def test_modified_review_binding_blocks_ledger_read_and_consume(self):
+        row, _, _ = self.reviewed_record()
+        for field, value in (
+            ("request_id", "review-other"),
+            ("request_sha256", "f" * 64),
+            ("host_context", {**_HOST_CONTEXT, "session_id": "other"}),
+        ):
+            with self.subTest(field=field):
+                altered = copy.deepcopy(row)
+                altered[field] = value
+                self.write_events([altered])
+                with self.assertRaises(self.ledger.MalformedLedgerStateError):
+                    self.consume(row)
+        self.write_events([row])
+        self.assertEqual(row["event_id"], self.consume(row)[0]["approval_event_id"])
+
+    def test_mismatched_review_request_records_no_decision(self):
+        frozen = self.freeze()
+        recorded_at = _EPOCH + datetime.timedelta(seconds=1)
+        with mock.patch.object(action_authority, "_utc_now", return_value=recorded_at):
+            request = action_review.build_review_request(
+                frozen, request_id="review-ledger-test", host_context=copy.deepcopy(_HOST_CONTEXT)
+            )
+        response = {
+            "schema_version": "authority-action-review-response.v0",
+            "request_id": request["request_id"],
+            "request_sha256": request["request_sha256"],
+            "action_id": request["action"]["action_id"],
+            "action_sha256": request["action_sha256"],
+            "decision": "approve",
+        }
+        changed = copy.deepcopy(request)
+        changed["host_context"]["session_id"] = "other"
+        with (
+            mock.patch.object(action_authority, "_utc_now", return_value=recorded_at),
+            mock.patch.object(self.ledger, "_utc_now", return_value=recorded_at),
+            self.assertRaises(action_review.ActionReviewError),
+        ):
+            self.ledger.record_reviewed_action_decision(
+                self.path, frozen, changed, response,
+                current_host_context=copy.deepcopy(_HOST_CONTEXT),
+            )
+        self.assertEqual([], self.read_events())
+
+    def test_legacy_and_reviewed_approvals_share_one_closed_ledger(self):
+        legacy = self.record()
+        reviewed, _, _ = self.reviewed_record(frozen=self.freeze(action_id="act-merge-pr-002"))
+        self.assertEqual(
+            ["authority-action-approval.v0", "authority-action-approval.v1"],
+            [event["schema_version"] for event in self.read_events()],
+        )
+        self.assertEqual(legacy["event_id"], self.consume(legacy)[0]["approval_event_id"])
+        self.assertEqual(reviewed["event_id"], self.consume(reviewed)[0]["approval_event_id"])
+
+    def test_historical_five_field_v0_row_remains_readable_but_cannot_be_consumed(self):
+        # A previously persisted row must not require a newly issued six-field
+        # FrozenAction or a fabricated expected base commit.
+        old_parameters = {key: value for key, value in _PARAMETERS.items() if key != "expected_base_sha"}
+        action = {
+            "action_id": "act-historical-five-field",
+            "operation": "github.merge_pr",
+            "execution_parameters": old_parameters,
+            "display": action_authority._display_for("github.merge_pr", old_parameters),
+        }
+        row = {
+            "schema_version": "authority-action-approval.v0",
+            "event_type": "authority_action_approval",
+            "event_id": "event-" + "a" * 32,
+            "decision": "approve",
+            "approver_class": "human",
+            "action": action,
+            "action_sha256": action_authority.action_sha256(action),
+            "recorded_at": "2026-08-22T10:00:01Z",
+            "expires_at": "2026-08-22T10:10:00Z",
+            "max_uses": 1,
+        }
+        self.write_events([row])
+        self.assertEqual([row], self.read_events())
+        with self.assertRaises(action_authority.MalformedActionError):
+            self.consume(row)
+        self.assertEqual([row], self.read_events())
+
+    def test_v0_approval_contract_rejects_new_reviewed_row(self):
+        reviewed, _, _ = self.reviewed_record()
+        with self.assertRaises(contracts.ContractError):
+            contracts.validate_contract("authority-action-approval", reviewed)
 
 
 class ConsumeTests(AuthorityActionLedgerTestCase):

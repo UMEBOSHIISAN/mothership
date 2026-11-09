@@ -214,6 +214,7 @@ class AgentsMergeAdapter:
             pull_request: int,
             expected_head_sha: str,
             expected_base: str,
+            expected_base_sha: str,
             merge_method: str,
         ) -> str:
             parameters = {
@@ -221,6 +222,7 @@ class AgentsMergeAdapter:
                 "pull_request": pull_request,
                 "expected_head_sha": expected_head_sha,
                 "expected_base": expected_base,
+                "expected_base_sha": expected_base_sha,
                 "merge_method": merge_method,
             }
             return await self._invoke_tool(context, parameters)

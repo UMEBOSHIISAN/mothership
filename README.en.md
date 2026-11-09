@@ -1,8 +1,7 @@
 # Mothership
 
-> The GitHub development prerelease `v0.5.0.dev0` pairs Core `0.5.0.dev0`,
-> companion `0.3.0.dev0`, and adapters `0.1.0.dev0`. The stable release remains
-> `v0.4.2`; one isolated live path is not general operational assurance.
+> The current unpublished source candidate is Core `0.5.0.dev1`, companion `0.3.0.dev1`, and adapters `0.1.0.dev1`.
+> The published prerelease is `v0.5.0.dev0`; the stable release is `v0.4.2`. One isolated live path is not general operational assurance.
 
 [日本語](README.md) · [v0.5.0.dev0 prerelease](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0) · [v0.4.2 stable](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.4.2) ·
 [CI](https://github.com/UMEBOSHIISAN/mothership/actions)
@@ -265,13 +264,13 @@ records the implementation, local checks, and qualification limits for eight
 bounded routes. The [host adapter guide](docs/host-adapters.md) shows the
 same-checkout setup and exact method seams.
 
-| Area | Implemented in current source and v0.5.0.dev0 prerelease | Not implemented or certified |
+| Area | Implemented in the current source candidate | Not implemented or certified |
 | --- | --- | --- |
 | identity | caller-attested decisions | human identity authentication |
-| decision events | multiple events per action | one terminal decision, supersession, or revocation |
+| decision events | multiple events per action | human identity authentication, supersession, or revocation |
 | consume | one consume per action in one trusted ledger history | no global replay prevention across copied ledgers |
-| action scope | five exact `github.merge_pr` parameters | base-commit binding or arbitrary operations |
-| expiry | Core TTL and portable request expiry binding | `expires_at` in action digest or host revocation fence |
+| action scope | six exact parameters for new `github.merge_pr` actions, including base commit SHA | atomic GitHub PUT base-SHA condition or arbitrary operations |
+| expiry | Core TTL and companion pre-PUT expiry check | atomic GitHub receive-time deadline or host revocation fence |
 | portable review | canonical action/expiry/host-context binding | effect enforcement, lease/revocation, durable resume |
 | execution | separate-executor data plus opt-in Receipt adapter | no Core executor, credentials, retry, daemon, or callback |
 | verification | Receipt/Verification binding plus opt-in read-back | no verifier/human identity, external truth, or read-only authentication |
@@ -281,12 +280,15 @@ same-checkout setup and exact method seams.
 This reference implementation is not certified for production or regulated
 high-stakes deployment. One-use enforcement is scoped to one trusted local
 ledger history.
+The reviewed Session stores the original request ID, digest, and host context in
+a v1 ledger row and rechecks them on read. Direct Core v0 decisions and older
+records remain readable; none of these rows authenticate a human identity.
 
 ## Current reference profile
 
 The first current reference profile is `github.merge_pr`.
 It is not the identity or full intended use of Mothership. It is the first
-concrete example that closes the five execution parameters, decision check,
+concrete example that closes the six execution parameters, decision check,
 ledger record, and one-use consume boundary.
 
 The current profile fixes:
@@ -295,9 +297,14 @@ The current profile fixes:
 - pull request number
 - expected head SHA
 - expected base branch name
+- expected base commit SHA
 - merge method
 
-The base commit SHA is not bound. `expires_at` is not included in the action digest,
+New execution checks base SHA at initial and pre-PUT GET and compares the merge
+commit's first parent in independent read-back. GitHub PUT has no atomic base-SHA
+condition, so the remaining race is not eliminated. Historical five-field saved
+actions remain readable but cannot be used for new execution.
+`expires_at` is not included in the action digest,
 but it is included in the portable review request digest with host context. That
 request digest is correlation, not a signature.
 Integrations must issue a fresh `action_id` for every freeze. They must correlate
@@ -364,6 +371,8 @@ This explanatory diagram shows the development line, not execution evidence.
 It separates execution-route review requests, Core, the optional companion, Receipt
 adapter and independent verification from read-only inspection of saved results.
 Not all eight host/evidence routes review or execute an operation.
+The version label in the illustration dates to published dev0; the dev1 ledger,
+base-SHA, and pre-dispatch expiry changes are described in the text above.
 Reduced-motion settings and screens up to 600px use the equivalent vertical static poster.
 
 Supported parameters are frozen before a caller-attested decision is checked
@@ -392,6 +401,16 @@ review API and preserved v0.4.2 boundary, an optional GitHub companion with
 an exact Core dependency, and optional matching adapters. Its tag resolves to
 `f63f86f76155381ae4e9847d4c49a9efaa4bda9f`. Check main HEAD and the
 published tag separately. The v0.4.2 wheel and tag are unchanged.
+
+### Unpublished candidate: Core 0.5.0.dev1 + companion 0.3.0.dev1 + adapters 0.1.0.dev1
+
+This source candidate contains Core `0.5.0.dev1`, which
+preserves the v0.4.2 boundary and adds the portable review API, plus an optional
+GitHub companion `0.3.0.dev1` that requires that exact Core version, plus the
+optional same-checkout adapters package `0.1.0.dev1`. Check the tag and assets
+in [GitHub Releases](https://github.com/UMEBOSHIISAN/mothership/releases) to
+match a published distribution to its source. The v0.4.2 wheel and tag are
+unchanged.
 
 The current main clone includes the portable review API merged through PR #43
 and the readback / inspect-sidecar functionality merged through PR #45. Check
@@ -560,8 +579,11 @@ compatibility and history. They are not the current Authority Core path.
 ## HISTORICAL BASELINE: v0.4.2
 
 Published v0.4.2 was a docs-only release and remains the historical public
-baseline. The v0.5.0.dev0 prerelease retains its Authority Core contracts,
-updates the documentation and imagery, and adds the post-v0.4.2 portable review API.
+baseline. The published `v0.5.0.dev0` prerelease retained the Authority Core runtime
+contracts and added the portable review API, documentation, and imagery. The
+current unpublished `v0.5.0.dev1` candidate preserves old-record read
+compatibility and requires six parameters, including the base commit SHA, for
+new live merge issuance. The portable review API arrived after v0.4.2.
 
 Published v0.4.2, the historical public baseline, freezes one supported external operation, checks a
 caller-attested human decision, records it in a local ledger, and permits one

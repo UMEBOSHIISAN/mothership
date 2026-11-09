@@ -132,6 +132,7 @@ class PublicFacadeTests(unittest.TestCase):
             "consume_action": old_action_authority_ledger.consume_action,
             "freeze_action": old_action_authority.freeze_action,
             "record_action_decision": old_action_authority_ledger.record_action_decision,
+            "record_reviewed_action_decision": old_action_authority_ledger.record_reviewed_action_decision,
             "validate_decision_transport": old_action_authority.validate_decision_transport,
         }
         self.assertEqual(tuple(expected_sources), action_authority.__all__)
