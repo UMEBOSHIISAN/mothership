@@ -11,6 +11,7 @@ from mothership_adapters.gh_auth import GhAuthError, load_secrets
 
 class GhAuthTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.dict(os.environ, {"GH_CONFIG_DIR": "", "XDG_CONFIG_HOME": ""}))
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.gh = Path(self.tmp.name) / "gh"
