@@ -140,16 +140,16 @@ Read an already-retained evidence bundle first with
 already exist; this command does not create or fetch a bundle. An absent file
 does not prove that an operation or verification never occurred.
 
-The optional three-package source-candidate setup is described in
-[Reproduce the fixed source candidate](docs/host-adapters.md#try-the-current-candidate).
-Reading retained results requires the Core, companion, and adapters from that
-same-checkout setup. It is opt-in and does not by itself qualify a live host or
-external effect.
-That recipe pins the integrated source SHA and installs three locally built
-wheels into a fresh venv, including v1 and expected-digest reader support.
-For the published [v0.5.0.dev0 prerelease](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0),
-follow the [three-wheel installation](docs/installation.md#wheel-install) and
-check each asset against the [release SHA256SUMS](https://github.com/UMEBOSHIISAN/mothership/releases/download/v0.5.0.dev0/SHA256SUMS).
+For the published wheels, use the [dev0 installation recipe](docs/installation.md#wheel-install).
+To reproduce a previous source-pinned candidate, use
+[Reproduce the fixed source candidate](docs/host-adapters.md#try-the-current-candidate)
+and its recorded SHA. That optional same-checkout setup builds Core, companion,
+and adapters from source; it does not qualify a live host or external effect.
+The published [v0.5.0.dev0 prerelease](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0)
+reader supports legacy/v1 formats, expected action/input SHA-256 checks, and bounded rejection explanations.
+Use the [three-wheel installation guide](docs/installation.md#wheel-install), which names the exact public wheel assets and verifies their matching entries.
+The Release asset `SHA256SUMS` lists three wheels and three sdists. The repository-root file with the same name inventories tracked source files; do not use it to verify release wheels.
+The request-binding ledger, six-value new merge profile with base commit SHA, and pre-dispatch expiry check are unpublished dev1 additions.
 Historical reproduction pins remain separate.
 
 The reference consumer's `--save-result` writes a different format: `result.jsonl`.
@@ -264,14 +264,30 @@ records the implementation, local checks, and qualification limits for eight
 bounded routes. The [host adapter guide](docs/host-adapters.md) shows the
 same-checkout setup and exact method seams.
 
-| Area | Implemented in the current source candidate | Not implemented or certified |
+### Published dev0 and unpublished dev1 boundaries
+
+This table separates the public wheels from the current unpublished source candidate.
+
+* **Saved-result reader:** public dev0 supports legacy/v1, expected action/input SHA-256 checks, and bounded rejection explanations.
+  Unpublished dev1 retains the same behavior. Matching digests do not authenticate source, freshness, or completion.
+* **Review records:** dev0 retains the request in the live Session to validate its response; it does not persist request binding.
+  Unpublished dev1 records and rechecks request ID, digest, and host context for reviewed Sessions.
+  Neither authenticates human identity or signatures.
+* **New merge target:** dev0 fixes five `github.merge_pr` values, including the base branch but not the base commit SHA.
+  Dev1 adds base SHA as a sixth value and checks it before dispatch. GitHub PUT is not atomic, so a race remains.
+* **Expiry:** dev0 rechecks after preflight and before consume, but not immediately before PUT.
+  Dev1 rechecks base state and expiry immediately before dispatch. GitHub provides no atomic receive-time deadline.
+
+The following limits table describes the unpublished dev1 source candidate, not the public dev0 release. Use the table above and the release assets for dev0 scope.
+
+| Area | Implemented in the unpublished dev1 source candidate | Not implemented or certified |
 | --- | --- | --- |
 | identity | caller-attested decisions | human identity authentication |
-| decision events | multiple events per action | human identity authentication, supersession, or revocation |
+| decision events | multiple events per action; reviewed Sessions also record request binding | human identity authentication, supersession, or revocation |
 | consume | one consume per action in one trusted ledger history | no global replay prevention across copied ledgers |
 | action scope | six exact parameters for new `github.merge_pr` actions, including base commit SHA | atomic GitHub PUT base-SHA condition or arbitrary operations |
-| expiry | Core TTL and companion pre-PUT expiry check | atomic GitHub receive-time deadline or host revocation fence |
-| portable review | canonical action/expiry/host-context binding | effect enforcement, lease/revocation, durable resume |
+| expiry | Core TTL and companion pre-dispatch expiry check | atomic GitHub receive-time deadline or host revocation fence |
+| portable review | canonical action/expiry/host-context binding, persisted by reviewed Sessions | effect enforcement, lease/revocation, durable resume |
 | execution | separate-executor data plus opt-in Receipt adapter | no Core executor, credentials, retry, daemon, or callback |
 | verification | Receipt/Verification binding plus opt-in read-back | no verifier/human identity, external truth, or read-only authentication |
 | package check | bundled inventory and digest checks | host, all installed code, or external safety |
@@ -284,7 +300,7 @@ The reviewed Session stores the original request ID, digest, and host context in
 a v1 ledger row and rechecks them on read. Direct Core v0 decisions and older
 records remain readable; none of these rows authenticate a human identity.
 
-## Current reference profile
+## Current reference profile (unpublished dev1 source)
 
 The first current reference profile is `github.merge_pr`.
 It is not the identity or full intended use of Mothership. It is the first
@@ -398,9 +414,13 @@ preserved. Missing finishes are rejected. Receipt SUCCESS is not independent ver
 The [v0.5.0.dev0 GitHub prerelease](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0)
 provides three wheels and three source distributions: Core with the portable
 review API and preserved v0.4.2 boundary, an optional GitHub companion with
-an exact Core dependency, and optional matching adapters. Its tag resolves to
-`f63f86f76155381ae4e9847d4c49a9efaa4bda9f`. Check main HEAD and the
-published tag separately. The v0.4.2 wheel and tag are unchanged.
+an exact Core dependency, and optional matching adapters. The public reader
+supports legacy/v1 saved results, expected action/input digests, and bounded
+rejection explanations. Its tag resolves to
+`f63f86f76155381ae4e9847d4c49a9efaa4bda9f`. It does not include dev1's
+request-binding ledger, base-SHA merge parameter, or immediate pre-dispatch
+expiry check. Check main HEAD and the published tag separately. The v0.4.2
+wheel and tag are unchanged.
 
 ### Unpublished candidate: Core 0.5.0.dev1 + companion 0.3.0.dev1 + adapters 0.1.0.dev1
 

@@ -112,12 +112,15 @@ PR本文には実行前の保留記述が残っています。後日の実行記
 
 最初の読み取り経路は、呼出し元が保持・exportした既存の記録をターミナルで読む方法です。
 Python 3.12以上と、同じcheckoutのCore・companion・adaptersが必要です。
-[host adapter guideの固定source setup](docs/host-adapters.md#try-the-current-candidate)で、
-記録されたsource SHAに合わせ、同じcheckoutから作った3つのwheelを新しいvenvへ導入します。
-公開済みの[v0.5.0.dev0開発版](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0)を使う場合は、
-[3-wheelの導入手順](docs/installation.md#wheel-install)に進み、release assetを
-[配布物のSHA256SUMS](https://github.com/UMEBOSHIISAN/mothership/releases/download/v0.5.0.dev0/SHA256SUMS)と照合します。
-v1と期待digest照合を含むreader用の手順です。過去再現用の旧pinは別に保持しています。
+公開済みwheelを使う場合は、[導入ガイドのdev0手順](docs/installation.md#wheel-install)を使います。
+sourceから同じ3 packageを構築して過去の候補を再現する場合は、
+[host adapter guideの固定source setup](docs/host-adapters.md#try-the-current-candidate)に記録されたSHAを使います。
+公開済みの[v0.5.0.dev0 prerelease](https://github.com/UMEBOSHIISAN/mothership/releases/tag/v0.5.0.dev0)のreaderは、
+legacy/v1形式、期待する操作digest・入力bytesのSHA-256照合、拒否理由の限定表示に対応します。
+[3-wheelの導入手順](docs/installation.md#wheel-install)には、公開assetの正確なwheel名と照合手順があります。
+Release assetの`SHA256SUMS`は3 wheelと3 sdistの一覧です。リポジトリrootの同名ファイルは追跡source filesの一覧で、配布wheelの照合には使いません。
+未公開dev1だけのrequest binding台帳記録、base commit SHAを含む新規merge操作、PUT直前の期限再検査はdev0に含まれません。
+過去再現用の旧pinは別に保持しています。
 
 コマンド: `mothership-evidence inspect --human < existing-bundle.json`
 
@@ -221,14 +224,34 @@ AIチャットアプリや完成済みの業務システムではありません
 [integration catalog](docs/integrations.md)、実装方法をまとめた
 [host adapter guide](docs/host-adapters.md) を追加しています。
 
-| 項目 | 現行ソース候補で実装していること | 実装・認証していないこと |
+### 公開dev0と未公開dev1の範囲
+
+次の表は、公開済みwheelと現在の未公開sourceを混同しないための差分です。
+
+* **保存結果reader:** 公開dev0はlegacy/v1を読み、期待するaction/input SHA-256を照合します。
+  拒否理由も限定表示します。未公開dev1は同じreader機能を維持します。
+  digest一致は出所・鮮度・完了の認証ではありません。
+* **review記録:** dev0はlive Sessionでrequestを保持し、応答を照合します。
+  request bindingはauthority台帳に残りません。
+  dev1はreviewed Sessionのrequest ID・digest・host contextを台帳に記録し、再読時に照合します。
+  どちらも人間の本人認証や署名ではありません。
+* **新しいmerge対象:** dev0は`github.merge_pr`の5値を固定します。base SHAは含みません。
+  dev1はbase SHAを6値目に加え、dispatch前に照合します。
+  GitHub PUTにbase SHAの原子的条件はなく、競合は残ります。
+* **expiry:** dev0はpreflight後・consume前に再検査しますが、PUT直前には検査しません。
+  未公開dev1はbase状態と期限をdispatch直前に再検査します。GitHub受信時刻の原子的保証はありません。
+
+以下の制約表は未公開dev1のsource candidateを対象とします。
+公開済みdev0の機能範囲は上の説明とRelease assetを参照してください。
+
+| 項目 | 未公開dev1候補で実装していること | 実装・認証していないこと |
 | --- | --- | --- |
 | identity | caller-attested decisionを保持 | 人間の本人確認は行いません |
-| decision event | 同じactionへ複数のdecision eventを記録できる | 人間の本人認証、supersede、revoke |
+| decision event | 同じactionへ複数のdecision eventを記録できる。reviewed Sessionはrequest bindingも記録する | 人間の本人認証、supersede、revoke |
 | consume | 同じaction IDは同じ台帳履歴内で一度だけconsumeできる | コピー・復元した台帳をまたぐglobal replay防止 |
 | action scope | 新規`github.merge_pr`でbase commit SHAを含む6値を固定 | GitHub PUTでのbase SHA原子照合、任意operation |
-| expiry | CoreのTTLとcompanionのPUT直前の期限を検査 | GitHub受信時刻の原子保証、host側の失効fence |
-| portable review | action・expiry・host contextをrequest/responseへcanonicalにbind | 実際のeffect境界、lease/revocation、永続resume |
+| expiry | Core TTLとcompanionのdispatch直前の期限を検査 | GitHub受信時刻の原子保証、host側の失効fence |
+| portable review | action・expiry・host contextをrequest/responseへcanonicalにbindし、reviewed Sessionでは台帳にも記録 | 実際のeffect境界、lease/revocation、永続resume |
 | execution | 別executor向けdata、companionのattempt/Receipt adapter | Core内のexecutor、credential、retry、daemon、callback |
 | verification | Receipt/Verificationのshapeとbinding、read-back producer | verifier、人間identity、外部真実、read-only認証 |
 | package check | 同梱inventoryとdigestを検査 | host、全インストールコード、外部安全性 |
@@ -239,7 +262,7 @@ AIチャットアプリや完成済みの業務システムではありません
 reviewed Sessionのv1台帳には、元requestのID・digest・host contextを記録して再読時に照合します。
 直接Coreのv0判断記録と旧記録は読めますが、どちらも人間本人の認証にはなりません。
 
-## 現在の参照profile
+## 現在の参照profile（未公開dev1 source）
 
 最初のcurrent reference profileは `github.merge_pr` です。
 これはMothershipの用途全体ではなく、6つの実行パラメータの固定、判断との照合、
@@ -353,6 +376,8 @@ finish欠落は拒否します。ReceiptのSUCCESSだけでは独立確認にな
 v0.4.2の境界を保持してportable review APIを加えたCore、厳密なバージョンで依存する任意のGitHub companion、
 同じ版の任意adaptersを、3 wheel・3 sdistとして配布しています。
 tagは `f63f86f76155381ae4e9847d4c49a9efaa4bda9f` です。
+この公開版のreaderにはlegacy/v1形式、期待するaction/input digest照合、限定された拒否説明が含まれます。
+新規mergeのbase commit SHA固定、review request bindingの台帳記録、PUT直前の期限再検査は未公開dev1の追加です。
 mainのHEADと公開tagは別々に確認してください。v0.4.2のwheelやtagは変更されません。
 
 ### 未公開候補: Core 0.5.0.dev1 + companion 0.3.0.dev1 + adapters 0.1.0.dev1

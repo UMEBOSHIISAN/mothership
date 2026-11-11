@@ -199,7 +199,7 @@ class ReadmeContractTests(unittest.TestCase):
                 "結果の読み方",
                 "クイックスタート",
                 "現在の制約",
-                "現在の参照profile",
+                "現在の参照profile（未公開dev1 source）",
                 "責務分担",
                 "PURPOSE",
                 "現在のMothership Core",
@@ -221,7 +221,7 @@ class ReadmeContractTests(unittest.TestCase):
                 "Read a result",
                 "Quick start",
                 "Current limitations",
-                "Current reference profile",
+                "Current reference profile (unpublished dev1 source)",
                 "Responsibility split",
                 "PURPOSE",
                 "How the current Mothership Core works",
@@ -247,6 +247,10 @@ class ReadmeContractTests(unittest.TestCase):
     def test_reference_positioning_and_scope_are_explicit(self) -> None:
         for phrase in (
             "人間が全部を抱えず、AIにも全部を明け渡さない。",
+            "公開dev0と未公開dev1の範囲",
+            "request bindingはauthority台帳に残りません。",
+            "PUT直前には検査しません。",
+            "Release assetの`SHA256SUMS`は3 wheelと3 sdist",
             "使うAIが変わっても、仕事の主導権は手元に。",
             "任せる操作を事前に固定し",
             "オープンソースの中核実装",
@@ -295,6 +299,9 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, self.text)
 
         for phrase in (
+            "Published dev0 and unpublished dev1 boundaries",
+            "does not persist request binding",
+            "not immediately before PUT",
             "the published wheels do not automatically",
             "The supplemental bridge passes",
             "general runtime bridge.",
@@ -532,7 +539,12 @@ class ReadmeContractTests(unittest.TestCase):
             if line.startswith("```"):
                 in_fence = not in_fence
                 continue
-            if in_fence or line.startswith(("[!", "<img", "  <img")) or "https://" in line:
+            # Table rows have separate structure and may exceed prose line limits.
+            if (
+                in_fence
+                or line.startswith(("|", "[!", "<img", "  <img"))
+                or "https://" in line
+            ):
                 continue
             self.assertLessEqual(len(line), 120, f"README line {number} is too long")
 
@@ -915,6 +927,22 @@ class SupportingDocumentationTests(unittest.TestCase):
         for forbidden in ("sudo ", "install a hook", "shell startup file"):
             self.assertNotIn(forbidden, text.casefold())
         self.assertIn("Installation is the only package-changing step", text)
+
+    def test_published_dev0_wheel_recipe_names_and_checks_each_release_asset(self) -> None:
+        text = self.documents["installation"]
+        for phrase in (
+            "Published v0.5.0.dev0: three-wheel reader",
+            "mothership_control_plane-0.5.0.dev0-py3-none-any.whl",
+            "mothership_github-0.3.0.dev0-py3-none-any.whl",
+            "mothership_adapters-0.1.0.dev0-py3-none-any.whl",
+            "repository-root `SHA256SUMS`",
+            "SHA-256 mismatch",
+            "Unpublished v0.5.0.dev1 source candidate",
+            "d0a2622d71a3873871ab9d487ec67ad68892935bf7d652e50d636cb20437f9ce",
+            "4f1bbe4a6df615a57b24b8233ad16b50c07a4bd389fdd5f1edaedd1c065895ef",
+            "676ab9d7129c1575b6b470e63a3b62489c8bd0866ee6a70dcac518a2afcc64ce",
+        ):
+            self.assertIn(phrase, text)
 
     def test_protocol_reference_has_owner_source_version_and_failure_contract(self) -> None:
         text = self.documents["protocols"]
