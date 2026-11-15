@@ -521,6 +521,42 @@ class ConsumeTests(AuthorityActionLedgerTestCase):
         self.assertEqual(before, self.path.read_bytes())
         self.assertEqual(1, sum(row["event_type"] == "authority_action_consume" for row in self.read_events()))
 
+    def test_preconsumption_copy_is_an_independent_replay_history_not_global_protection(self):
+        """A copied pre-consume ledger is a separate authority history.
+
+        This characterizes the documented ledger-local guarantee; it does not
+        make copied or restored ledgers a valid additional authority source.
+        """
+        approval = self.record()
+        copied_path = self.authority_dir / "events-copy.jsonl"
+        copied_path.write_bytes(self.path.read_bytes())
+        os.chmod(copied_path, 0o600)
+        self.assertEqual(self.path.read_bytes(), copied_path.read_bytes())
+
+        original_consume, _ = self.consume(approval)
+        with mock.patch.object(
+            self.ledger, "_utc_now", return_value=_EPOCH + datetime.timedelta(seconds=2)
+        ):
+            copied_consume, _ = self.ledger.consume_action(
+                copied_path,
+                approval["event_id"],
+                approval["action"]["action_id"],
+                approval["action_sha256"],
+            )
+
+        original_events = self.read_events(self.path)
+        copied_events = self.read_events(copied_path)
+        for events, consume_event in (
+            (original_events, original_consume),
+            (copied_events, copied_consume),
+        ):
+            consumes = [
+                row for row in events if row["event_type"] == "authority_action_consume"
+            ]
+            self.assertEqual([consume_event], consumes)
+            self.assertEqual(approval["event_id"], consume_event["approval_event_id"])
+            self.assertEqual(approval["action"]["action_id"], consume_event["action_id"])
+
     def test_two_approvals_for_one_action_id_allow_only_one_action_consume(self):
         frozen = self.freeze()
         first = self.record(frozen)
