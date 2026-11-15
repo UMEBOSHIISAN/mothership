@@ -57,7 +57,6 @@ class DocumentationCommandTests(unittest.TestCase):
         self.assertNotIn("mothership demo\n```", readme)
 
     def test_installation_commands_match_the_supported_lifecycle(self) -> None:
-        version = (ROOT / "VERSION").read_text("utf-8").strip()
         blocks = _shell_blocks(INSTALLATION)
         self.assertEqual(6, len(blocks))
         self.assertEqual(
@@ -70,10 +69,14 @@ class DocumentationCommandTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "python3 -m venv .venv",
-                ". .venv/bin/activate",
-                f"python -m pip install --no-deps mothership_control_plane-{version}-py3-none-any.whl",
-                "mothership verify",
+                "python3.12 -m venv .venv",
+                ".venv/bin/python -m pip install --no-index --no-deps \\",
+                "mothership_control_plane-0.5.0.dev0-py3-none-any.whl \\",
+                "mothership_github-0.3.0.dev0-py3-none-any.whl \\",
+                "mothership_adapters-0.1.0.dev0-py3-none-any.whl",
+                ".venv/bin/python -m pip check",
+                ".venv/bin/mothership verify",
+                ".venv/bin/mothership-evidence inspect-result --help",
             ),
             blocks[1],
         )
