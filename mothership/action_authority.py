@@ -21,6 +21,7 @@ from orchestration.lib.action_authority_ledger import (
     ActionRejectedError,
     consume_action,
     record_action_decision,
+    record_reviewed_action_decision,
 )
 
 
@@ -42,5 +43,6 @@ __all__ = (
     "consume_action",
     "freeze_action",
     "record_action_decision",
+    "record_reviewed_action_decision",
     "validate_decision_transport",
 )

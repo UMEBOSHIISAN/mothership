@@ -12,10 +12,14 @@ from unittest.mock import patch
 
 from mothership_adapters.session import MergeReviewSession, SessionError
 from orchestration.lib import action_authority
+from mothership_adapters.evidence import (
+    EvidenceError, export_evidence, inspect_evidence, summarize_evidence,
+)
+from mothership_github import executor
 
 
 PARAMETERS = dict(repository="example/repo", pull_request=7, expected_head_sha="a" * 40,
-                  expected_base="main", merge_method="merge")
+                  expected_base="main", expected_base_sha="b" * 40, merge_method="merge")
 CONTEXT = dict(host_id="test", session_id="session", actor_id="actor",
                runtime_generation="generation", scope=["github.merge_pr"])
 REF = dict(ref_id="executor:synthetic", sha256="c" * 64)
@@ -38,7 +42,7 @@ class Transport:
         self.gets.append((repository, pull_request))
         self.on_get()
         return dict(http_status=200, state="open", merged=False,
-                    head_sha=self.head, base_ref="main")
+                    head_sha=self.head, base_ref="main", base_sha="b" * 40)
 
     def merge_pull_request(self, **parameters):
         self.puts.append(parameters)
@@ -84,6 +88,15 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(["reject"], [row["decision"] for row in self.rows("authority.jsonl")])
         self.assertEqual(([], []), (self.transport.gets, self.transport.puts))
 
+    def test_review_persists_the_retained_request_binding(self):
+        request = self.session.request
+        self.approve()
+        row = self.rows("authority.jsonl")[0]
+        self.assertEqual("authority-action-approval.v1", row["schema_version"])
+        self.assertEqual(request["request_id"], row["request_id"])
+        self.assertEqual(request["request_sha256"], row["request_sha256"])
+        self.assertEqual(request["host_context"], row["host_context"])
+
     def test_one_approval_one_companion_consume_and_genuine_receipt(self):
         self.approve()
         result = self.session.execute(PARAMETERS)
@@ -97,7 +110,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(2, len(self.rows("attempts.jsonl")))
         with self.assertRaises(SessionError):
             self.session.execute(PARAMETERS)
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
 
     def test_execute_without_review_and_duplicate_review_cannot_record_or_execute(self):
         with self.assertRaises(SessionError):
@@ -250,7 +263,7 @@ class SessionTests(unittest.TestCase):
                 self.session.execute(PARAMETERS)
         self.transport.on_get = nested
         self.session.execute(PARAMETERS)
-        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual(2, len(self.transport.gets))
         self.assertEqual(1, len(self.transport.puts))
 
     def test_cancel_inside_inflight_put_does_not_hide_observed_success(self):
@@ -294,7 +307,7 @@ class SessionTests(unittest.TestCase):
         def failed_record(*args, **kwargs):
             self.session.cancel()
             raise OSError("private ledger error")
-        with patch("mothership_adapters.session.record_action_decision", side_effect=failed_record):
+        with patch("mothership_adapters.session.record_reviewed_action_decision", side_effect=failed_record):
             with self.assertRaisesRegex(SessionError, "^session failed$"):
                 self.session.review(response(self.session.request))
         self.assertEqual("failed", self.session.state)
@@ -302,3 +315,451 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(([], []), (self.transport.gets, self.transport.puts))
         with self.assertRaises(SessionError):
             self.session.review(response(self.session.request))
+
+    def test_direct_error_diagnostic_is_fresh_finite_and_secret_free(self):
+        error = SessionError("private token should never leave the exception")
+        first = error.diagnostic
+        self.assertEqual({
+            "code": "unknown",
+            "phase": "unknown",
+            "authority_use": "unknown",
+            "external_effect": "unknown",
+            "next_check": "existing_evidence_bundle",
+            "retry_allowed": False,
+        }, first)
+        self.assertIsNot(first, error.diagnostic)
+        first["code"] = "tampered"
+        self.assertEqual("unknown", error.diagnostic["code"])
+        self.assertNotIn("private", json.dumps(error.diagnostic))
+
+    def test_session_error_preserves_valueerror_constructor_arity(self):
+        for args in ((), ("one",), ("one", "two")):
+            with self.subTest(args=args):
+                expected = ValueError(*args)
+                actual = SessionError(*args)
+                self.assertEqual(expected.args, actual.args)
+                self.assertEqual(str(expected), str(actual))
+                self.assertEqual("unknown", actual.diagnostic["code"])
+                self.assertEqual("unknown", actual.diagnostic["phase"])
+                self.assertFalse(actual.diagnostic["retry_allowed"])
+
+    def test_review_validation_diagnostic_is_scoped_and_detached(self):
+        value = response(self.session.request)
+        value["request_id"] = "review-secret-token"
+        with self.assertRaises(SessionError) as raised:
+            self.session.review(value)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("review_validation", diagnostic["phase"])
+        self.assertEqual("review_validation_failed", diagnostic["code"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["authority_use"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["external_effect"])
+        self.assertEqual("review_request", diagnostic["next_check"])
+        self.assertFalse(diagnostic["retry_allowed"])
+        self.assertNotIn("review-secret-token", json.dumps(diagnostic))
+        self.assertEqual([], self.transport.gets)
+        self.assertEqual([], self.transport.puts)
+
+    def test_decision_record_failure_points_to_authority_records(self):
+        def failed_record(*args, **kwargs):
+            raise OSError("ledger-secret-token")
+        with patch("mothership_adapters.session.record_reviewed_action_decision", side_effect=failed_record):
+            with self.assertRaises(SessionError) as raised:
+                self.session.review(response(self.session.request))
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("decision_record", diagnostic["phase"])
+        self.assertEqual("decision_record_failed", diagnostic["code"])
+        self.assertEqual("authority_records", diagnostic["next_check"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["authority_use"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["external_effect"])
+        self.assertNotIn("ledger-secret-token", json.dumps(diagnostic))
+        self.assertEqual([], self.transport.puts)
+
+    def test_execution_parameter_failure_is_pre_companion_and_does_no_io(self):
+        self.approve()
+        with self.assertRaises(SessionError) as raised:
+            self.session.execute({**PARAMETERS, "repository": "secret/repository"})
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("execution_validation", diagnostic["phase"])
+        self.assertEqual("execution_validation_failed", diagnostic["code"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["authority_use"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["external_effect"])
+        self.assertEqual("review_request_and_existing_records", diagnostic["next_check"])
+        self.assertNotIn("secret/repository", json.dumps(diagnostic))
+        self.assertEqual([], self.transport.gets)
+        self.assertEqual([], self.transport.puts)
+
+    def test_preflight_transport_phase_is_unknown_after_companion_entry(self):
+        self.approve()
+        self.transport.on_get = lambda: (_ for _ in ()).throw(
+            OSError("transport-secret-token")
+        )
+        with self.assertRaises(SessionError) as raised:
+            self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("preflight_transport", diagnostic["phase"])
+        self.assertEqual("preflight_transport_failed", diagnostic["code"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual("authority_and_attempt_records", diagnostic["next_check"])
+        self.assertNotIn("transport-secret-token", json.dumps(diagnostic))
+        self.assertEqual([], self.transport.puts)
+
+    def test_post_consume_read_failure_identifies_second_get(self):
+        self.approve()
+
+        def fail_second_get():
+            if len(self.transport.gets) == 2:
+                raise OSError("post-consume-secret-token")
+
+        self.transport.on_get = fail_second_get
+        with patch("mothership_github.executor.record_attempt_finished",
+                   side_effect=OSError("finish-secret-token")):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("pre_dispatch_transport", diagnostic["phase"])
+        self.assertEqual("pre_dispatch_transport_failed", diagnostic["code"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual("authority_and_attempt_records", diagnostic["next_check"])
+        self.assertNotIn("post-consume-secret-token", json.dumps(diagnostic))
+        self.assertEqual(2, len(self.transport.gets))
+        self.assertEqual([], self.transport.puts)
+        self.assertEqual(2, len(self.rows("authority.jsonl")))
+        self.assertEqual(1, len(self.rows("attempts.jsonl")))
+
+    def test_finish_write_failure_before_persist_keeps_last_transport_phase(self):
+        self.approve()
+        with patch("mothership_github.executor.record_attempt_finished",
+                   side_effect=OSError("finish-secret-token")):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("mutation_returned", diagnostic["phase"])
+        self.assertEqual("mutation_returned_failed", diagnostic["code"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual("authority_and_attempt_records", diagnostic["next_check"])
+        self.assertNotIn("finish-secret-token", json.dumps(diagnostic))
+        self.assertEqual(1, len(self.transport.puts))
+        self.assertEqual("failed", self.session.state)
+
+    def test_after_write_failure_keeps_mutation_transport_phase(self):
+        self.approve()
+        self.transport.mutation = TimeoutError("put-secret-token")
+        with patch("mothership_github.executor.record_attempt_finished",
+                   side_effect=OSError("finish-secret-token")):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("mutation_transport", diagnostic["phase"])
+        self.assertEqual("mutation_transport_failed", diagnostic["code"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual("authority_and_attempt_records", diagnostic["next_check"])
+        self.assertNotIn("put-secret-token", json.dumps(diagnostic))
+        self.assertEqual(1, len(self.transport.puts))
+
+    def test_receipt_projection_failure_uses_existing_evidence_bundle(self):
+        self.approve()
+        with patch("mothership_adapters.session.build_external_action_receipt",
+                   side_effect=ValueError("receipt-secret-token")):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("receipt_build", diagnostic["phase"])
+        self.assertEqual("receipt_build_failed", diagnostic["code"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual("existing_evidence_bundle", diagnostic["next_check"])
+        self.assertNotIn("receipt-secret-token", json.dumps(diagnostic))
+        self.assertEqual(1, len(self.transport.puts))
+
+    def test_duplicate_and_reentrant_failures_have_independent_diagnostics_and_no_new_io(self):
+        self.approve()
+        nested = []
+
+        def reentrant_get():
+            try:
+                self.session.execute(PARAMETERS)
+            except SessionError as error:
+                nested.append(error)
+
+        self.transport.on_get = reentrant_get
+        self.session.execute(PARAMETERS)
+        self.assertEqual(2, len(nested))
+        self.assertTrue(all(error.diagnostic["phase"] == "unknown" for error in nested))
+        self.assertEqual(2, len(self.transport.gets))
+        self.assertEqual(1, len(self.transport.puts))
+        with self.assertRaises(SessionError) as raised:
+            self.session.execute(PARAMETERS)
+        duplicate = raised.exception.diagnostic
+        self.assertEqual("unknown", duplicate["phase"])
+        self.assertEqual(2, len(self.transport.gets))
+        self.assertEqual(1, len(self.transport.puts))
+        self.assertIsNot(nested[0].diagnostic, duplicate)
+
+    def test_decision_after_persist_failure_retains_row_and_does_not_attempt_execution(self):
+        from mothership.action_authority import record_reviewed_action_decision as real_record
+
+        def append_then_raise(*args, **kwargs):
+            result = real_record(*args, **kwargs)
+            raise OSError("decision-after-persist")
+
+        with patch("mothership_adapters.session.record_reviewed_action_decision",
+                   side_effect=append_then_raise):
+            with self.assertRaises(SessionError) as raised:
+                self.session.review(response(self.session.request))
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("decision_record", diagnostic["phase"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["authority_use"])
+        self.assertEqual("not_attempted BY THIS CALL", diagnostic["external_effect"])
+        self.assertEqual(["authority_action_approval"],
+                         [row["event_type"] for row in self.rows("authority.jsonl")])
+        self.assertEqual(([], []), (self.transport.gets, self.transport.puts))
+        with self.assertRaises(SessionError):
+            self.session.review(response(self.session.request))
+        self.assertEqual(1, len(self.rows("authority.jsonl")))
+
+    def test_consume_after_persist_failure_retains_row_without_start_or_put(self):
+        from mothership_github import executor as github_executor
+
+        self.approve()
+        real_consume = github_executor.consume_action
+
+        def consume_then_raise(*args, **kwargs):
+            result = real_consume(*args, **kwargs)
+            raise OSError("consume-after-persist")
+
+        with patch("mothership_github.executor.consume_action", side_effect=consume_then_raise):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("preflight_returned", diagnostic["phase"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual(["authority_action_approval", "authority_action_consume"],
+                         [row["event_type"] for row in self.rows("authority.jsonl")])
+        self.assertEqual([], self.rows("attempts.jsonl"))
+        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual([], self.transport.puts)
+        with self.assertRaises(SessionError):
+            self.session.execute(PARAMETERS)
+        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual([], self.transport.puts)
+        self.assertEqual(2, len(self.rows("authority.jsonl")))
+
+    def test_attempt_start_after_persist_failure_retains_row_without_put(self):
+        from mothership_github import executor as github_executor
+
+        self.approve()
+        real_start = github_executor.record_attempt_started
+
+        def start_then_raise(*args, **kwargs):
+            result = real_start(*args, **kwargs)
+            raise OSError("start-after-persist")
+
+        with patch("mothership_github.executor.record_attempt_started", side_effect=start_then_raise):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("preflight_returned", diagnostic["phase"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual(2, len(self.rows("authority.jsonl")))
+        self.assertEqual(["attempt_started"],
+                         [row["event_type"] for row in self.rows("attempts.jsonl")])
+        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual([], self.transport.puts)
+        with self.assertRaises(SessionError):
+            self.session.execute(PARAMETERS)
+        self.assertEqual(1, len(self.transport.gets))
+        self.assertEqual([], self.transport.puts)
+        self.assertEqual(1, len(self.rows("attempts.jsonl")))
+
+    def test_attempt_finish_after_persist_failure_retains_terminal_row_without_replay(self):
+        from mothership_github import executor as github_executor
+
+        self.approve()
+        real_finish = github_executor.record_attempt_finished
+
+        def finish_then_raise(*args, **kwargs):
+            result = real_finish(*args, **kwargs)
+            raise OSError("finish-after-persist")
+
+        with patch("mothership_github.executor.record_attempt_finished", side_effect=finish_then_raise):
+            with self.assertRaises(SessionError) as raised:
+                self.session.execute(PARAMETERS)
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("mutation_returned", diagnostic["phase"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertEqual("unknown", diagnostic["external_effect"])
+        self.assertEqual(2, len(self.rows("authority.jsonl")))
+        self.assertEqual(["attempt_started", "attempt_finished"],
+                         [row["event_type"] for row in self.rows("attempts.jsonl")])
+        self.assertEqual(2, len(self.transport.gets))
+        self.assertEqual(1, len(self.transport.puts))
+        with self.assertRaises(SessionError):
+            self.session.execute(PARAMETERS)
+        self.assertEqual(2, len(self.transport.gets))
+        self.assertEqual(1, len(self.transport.puts))
+        self.assertEqual(2, len(self.rows("attempts.jsonl")))
+
+    def test_consume_and_start_before_persist_failures_leave_expected_rows_only(self):
+        from mothership_github import executor as github_executor
+
+        for stage in ("consume", "start"):
+            with self.subTest(stage=stage):
+                transport = Transport()
+                authority_path = self.root / f"{stage}-authority.jsonl"
+                attempts_path = self.root / f"{stage}-attempts.jsonl"
+                session = MergeReviewSession(
+                    copy.deepcopy(PARAMETERS),
+                    context_provider=self.provider,
+                    authority_path=authority_path,
+                    attempts_path=attempts_path,
+                    transport=transport,
+                    executor_ref=REF,
+                )
+                session.review(response(session.request))
+                target = ("mothership_github.executor.consume_action"
+                          if stage == "consume"
+                          else "mothership_github.executor.record_attempt_started")
+                with patch(target, side_effect=OSError(f"{stage}-before-persist")):
+                    with self.assertRaises(SessionError) as raised:
+                        session.execute(PARAMETERS)
+                diagnostic = raised.exception.diagnostic
+                self.assertEqual("preflight_returned", diagnostic["phase"])
+                self.assertEqual("unknown", diagnostic["authority_use"])
+                self.assertEqual("unknown", diagnostic["external_effect"])
+                authority_rows = [json.loads(row) for row in authority_path.read_text().splitlines()]
+                attempt_rows = [json.loads(row) for row in attempts_path.read_text().splitlines()] \
+                    if attempts_path.exists() else []
+                expected_authority = (1 if stage == "consume" else 2)
+                self.assertEqual(expected_authority, len(authority_rows))
+                self.assertEqual([] if stage == "consume" else ["authority_action_consume"],
+                                 [row["event_type"] for row in authority_rows[1:]])
+                self.assertEqual([], attempt_rows)
+                self.assertEqual(1, len(transport.gets))
+                self.assertEqual([], transport.puts)
+                with self.assertRaises(SessionError):
+                    session.execute(PARAMETERS)
+                self.assertEqual(1, len(transport.gets))
+                self.assertEqual([], transport.puts)
+
+
+class SessionEvidenceAcceptanceTests(unittest.TestCase):
+    def setUp(self):
+        # Reuse the real Session/temporary-ledger fixture, not its test methods.
+        self.fixture = SessionTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.request = self.fixture.session.request
+        self.response = response(self.request)
+
+    def retained_bundle(self):
+        # These are the two explicit paths retained by this one synthetic host.
+        # No directory scan, newest-file choice or diagnostic-based correlation.
+        authority = self.fixture.rows("authority.jsonl")
+        attempts = self.fixture.rows("attempts.jsonl")
+
+        def one(rows, event_type):
+            matches = [row for row in rows if row["event_type"] == event_type]
+            self.assertLessEqual(len(matches), 1, "ambiguous source records")
+            return matches[0] if matches else None
+
+        return export_evidence(
+            self.request,
+            response=self.response,
+            decision=one(authority, "authority_action_approval"),
+            consume=one(authority, "authority_action_consume"),
+            started=one(attempts, "attempt_started"),
+            finished=one(attempts, "attempt_finished"),
+            executor_ref=REF,
+        )
+
+    def test_retained_rejection_does_not_create_post_execution_homework(self):
+        self.response["decision"] = "reject"
+        self.fixture.session.review(self.response)
+        bundle = self.retained_bundle()
+        text = summarize_evidence(bundle)
+        self.assertIn("conclusion: rejection recorded for this request", text)
+        self.assertNotIn("inspect an existing independent Verification", text)
+        self.assertIsNone(bundle["consume"])
+        self.assertEqual(([], []), (self.fixture.transport.gets, self.fixture.transport.puts))
+
+    def test_success_record_remains_distinct_from_independent_verification(self):
+        self.fixture.session.review(self.response)
+        self.fixture.session.execute(PARAMETERS)
+        bundle = self.retained_bundle()
+        text = summarize_evidence(bundle)
+        self.assertIn("receipt: SUCCESS", text)
+        self.assertIn("verification: missing", text)
+        self.assertIn("conclusion: executor-reported success only", text)
+        self.assertIn("external effect verified: false", text)
+        self.assertEqual(1, len(self.fixture.transport.puts))
+
+    def test_same_call_finish_failure_keeps_diagnostic_and_records_distinct(self):
+        self.fixture.session.review(self.response)
+        with patch.object(executor, "record_attempt_finished", side_effect=OSError("private")):
+            with self.assertRaises(SessionError) as raised:
+                self.fixture.session.execute(PARAMETERS)
+        # The caught error belongs to that call. No diagnostic is loaded or joined.
+        diagnostic = raised.exception.diagnostic
+        bundle = self.retained_bundle()
+        text = summarize_evidence(bundle)
+        self.assertEqual("mutation_returned", diagnostic["phase"])
+        self.assertEqual("unknown", diagnostic["authority_use"])
+        self.assertFalse(diagnostic["retry_allowed"])
+        self.assertIn("authority use: recorded", text)
+        self.assertIn("conclusion: execution records incomplete; outcome unknown", text)
+        self.assertIn("existing authority and attempt records", text)
+        self.assertNotIn("inspect an existing independent Verification", text)
+        self.assertIsNone(bundle["receipt"])
+        self.assertEqual(["finished", "verification"], bundle["missing"])
+        self.assertNotIn("private", json.dumps(diagnostic))
+        self.assertNotIn("diagnostic", bundle)
+        self.assertEqual(1, len(self.fixture.transport.puts))
+
+    def test_consume_persisted_before_error_is_not_reported_as_unsaved(self):
+        self.fixture.session.review(self.response)
+        consume = executor.consume_action
+
+        def persisted_then_error(*args, **kwargs):
+            consume(*args, **kwargs)
+            raise OSError("private persisted write failure")
+
+        with patch.object(executor, "consume_action", side_effect=persisted_then_error):
+            with self.assertRaises(SessionError) as raised:
+                self.fixture.session.execute(PARAMETERS)
+        bundle = self.retained_bundle()
+        self.assertEqual("unknown", raised.exception.diagnostic["authority_use"])
+        self.assertIsNotNone(bundle["consume"])
+        self.assertIsNone(bundle["started"])
+        self.assertIsNone(bundle["receipt"])
+        text = summarize_evidence(bundle)
+        self.assertIn("authority use: recorded", text)
+        self.assertIn("existing authority and attempt records", text)
+        self.assertEqual([], self.fixture.transport.puts)
+        self.assertEqual(2, len(self.fixture.rows("authority.jsonl")))
+
+    def test_foreign_request_cannot_adopt_retained_records(self):
+        self.fixture.session.review(self.response)
+        original = self.retained_bundle()
+        foreign = self.fixture.make_session().request
+        self.assertNotEqual(foreign["action"]["action_id"], self.request["action"]["action_id"])
+        with self.assertRaises(EvidenceError):
+            export_evidence(foreign, response=self.response,
+                            decision=original["decision"], executor_ref=REF)
+
+    def test_saved_evidence_never_supplies_a_missing_same_call_diagnostic(self):
+        self.fixture.session.review(self.response)
+        bundle = self.retained_bundle()
+        before = copy.deepcopy(bundle)
+        checked = inspect_evidence(bundle)
+        text = summarize_evidence(bundle)
+        self.assertNotIn("diagnostic", checked)
+        self.assertNotIn("phase:", text)
+        self.assertEqual(before, bundle)
+        self.assertIsNone(bundle["receipt"])
+        self.assertEqual([], self.fixture.transport.puts)

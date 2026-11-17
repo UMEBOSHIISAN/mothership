@@ -4,20 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mothership-adapters"
-version = "0.1.0.dev0"
+version = "0.1.0.dev1"
 description = "Optional retained-session host adapters and non-authorizing evidence inspection"
+readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
-dependencies = ["mothership-control-plane==0.5.0.dev0", "mothership-github==0.3.0.dev0"]
+dependencies = ["mothership-control-plane==0.5.0.dev1", "mothership-github==0.3.0.dev1"]
 
 [project.optional-dependencies]
 agents = ["openai-agents==0.23.1"]
-langgraph = ["langgraph==1.2.12"]
+langgraph = ["langgraph==1.2.14"]
 mcp = ["mcp==2.3.0"]
 
 [project.scripts]
 mothership-evidence = "mothership_adapters.cli:main"
 mothership-evidence-mcp = "mothership_adapters.mcp_server:main"
+mothership-harness-handoff = "mothership_adapters.harness_handoff_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

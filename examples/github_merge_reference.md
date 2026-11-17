@@ -1,7 +1,7 @@
 # GitHub merge reference consumer
 
 This source example demonstrates the first consumer connection for the pinned
-Core 0.5.0.dev0 / companion 0.3.0.dev0 pair. It handles one explicitly chosen
+Core 0.5.0.dev1 / companion 0.3.0.dev1 pair. It handles one explicitly chosen
 PR in one terminal process:
 
 1. The transport performs an initial read-only PR fetch. The existing executor
@@ -177,6 +177,18 @@ verification event includes the validated source pair, Receipt, Verification,
 and sanitized evidence already produced by the consumer. Their statuses and
 bindings are preserved; saving does not perform another observation or operation.
 
+With `--save-result`, every saved event carries
+`"saved_result_schema":"mothership.reference-result.v1"`. The frozen-action row
+retains its existing action, digest and expiry. Execution and verification rows
+also carry `action_id` and `action_sha256`, taken from the retained issued action,
+including exception, reconciliation and unavailable-verification output. The
+same versioned line is saved before it is displayed. Without `--save-result`,
+terminal event shapes remain unversioned. These fields associate records; they
+do not create an approval, consume event or missing Receipt.
+Use a reader from this same updated checkout. The PR #56 pinned reader rejects
+v1; existing unversioned files remain readable by the updated reader with their
+original limitations. See the [compatibility table](../docs/host-adapters.md#saved-result-format-compatibility).
+
 `--save-result` requires `--verify-result`. Without the save flag, no evidence
 file is created. The consumer exclusively creates a regular file with mode
 `0600` before requesting a token or calling the transport. An existing file,
@@ -197,3 +209,44 @@ This is a local copy of consumer output, not a new authority ledger, resume
 format, authenticated audit store, or proof against alteration by the trusted
 OS user. Both terminal streams are still required; saving does not replace the
 manual approval ceremony or certify production suitability.
+
+### Read a saved result without repeating the operation
+
+With Core, companion and adapters from the same reader source checkout:
+
+```sh
+mothership-evidence inspect-result --human < result.jsonl
+```
+
+If you separately retained the action digest from the original task or review,
+set `expected_action_sha256` to that retained value and use the updated reader:
+
+```sh
+mothership-evidence inspect-result --human \
+  --expect-action-sha256 "$expected_action_sha256" < result.jsonl
+```
+
+The digest must not be extracted from this result file just to satisfy the
+check. A different action or absent action identity rejects without a summary;
+a match leaves all status and UNKNOWN meanings unchanged. This checks the
+selected action, not the source, freshness, same-action record substitution or
+external truth. It works with legacy and v1 input in the updated reader;
+older pinned readers do not support this option. See the
+[expected-operation check](../docs/host-adapters.md#check-the-expected-operation).
+
+Select the existing file explicitly. This new offline reader accepts the
+consumer's JSONL directly; `inspect --human` continues requiring its distinct
+portable-review bundle. It separates the consumer summary, an already supplied
+Receipt, and recorded independent observation. Approval/consume rows absent
+from this saved format remain unprovided, and paths inside it are never opened.
+Empty files and clean event prefixes retain uncertainty; torn JSON lines or
+inconsistent action/hash records are rejected without a summary. Reading does
+not repair a file, create a missing Receipt, observe GitHub or authorize retry.
+Legacy execution-summary rows remain unlabelled and positional only. V1 checks
+execution and verification row IDs/digests against the supplied frozen action,
+but a summary without a Receipt still leaves the outcome unknown. Missing IDs,
+unknown versions, mixed formats and mismatches are rejected; a failed v1 parse
+is never retried as legacy. Hash consistency does not authenticate the producer,
+establish freshness or prevent coherent forgery, same-action substitution, or
+complete rewriting into a valid legacy stream.
+See the [same-checkout offline walkthrough and acceptance limits](../docs/host-adapters.md#saved-reference-results).

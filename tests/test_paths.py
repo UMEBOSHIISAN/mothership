@@ -1,20 +1,38 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import multiprocessing
 import os
 from pathlib import Path
 import socket
 import stat
+import sys
 import tempfile
+from types import ModuleType
 import unittest
 from unittest.mock import patch
 
 import orchestration.lib.paths as paths_module
+import mothership.scope as public_scope
 from orchestration.lib.paths import open_output_leaf, prepare_scope, validate_relative_path
 
 
 FIXTURE_ROOT = (Path(os.path.sep) / "tmp").resolve() / "mothership-paths-tests"
+
+
+def _paths_without_nofollow(flag: int | None) -> ModuleType:
+    """Import a separate module with the capability absent or unusable."""
+
+    name = "_mothership_paths_without_nofollow"
+    spec = importlib.util.spec_from_file_location(name, paths_module.__file__)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    with patch.object(os, "O_NOFOLLOW", flag, create=True), patch.dict(sys.modules, {name: module}):
+        if flag is None:
+            del os.O_NOFOLLOW
+        spec.loader.exec_module(module)
+    return module
 
 
 class _TrackedScandir:
@@ -119,6 +137,68 @@ class PathTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_relative_path(value)  # type: ignore[arg-type]
         self.assertEqual("nested/file", str(validate_relative_path("nested/file")))
+
+    def test_missing_nofollow_import_rejects_scope_io_before_open(self) -> None:
+        # Falling back to ordinary opens when the OS flag is absent/zero must fail.
+        for flag in (None, 0):
+            with self.subTest(flag=flag):
+                module = _paths_without_nofollow(flag)
+                self.assertEqual("nested/file", str(module.validate_relative_path("nested/file")))
+                with patch.object(os, "open", wraps=os.open) as opened:
+                    for create_stage in (False, True):
+                        with self.assertRaises(ValueError):
+                            module.prepare_scope(self.data(), self.task, self.run, create_stage)
+                    with self.assertRaises(ValueError):
+                        with module.open_output_leaf(self.run, "new-parent/out.bin"):
+                            pass
+                    opened.assert_not_called()
+                self.assertEqual([], list(self.run.iterdir()))
+                self.assertEqual(b"prompt", (self.task / "prompt.txt").read_bytes())
+                self.assertEqual(b"one", (self.task / "one.txt").read_bytes())
+                self.assertEqual(b"two", (self.task / "nested/two.txt").read_bytes())
+
+    def test_unavailable_nofollow_rejects_symlink_routes_without_effects(self) -> None:
+        # Following a root, ancestor, input leaf or output parent must fail.
+        task_link = self.root / "task-link"
+        task_link.symlink_to(self.task, target_is_directory=True)
+        ancestor = self.root / "ancestor-link"
+        ancestor.symlink_to(self.root, target_is_directory=True)
+        (self.task / "prompt-link").symlink_to(self.task / "prompt.txt")
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "marker").write_bytes(b"untouched")
+        output_root = self.root / "output-root-link"
+        output_root.symlink_to(outside, target_is_directory=True)
+        (self.run / "parent-link").symlink_to(outside, target_is_directory=True)
+        for flag in (None, 0):
+            with self.subTest(flag=flag), patch.object(paths_module, "_NOFOLLOW", flag):
+                with patch.object(os, "open", wraps=os.open) as opened:
+                    for task_root in (task_link, ancestor / "task"):
+                        with self.assertRaises(ValueError):
+                            public_scope.prepare_scope(self.data(), task_root, self.run, False)
+                    with self.assertRaises(ValueError):
+                        public_scope.prepare_scope(self.data(prompt_path="prompt-link"), self.task, self.run, True)
+                    for run_root, relative in ((output_root, "out.bin"), (self.run, "parent-link/out.bin")):
+                        with self.assertRaises(ValueError):
+                            with public_scope.open_output_leaf(run_root, relative):
+                                pass
+                    opened.assert_not_called()
+                self.assertEqual(["marker"], sorted(p.name for p in outside.iterdir()))
+                self.assertEqual(b"untouched", (outside / "marker").read_bytes())
+                self.assertEqual(["parent-link"], sorted(p.name for p in self.run.iterdir()))
+                self.assertEqual(b"prompt", (self.task / "prompt.txt").read_bytes())
+
+    def test_missing_capability_probe_does_not_poison_supported_scope(self) -> None:
+        # An unavailable isolated import must not disable the supported facade.
+        module = _paths_without_nofollow(None)
+        with self.assertRaises(ValueError):
+            module.prepare_scope(self.data(), self.task, self.run, False)
+        scope = public_scope.prepare_scope(self.data(), self.task, self.run, False)
+        self.assertEqual(hashlib.sha256(b"prompt").hexdigest(), scope.prompt_sha256)
+        self.assertEqual(["nested/two.txt", "one.txt"], [item.relative_path for item in scope.files])
+        with public_scope.open_output_leaf(self.run, "normal/out.bin") as output:
+            output.write(b"normal")
+        self.assertEqual(b"normal", (self.run / "normal/out.bin").read_bytes())
 
     def test_normalized_absolute_separate_roots_are_required(self) -> None:
         # Normalizing, resolving, or accepting overlapping roots must make this fail.

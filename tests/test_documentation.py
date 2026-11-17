@@ -196,15 +196,16 @@ class ReadmeContractTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "PURPOSE",
-                "責務分担",
-                "HISTORICAL BASELINE: v0.4.2",
-                "現在のMothership Core",
-                "現在の参照profile",
-                "公開結果の一例",
+                "結果の読み方",
                 "クイックスタート",
                 "現在の制約",
+                "現在の参照profile（未公開dev1 source）",
+                "責務分担",
+                "PURPOSE",
+                "現在のMothership Core",
                 "詳細ドキュメント",
+                "HISTORICAL BASELINE: v0.4.2",
+                "公開結果の一例",
                 "License",
             ),
             headings,
@@ -217,15 +218,16 @@ class ReadmeContractTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "PURPOSE",
-                "Responsibility split",
-                "HISTORICAL BASELINE: v0.4.2",
-                "How the current Mothership Core works",
-                "Current reference profile",
-                "One public result",
+                "Read a result",
                 "Quick start",
                 "Current limitations",
+                "Current reference profile (unpublished dev1 source)",
+                "Responsibility split",
+                "PURPOSE",
+                "How the current Mothership Core works",
                 "Documentation",
+                "HISTORICAL BASELINE: v0.4.2",
+                "One public result",
                 "License",
             ),
             english_headings,
@@ -245,11 +247,16 @@ class ReadmeContractTests(unittest.TestCase):
     def test_reference_positioning_and_scope_are_explicit(self) -> None:
         for phrase in (
             "人間が全部を抱えず、AIにも全部を明け渡さない。",
+            "公開dev0と未公開dev1の範囲",
+            "request bindingはauthority台帳に残りません。",
+            "PUT直前には検査しません。",
+            "Release assetの`SHA256SUMS`は3 wheelと3 sdist",
             "使うAIが変わっても、仕事の主導権は手元に。",
             "任せる操作を事前に固定し",
             "オープンソースの中核実装",
             "github.merge_pr",
-            "base commit SHAは結び付けられません",
+            "GitHubのPUTにはbase SHAの原子的な条件がない",
+            "旧5値の保存記録は読取対象のまま",
             "`expires_at`はaction digestに含まれません",
             "毎回新しい `action_id` を発行",
             "表示した発行情報と期限へ応答を対応付け",
@@ -267,21 +274,23 @@ class ReadmeContractTests(unittest.TestCase):
         self.assertIn("Mothership binds a human decision to bounded authority for one external action.", composition)
         self.assertIn("ローカル作業のプレビュー", japanese_map)
         self.assertIn("Visible scope / confirmation", english_map)
-        self.assertIn("補助bridge / 別途構成", japanese_map)
-        self.assertIn("外部権限への変換・自動接続はなし", japanese_map)
-        self.assertIn("SUPPLEMENTAL BRIDGE / SEPARATE", english_map)
-        self.assertIn("No external permission conversion or auto bridge", english_map)
+        self.assertIn("明示handoff / 限定実証", japanese_map)
+        self.assertIn("既定は合成 / #70は隔離実接続", japanese_map)
+        self.assertIn("EXPLICIT HANDOFF / BOUNDED RESULT", english_map)
+        self.assertIn("Synthetic default / #70 isolated live path", english_map)
+        self.assertIn("通常設定・公開mirror・人の受入は未確認", japanese_map)
+        self.assertIn("Normal host, public mirror and human usability remain unverified", english_map)
         self.assertNotIn("やる / 確認 / しない", japanese_map)
         self.assertNotIn("Will do / confirm / will not do", english_map)
-        purpose = self.text.split("## PURPOSE", 1)[1].split("## 責務分担", 1)[0]
+        purpose = self.text.split("## PURPOSE", 1)[1].split("\n## ", 1)[0]
         self.assertNotIn("github.merge_pr", purpose)
         self.assertNotIn("医療製品", self.text)
 
-    def test_authority_flow_and_decision_cardinality_match_v0_4_2(self) -> None:
+    def test_authority_flow_and_decision_cardinality_match_published_scope(self) -> None:
         english = README_EN.read_text("utf-8")
 
         for phrase in (
-            "現在の公開版同士に自動接続はありません。",
+            "公開wheelだけで各hostへ自動接続されるわけではありません。",
             "補助bridgeはlocal lease観測をCore contextへ渡すだけ",
             "proposalとevidenceは判断材料ですが、FrozenActionへ機械的に結び付けられません",
             "同じactionへ複数のdecision eventを記録できる",
@@ -290,9 +299,12 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, self.text)
 
         for phrase in (
-            "the current public releases have no",
+            "Published dev0 and unpublished dev1 boundaries",
+            "does not persist request binding",
+            "not immediately before PUT",
+            "the published wheels do not automatically",
             "The supplemental bridge passes",
-            "automatic runtime bridge.",
+            "general runtime bridge.",
             "Proposal and evidence are decision context, but they were not mechanically bound to a FrozenAction",
             "multiple events per action",
             "one consume per action in one trusted ledger history",
@@ -300,8 +312,8 @@ class ReadmeContractTests(unittest.TestCase):
             self.assertIn(phrase, english)
         self.assertNotIn("権限の受け渡しを具体的に閉じた", self.text)
         self.assertNotIn("closed end to end", english)
-        self.assertIn("5つの実行パラメータ", self.text)
-        self.assertIn("five execution parameters", english)
+        self.assertIn("6つの実行パラメータ", self.text)
+        self.assertIn("six execution parameters", english)
         self.assertIn("issue a fresh `action_id` for every freeze", english)
         self.assertIn("correlate", english)
         self.assertIn("the response to the exact live issuance and displayed expiry", english)
@@ -426,7 +438,8 @@ class ReadmeContractTests(unittest.TestCase):
         for locale in ("ja", "en"):
             svg = (ROOT / f"assets/readme/{locale}/ume-stack-responsibility.svg").read_text("utf-8")
             self.assertIn('viewBox="0 0 720 1120"', svg)
-            self.assertEqual(2, svg.count("stroke-dasharray="))
+            self.assertEqual(3, svg.count("stroke-dasharray="))
+            self.assertEqual(1, svg.count('data-role="result-return"'))
             self.assertEqual(1, svg.count('data-role="bridge"'))
             self.assertEqual(2, svg.count('data-role="external"'))
             if locale == "en":
@@ -437,13 +450,13 @@ class ReadmeContractTests(unittest.TestCase):
                 self.assertIn(">Separate Verification</tspan>", svg)
                 self.assertIn(">Companion producer</tspan>", svg)
                 self.assertNotIn(">Separately configured executor</text>", svg)
-                self.assertIn(">Solid = implemented now</tspan>", svg)
-                self.assertIn(">Dashed = no automatic bridge</tspan>", svg)
-                self.assertIn(">Outline = opt-in / separately configured</tspan>", svg)
+                self.assertIn(">Solid = existing parts / dashed = explicit opt-in</tspan>", svg)
+                self.assertIn(">Result returns to the entry / saved for offline reread</tspan>", svg)
+                self.assertIn(">github.merge_pr / isolated #70 / 2026-10-29</tspan>", svg)
                 self.assertNotIn("Solid = implemented now    Dashed = not connected", svg)
             else:
                 self.assertEqual(2, svg.count(">現在の実装</text>"))
-                self.assertIn(">補助bridge / 別途構成</text>", svg)
+                self.assertIn(">明示handoff / 限定実証</text>", svg)
                 self.assertNotIn(">CURRENT</text>", svg)
                 self.assertNotIn("DIRECTION / NOT_SHIPPED", svg)
 
@@ -526,7 +539,12 @@ class ReadmeContractTests(unittest.TestCase):
             if line.startswith("```"):
                 in_fence = not in_fence
                 continue
-            if in_fence or line.startswith(("[!", "<img", "  <img")) or "https://" in line:
+            # Table rows have separate structure and may exceed prose line limits.
+            if (
+                in_fence
+                or line.startswith(("|", "[!", "<img", "  <img"))
+                or "https://" in line
+            ):
                 continue
             self.assertLessEqual(len(line), 120, f"README line {number} is too long")
 
@@ -618,13 +636,17 @@ class PublicE2EEvidenceDocumentationTests(unittest.TestCase):
             "# Mothership",
             'src="assets/mothership-banner.png"',
             "人間が全部を抱えず、AIにも全部を明け渡さない。",
-            "## PURPOSE",
-            "## 責務分担",
-            "## HISTORICAL BASELINE: v0.4.2",
+            "## 結果の読み方",
+            "## クイックスタート",
+            "## 現在の制約",
             "## 現在の参照profile",
+            "## 責務分担",
+            "## PURPOSE",
+            "## 現在のMothership Core",
+            "## 詳細ドキュメント",
+            "## HISTORICAL BASELINE: v0.4.2",
             "## 公開結果の一例",
             f"]({E2E_EVIDENCE_LINK})",
-            "## クイックスタート",
         )
         for value in ordered:
             self.assertIn(value, normalized)
@@ -905,6 +927,22 @@ class SupportingDocumentationTests(unittest.TestCase):
         for forbidden in ("sudo ", "install a hook", "shell startup file"):
             self.assertNotIn(forbidden, text.casefold())
         self.assertIn("Installation is the only package-changing step", text)
+
+    def test_published_dev0_wheel_recipe_names_and_checks_each_release_asset(self) -> None:
+        text = self.documents["installation"]
+        for phrase in (
+            "Published v0.5.0.dev0: three-wheel reader",
+            "mothership_control_plane-0.5.0.dev0-py3-none-any.whl",
+            "mothership_github-0.3.0.dev0-py3-none-any.whl",
+            "mothership_adapters-0.1.0.dev0-py3-none-any.whl",
+            "repository-root `SHA256SUMS`",
+            "SHA-256 mismatch",
+            "Unpublished v0.5.0.dev1 source candidate",
+            "d0a2622d71a3873871ab9d487ec67ad68892935bf7d652e50d636cb20437f9ce",
+            "4f1bbe4a6df615a57b24b8233ad16b50c07a4bd389fdd5f1edaedd1c065895ef",
+            "676ab9d7129c1575b6b470e63a3b62489c8bd0866ee6a70dcac518a2afcc64ce",
+        ):
+            self.assertIn(phrase, text)
 
     def test_protocol_reference_has_owner_source_version_and_failure_contract(self) -> None:
         text = self.documents["protocols"]

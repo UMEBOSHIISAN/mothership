@@ -1,13 +1,14 @@
 # Mothership GitHub companion — local candidate
 
-Version0.3.0.dev0 requires Core0.5.0.dev0 exactly. This is an isolated integration
-candidate, not a published package or live-operation proof.
+Version 0.3.0.dev1 requires Core 0.5.0.dev1 exactly. This is an unpublished
+integration candidate, not a live-operation proof. The published dev0 pair is
+a separate historical revision.
 
-To try this pair, use the [pinned candidate installation](../../docs/action-review.md#install-the-source-candidate).
-It installs both local projects together, checks their exact dependency pairing,
-and runs the source-only portable review example against installed packages.
+To try the current runtime, use the [pinned candidate installation](../../docs/host-adapters.md#try-the-current-candidate).
+It installs Core, this companion and the optional adapters from one exact checkout.
 Installing Core alone does not install this optional companion; a default main
-clone also does not select an unmerged candidate.
+clone also does not select an unmerged candidate. Historical portable-review
+setup remains in the [action-review guide](../../docs/action-review.md#install-the-source-candidate).
 
 HTTP observation and bounded merge execution live here; Core owns the closed
 FrozenAction and authority ledger. All credentials are explicit constructor
@@ -48,8 +49,9 @@ example](../../examples/github_readback_verification.md).
 An injected opener is explicit synthetic/host-attested provenance for offline
 use. The default path does not discover credentials and sends no Authorization
 header. A two-request read-back is a bounded snapshot rather than an atomic
-external observation; the current action profile also leaves base commit SHA
-binding outside the producer.
+external observation. For a new six-field action, the merge commit's first
+parent is compared with the frozen base commit SHA. Historical five-field
+records remain readable without retroactive base binding.
 The verifier requires the live Core-issued `FrozenAction` in the same process;
 persisted JSON cannot reconstruct its binding. Read-back remains available
 after consume expiry because it does not consume or renew authority. The caller
@@ -97,8 +99,10 @@ The Python helper
 sidecar. A successful read-back uses at most two public tokenless GETs and has
 no credentials, retry, polling, authority, executor, ledger, or external-effect
 behavior.
-The 10-minute TTL ends eligibility to consume, not necessarily the time to start
-PUT. Expected base is checked at preflight only; PUT has no atomic base condition.
+The 10-minute TTL is checked before consume and immediately before PUT dispatch.
+Expected base branch and commit SHA are checked at initial and pre-PUT GET.
+GitHub's PUT has no atomic base condition, so an intervening change can still
+race with the request; read-back can detect a resulting first-parent mismatch.
 See [candidate limits](../../docs/option-a-candidate.md) before choosing a consumer.
 
 ## One-PR reference consumer
@@ -109,14 +113,25 @@ to build a Receipt and perform independent public tokenless read-back in the sam
 process. Execution and verification remain separate; UNKNOWN does not trigger a
 retry. The consumer is not an installed mutation CLI.
 
+Its `--save-result` file can be handed to another person or AI for offline
+`mothership-evidence inspect-result --human` reading through the optional adapters.
+See the [retained synthetic recipient cases](../../examples/saved-results/README.en.md).
+The file does not supply full approval/consume records; reading it neither
+creates those records nor authenticates its origin or current external state.
+
 ## Installed-wheel verification
 
-The companion distribution tests build the Core and companion wheels using the
-existing root test extra, then install the local artifacts in temporary virtual
-environments without fetching dependencies. They check package metadata and
-import locations, and rerun the pipeline, read-back, and process-boundary tests outside
-the source checkout. The installed tests use fake transports and local ledgers;
-they do not perform a live GitHub action or establish production readiness.
+The companion distribution tests build Core, companion and optional adapters
+wheels from one copied source snapshot using the existing root test extra.
+They install the local artifacts into temporary virtual environments with
+`--no-index --no-deps` and run `pip check`. Core-only and Core/companion checks
+remain separate; the three-wheel checks exercise the installed evidence reader
+outside the source checkout, without editable installs or `PYTHONPATH`.
+They cover the six retained inputs, v1 action binding and expected-digest checking;
+an intentionally incomplete test wheel must fail rather than import source files.
+Import locations and metadata are checked, and the installed pair reruns the
+pipeline, read-back and process-boundary suites. These synthetic tests do not
+perform a live GitHub action, qualify a live host or supply human acceptance.
 
 From the source checkout, with the root `.[test]` extra already installed:
 
@@ -124,8 +139,10 @@ From the source checkout, with the root `.[test]` extra already installed:
 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s packages/mothership-github/tests -p test_distribution.py -v
 ```
 
-This checks the built development-version pair, not a published release. The
-ordinary companion CI discovery also runs these distribution tests.
+This checks the built development-version artifacts, not a published release.
+The ordinary companion CI discovery includes this test module; no additional
+workflow or job is required. The current test candidate extends the regression
+coverage; historical pinned runtimes do not thereby acquire these new tests.
 
 ## Process interruption checks
 

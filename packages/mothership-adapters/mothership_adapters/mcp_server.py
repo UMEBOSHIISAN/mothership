@@ -40,7 +40,7 @@ def build_server() -> Any:
     if _MCPServer is None:
         raise MCPUnavailableError("the pinned MCP SDK is unavailable")
 
-    server = _MCPServer("mothership-evidence", version="0.1.0.dev0")
+    server = _MCPServer("mothership-evidence", version="0.1.0.dev1")
 
     @server.tool(
         description="Validate one detached external-action Receipt without granting authority."

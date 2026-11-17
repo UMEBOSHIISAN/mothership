@@ -79,6 +79,7 @@ def main() -> int:
             "pull_request": 7,
             "expected_head_sha": _HEAD,
             "expected_base": "main",
+            "expected_base_sha": _BASE,
             "merge_method": "merge",
         },
     )

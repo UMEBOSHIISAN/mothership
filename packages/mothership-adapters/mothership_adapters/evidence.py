@@ -125,6 +125,10 @@ _READBACK_GUIDANCE = {
         "compare retained commit parents with expected head; "
         "no automatic retry/re-execution/reconsume"
     ),
+    "base_sha_mismatch": (
+        "compare frozen expected_base_sha with retained merge commit first parent, if provided; "
+        "no automatic retry/re-execution/reconsume"
+    ),
     "invalid_pr_observation": (
         "check PR visibility and retained observation completeness; cause remains unknown; "
         "no request auto-run; no automatic retry/re-execution/reconsume"
@@ -358,7 +362,16 @@ def _validate_decision(
     request: dict[str, object],
     response: dict[str, object] | None,
 ) -> dict[str, object]:
-    decision = _copy_checked_contract("authority-action-approval", value)
+    if type(value) is not dict:
+        raise _invalid()
+    version = value.get("schema_version")
+    if version == "authority-action-approval.v0":
+        kind = "authority-action-approval"
+    elif version == "authority-action-approval.v1":
+        kind = "authority-action-approval.v1"
+    else:
+        raise _invalid()
+    decision = _copy_checked_contract(kind, value)
     action = request["action"]
     if (
         decision["action"] != action
@@ -372,6 +385,12 @@ def _validate_decision(
     if recorded >= expires:
         raise _invalid()
     if response is not None and decision["decision"] != response["decision"]:
+        raise _invalid()
+    if kind == "authority-action-approval.v1" and (
+        decision["request_id"] != request["request_id"]
+        or decision["request_sha256"] != request["request_sha256"]
+        or decision["host_context"] != request["host_context"]
+    ):
         raise _invalid()
     return decision
 
@@ -788,13 +807,28 @@ def _validate_readback_projection(value: object, *, kind: str) -> dict[str, obje
 def _validate_readback_evidence(
     bundle: dict[str, object], value: object
 ) -> dict[str, object]:
+    return _validate_readback_for_action(
+        bundle["request"]["action"], bundle["request"]["action_sha256"],
+        bundle["verification"], value,
+    )
+
+
+def _validate_readback_for_action(
+    action: dict[str, object], action_sha256: str,
+    verification: object, value: object,
+) -> dict[str, object]:
+    """Check saved sidecar bindings against already validated action/Verification.
+
+    This pure check accepts recorded action data without inventing a portable
+    review request. Callers validate the Receipt/Verification contract first.
+    """
     detached, _ = _canonical(value)
     if type(detached) is not dict or set(detached) != _READBACK_KEYS:
         raise _invalid()
     if detached["version"] != _READBACK_VERSION:
         raise _invalid()
     action_id = _require_action_id(detached["action_id"])
-    action_sha256 = _require_digest(detached["action_sha256"])
+    sidecar_action_sha256 = _require_digest(detached["action_sha256"])
     if detached["transport"] not in {"default_tokenless", "injected"}:
         raise _invalid()
     observations = detached["observations"]
@@ -821,15 +855,13 @@ def _validate_readback_evidence(
     if type(reason) is not str or _READBACK_REASON.fullmatch(reason) is None:
         raise _invalid()
 
-    verification = bundle.get("verification")
     if type(verification) is not dict:
         raise _invalid()
-    action = bundle["request"]["action"]
     if (
         action_id != action["action_id"]
-        or action_sha256 != bundle["request"]["action_sha256"]
+        or sidecar_action_sha256 != action_sha256
         or action_id != verification["action_id"]
-        or action_sha256 != verification["action_sha256"]
+        or sidecar_action_sha256 != verification["action_sha256"]
     ):
         raise _invalid()
     evidence_refs = verification["evidence_refs"]
@@ -927,14 +959,30 @@ def summarize_evidence(
             approval_text = "recorded (approve)"
         else:
             approval_text = "rejected (decision recorded)"
-        authority_text = "recorded" if consume is not None else "missing"
-        receipt_status = "missing" if receipt is None else str(receipt["status"])
+        rejection_recorded = decision is not None and decision["decision"] == "reject"
+        authority_text = (
+            "recorded (consume event in provided records)"
+            if consume is not None
+            else "missing"
+        )
+        if receipt is None:
+            receipt_status = "missing"
+        elif receipt["status"] == "SUCCESS":
+            receipt_status = (
+                "SUCCESS (executor report; independent confirmation is separate)"
+            )
+        else:
+            receipt_status = str(receipt["status"])
         verification_status = (
             "missing" if verification is None else str(verification["status"])
         )
 
-        if verification is None and receipt is not None and receipt["status"] == "SUCCESS":
+        if rejection_recorded:
+            conclusion = "rejection recorded for this request"
+        elif verification is None and receipt is not None and receipt["status"] == "SUCCESS":
             conclusion = "executor-reported success only"
+        elif verification is None and receipt is None:
+            conclusion = "execution records incomplete; outcome unknown"
         elif verification is None:
             conclusion = "evidence incomplete"
         elif verification["status"] == "MISMATCH":
@@ -956,7 +1004,15 @@ def summarize_evidence(
             f"expected_base={parameters['expected_base']}; merge_method={parameters['merge_method']}"
         )
 
-        if verification is None:
+        if rejection_recorded:
+            next_check = (
+                "review the recorded rejection; no independent Verification search is needed for this request"
+            )
+        elif receipt is None:
+            next_check = (
+                "inspect existing authority and attempt records before seeking independent Verification"
+            )
+        elif verification is None:
             next_check = (
                 "inspect an existing independent Verification record for this action, "
                 "if one exists"
@@ -975,12 +1031,20 @@ def summarize_evidence(
         lines = [
             f"bundle: {checked['bundle_sha256']}",
             target_text,
+            "provided records (caller-reported)",
             f"approval: {approval_text}",
             f"authority use: {authority_text}",
             f"receipt: {receipt_status}",
             f"verification: {verification_status}",
             f"missing: {missing_text}",
             f"conclusion: {conclusion}",
+            *(
+                [
+                    "rejection scope: post-execution Verification is not a completion requirement for a reject decision; this is not proof of global event absence"
+                ]
+                if rejection_recorded
+                else []
+            ),
             f"structured reason: {reason}",
             *(
                 [
@@ -1009,11 +1073,12 @@ def summarize_evidence(
                 if readback is not None
                 else []
             ),
+            "inspection scope (structural only)",
             "provenance: caller-attested",
             "source: source-unverified",
-            "authority: false",
+            "authority: false (this inspection grants no execution permission)",
             "source authenticated: false",
-            "external effect verified: false",
+            "external effect verified: false (this inspection does not observe external state)",
             "record basis: status and conclusion are caller-reported records; source authentication unavailable",
             "absence claim: missing decision, authority-use, or Verification records do not prove that those events were absent",
             f"next read-only check: {next_check}",

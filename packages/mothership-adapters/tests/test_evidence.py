@@ -9,10 +9,11 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 from mothership.action_authority import freeze_action
 from mothership.action_review import build_review_request
-from mothership.contracts import canonical_json_bytes, canonical_json_sha256
+from mothership.contracts import ContractError, canonical_json_bytes, canonical_json_sha256
 from mothership_github import receipts
 from orchestration.lib import action_authority_ledger
 
@@ -31,6 +32,7 @@ PARAMETERS = {
     "pull_request": 5,
     "expected_head_sha": "e2161c0c27af68221ad507a05583a5fbdaecefe1",
     "expected_base": "main",
+    "expected_base_sha": "b" * 40,
     "merge_method": "merge",
 }
 EXECUTOR_REF = {"ref_id": "executor:synthetic", "sha256": "b" * 64}
@@ -202,6 +204,132 @@ class EvidenceFixture(unittest.TestCase):
 
 
 class EvidenceTests(EvidenceFixture):
+    def test_reviewed_decision_bundle_preserves_request_binding(self) -> None:
+        reviewed = copy.deepcopy(self.decision)
+        reviewed.update(
+            schema_version="authority-action-approval.v1",
+            request_id=self.request["request_id"],
+            request_sha256=self.request["request_sha256"],
+            host_context=copy.deepcopy(self.request["host_context"]),
+        )
+        try:
+            bundle = self.full(decision=reviewed)
+        except EvidenceError:
+            self.fail("valid reviewed decision was rejected")
+        self.assertEqual(["verification"], inspect_evidence(bundle)["missing"])
+        self.assertEqual(reviewed, bundle["decision"])
+
+    def test_reviewed_decision_rejects_substituted_request_context(self) -> None:
+        reviewed = copy.deepcopy(self.decision)
+        reviewed.update(
+            schema_version="authority-action-approval.v1",
+            request_id=self.request["request_id"],
+            request_sha256=self.request["request_sha256"],
+            host_context={**self.request["host_context"], "session_id": "other"},
+        )
+        with self.assertRaises(EvidenceError):
+            self.full(decision=reviewed)
+
+    def test_export_and_inspection_preserve_nested_inputs_and_fixture_files(self) -> None:
+        bundle, sidecar = self._readback_artifacts()
+        inputs = {
+            "request": self.request, "response": self.response,
+            "decision": self.decision, "consume": self.consume,
+            "started": self.started, "finished": self.finished,
+            "executor_ref": copy.deepcopy(EXECUTOR_REF),
+            "verification": bundle["verification"],
+        }
+        root = pathlib.Path(self.temp.name)
+        for name, value in (("bundle.json", bundle), ("sidecar.json", sidecar)):
+            (root / name).write_bytes(canonical_json_bytes(value))
+        before_inputs = copy.deepcopy((inputs, bundle, sidecar))
+        before_files = {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+        exported = export_evidence(**inputs)
+        projection = inspect_evidence(bundle)
+        evidence_module.summarize_evidence(bundle, readback_evidence=sidecar)
+        # A caller may edit outputs; that must not alter retained evidence.
+        exported["request"]["host_context"]["scope"].append("synthetic-poison")
+        projection["missing"].append("synthetic-poison")
+
+        self.assertEqual(before_inputs, (inputs, bundle, sidecar))
+        self.assertEqual(before_files, {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()})
+        self.assertEqual([], inspect_evidence(bundle)["missing"])
+
+    def test_inspection_repeats_independently_of_other_trial_order(self) -> None:
+        cases = (
+            (self.full(verification=self.verification(status="CONFIRMED", summary="synthetic positive control")), "SUCCESS", "CONFIRMED", []),
+            (self.full(finished=None), None, None, ["finished", "verification"]),
+            (self.full(verification=self.verification(status="UNKNOWN", summary="synthetic unavailable observation")), "SUCCESS", "UNKNOWN", []),
+            (self.full(verification=self.verification(status="MISMATCH", summary="synthetic mismatch")), "SUCCESS", "MISMATCH", []),
+            (self.full(consume=None, started=None, finished=None), None, None, ["consume", "started", "finished", "verification"]),
+        )
+        before = copy.deepcopy(cases)
+        texts: dict[int, str] = {}
+        for order in (range(len(cases)), reversed(range(len(cases)))):
+            for index in order:
+                bundle, receipt_status, verification_status, missing = cases[index]
+                for repeat in range(2):
+                    with self.subTest(case=index, repeat=repeat):
+                        result = inspect_evidence(bundle)
+                        self.assertEqual(receipt_status, result["receipt_status"])
+                        self.assertEqual(verification_status, result["verification_status"])
+                        self.assertEqual(missing, result["missing"])
+                        self.assertEqual("source-unverified", result["source_status"])
+                        for flag in ("authority", "source_authenticated", "external_effect_verified"):
+                            self.assertIs(False, result[flag])
+                        text = evidence_module.summarize_evidence(bundle)
+                        if index in texts:
+                            self.assertEqual(texts[index], text)
+                        texts[index] = text
+        self.assertEqual(before, cases)
+
+    def test_mid_validation_exception_leaves_the_next_inspection_clean(self) -> None:
+        bundle = self.full(verification=self.verification(status="CONFIRMED", summary="synthetic positive control"))
+        before = copy.deepcopy(bundle)
+        before_files = (self.authority_path.read_bytes(), self.receipt_path.read_bytes())
+        with mock.patch.object(
+            evidence_module, "validate_receipt_verification_binding",
+            side_effect=ContractError("synthetic binding interruption"),
+        ):
+            with self.assertRaises(EvidenceError):
+                inspect_evidence(bundle)
+        self.assertEqual(before, bundle)
+        self.assertEqual(before_files, (self.authority_path.read_bytes(), self.receipt_path.read_bytes()))
+        result = inspect_evidence(bundle)
+        self.assertEqual("CONFIRMED", result["verification_status"])
+        self.assertIs(False, result["external_effect_verified"])
+        incomplete = inspect_evidence(self.full(finished=None))
+        self.assertIsNone(incomplete["receipt_status"])
+        self.assertEqual(["finished", "verification"], incomplete["missing"])
+
+    def test_rejected_substitution_does_not_contaminate_the_next_inspection(self) -> None:
+        bundle, sidecar = self._readback_artifacts()
+        before = copy.deepcopy((bundle, sidecar))
+        expected = evidence_module.summarize_evidence(bundle, readback_evidence=sidecar)
+        swapped = copy.deepcopy(sidecar)
+        swapped["action_id"] = "act-foreign-trial"
+        foreign_bundle, foreign_sidecar = self._rebind_readback_sidecar(bundle, swapped)
+        changed_content = copy.deepcopy(sidecar)
+        changed_content["reason"] = "merge_confirmed"
+        changed_row = copy.deepcopy(bundle)
+        changed_row["verification"]["observed_state"]["summary"] = "different schema-valid observation"
+        # Rehashing the envelope must not bypass source-row reconstruction.
+        changed_row["bundle_sha256"] = canonical_json_sha256(
+            {k: v for k, v in changed_row.items() if k != "bundle_sha256"}
+        )
+        for name, candidate, original in (
+            ("foreign-action-even-after-rehash", foreign_bundle, foreign_sidecar),
+            ("sidecar-content-hash-mismatch", bundle, changed_content),
+            ("source-row-hash-mismatch", changed_row, sidecar),
+        ):
+            with self.subTest(substitution=name):
+                with self.assertRaises(EvidenceError):
+                    evidence_module.summarize_evidence(candidate, readback_evidence=original)
+                self.assertEqual(expected, evidence_module.summarize_evidence(bundle, readback_evidence=sidecar))
+                self.assertEqual("UNKNOWN", inspect_evidence(bundle)["verification_status"])
+        self.assertEqual(before, (bundle, sidecar))
+
     def test_human_summary_without_sidecar_and_explicit_none_match(self) -> None:
         bundle, _sidecar = self._readback_artifacts()
         implicit = evidence_module.summarize_evidence(bundle)
@@ -280,8 +408,13 @@ class EvidenceTests(EvidenceFixture):
         )
         self.assertNotIn("readback guidance:", summary)
         self.assertIn("source: source-unverified", lines)
-        self.assertIn("authority: false", lines)
-        self.assertIn("external effect verified: false", lines)
+        self.assertIn(
+            "authority: false (this inspection grants no execution permission)", lines
+        )
+        self.assertIn(
+            "external effect verified: false (this inspection does not observe external state)",
+            lines,
+        )
 
     def test_human_summary_rejects_sidecar_binding_and_shape_mismatches(self) -> None:
         state = {
@@ -427,6 +560,7 @@ class EvidenceTests(EvidenceFixture):
             ("receipt_not_finished", "receipt finished_at"),
             ("head_or_base_mismatch", "expected_head_sha/expected_base"),
             ("merge_topology_mismatch", "commit parents"),
+            ("base_sha_mismatch", "expected_base_sha"),
             ("invalid_pr_observation", "PR visibility"),
             ("invalid_commit_observation", "merge_commit_sha"),
             ("unmerged_pr", "state/merged/merged_at"),
@@ -455,16 +589,27 @@ class EvidenceTests(EvidenceFixture):
         summary = formatter(self.full())
 
         self.assertIn("approval: recorded", summary)
-        self.assertIn("authority use: recorded", summary)
-        self.assertIn("receipt: SUCCESS", summary)
+        self.assertIn("authority use: recorded (consume event in provided records)", summary)
+        self.assertIn(
+            "receipt: SUCCESS (executor report; independent confirmation is separate)",
+            summary,
+        )
         self.assertIn("verification: missing", summary)
         self.assertIn("missing: verification", summary)
         self.assertIn("conclusion: executor-reported success only", summary)
         self.assertIn("provenance: caller-attested", summary)
         self.assertIn("source: source-unverified", summary)
-        self.assertIn("authority: false", summary)
+        self.assertIn(
+            "authority: false (this inspection grants no execution permission)",
+            summary,
+        )
         self.assertIn("source authenticated: false", summary)
-        self.assertIn("external effect verified: false", summary)
+        self.assertIn(
+            "external effect verified: false (this inspection does not observe external state)",
+            summary,
+        )
+        self.assertIn("provided records (caller-reported)", summary)
+        self.assertIn("inspection scope (structural only)", summary)
         self.assertIn(
             "record basis: status and conclusion are caller-reported records; source authentication unavailable",
             summary,
@@ -473,7 +618,10 @@ class EvidenceTests(EvidenceFixture):
             "absence claim: missing decision, authority-use, or Verification records do not prove that those events were absent",
             summary,
         )
-        self.assertIn("next read-only check:", summary)
+        self.assertIn(
+            "next read-only check: inspect an existing independent Verification record for this action, if one exists",
+            summary,
+        )
         self.assertIn("no re-execution", summary)
         self.assertIn("no reconsume", summary)
 
@@ -632,6 +780,76 @@ class EvidenceTests(EvidenceFixture):
         self.assertNotIn("approved", missing_decision)
         self.assertNotIn("cancelled", missing_decision)
         self.assertNotIn("no effect", missing_decision)
+
+    def test_human_summary_guides_recorded_rejection_without_verification_search(self) -> None:
+        rejected_authority_path = self.authority_dir / "rejected-guidance-events.jsonl"
+        rejected_decision = action_authority_ledger.record_action_decision(
+            rejected_authority_path,
+            self.action,
+            "reject",
+            self.action.action["action_id"],
+            self.action.action_sha256,
+        )
+        rejected_response = copy.deepcopy(self.response)
+        rejected_response["decision"] = "reject"
+
+        summary = evidence_module.summarize_evidence(
+            self.full(
+                response=rejected_response,
+                decision=rejected_decision,
+                consume=None,
+                started=None,
+                finished=None,
+            )
+        )
+
+        self.assertIn("provided records (caller-reported)", summary)
+        self.assertIn("inspection scope (structural only)", summary)
+        self.assertIn("conclusion: rejection recorded for this request", summary)
+        self.assertIn(
+            "rejection scope: post-execution Verification is not a completion requirement for a reject decision; this is not proof of global event absence",
+            summary,
+        )
+        self.assertIn(
+            "next read-only check: review the recorded rejection; no independent Verification search is needed for this request",
+            summary,
+        )
+        self.assertNotIn(
+            "next read-only check: inspect an existing independent Verification record",
+            summary,
+        )
+
+    def test_human_summary_guides_incomplete_execution_to_source_records(self) -> None:
+        bundle = self.full(finished=None)
+        before_projection = evidence_module.inspect_evidence(bundle)
+        before_authority = self.authority_path.read_bytes()
+        before_receipt = self.receipt_path.read_bytes()
+
+        summary = evidence_module.summarize_evidence(bundle)
+
+        self.assertIn("provided records (caller-reported)", summary)
+        self.assertIn("inspection scope (structural only)", summary)
+        self.assertIn("conclusion: execution records incomplete; outcome unknown", summary)
+        self.assertIn("authority use: recorded (consume event in provided records)", summary)
+        self.assertIn(
+            "authority: false (this inspection grants no execution permission)",
+            summary,
+        )
+        self.assertIn(
+            "external effect verified: false (this inspection does not observe external state)",
+            summary,
+        )
+        self.assertIn(
+            "next read-only check: inspect existing authority and attempt records before seeking independent Verification",
+            summary,
+        )
+        self.assertNotIn(
+            "next read-only check: inspect an existing independent Verification record",
+            summary,
+        )
+        self.assertEqual(before_projection, evidence_module.inspect_evidence(bundle))
+        self.assertEqual(before_authority, self.authority_path.read_bytes())
+        self.assertEqual(before_receipt, self.receipt_path.read_bytes())
 
     def test_human_summary_has_no_ledger_side_effect(self) -> None:
         formatter = getattr(evidence_module, "summarize_evidence", None)

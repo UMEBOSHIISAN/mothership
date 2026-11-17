@@ -3,6 +3,25 @@
 Mothership reduces accidental authority and packaging drift by making boundaries inspectable. It is not a sandbox,
 secret manager, formal proof, or security certification.
 
+## Component scope
+
+This document distinguishes the Core package from optional packages and the host
+that composes them. Installing an adapter does not put every host tool under
+Mothership authority.
+
+| Component | Provides | Boundary retained by the caller |
+| --- | --- | --- |
+| Core (`mothership-control-plane`) | Exact action issuance, caller-attested decisions, ledger-local consume, pure record validation | Human identity, trusted ledger history, host isolation |
+| Optional GitHub companion (`mothership-github`) | Preflight, durable consume before at most one merge request, attempt records, Receipt projection, opt-in read-back producer | Credentials and transport configuration; external truth is not authenticated by record validation |
+| Optional adapters (`mothership-adapters`) | Retained review/execution sessions for the selected route, offline evidence inspection, explicit bounded readback entry | Host context assertions, other tools and alternate credential paths |
+| Host deployment | Selects exposed tools, credentials, callbacks and execution boundaries | Identifying managed and unmanaged operation paths; preventing alternate paths where required |
+
+The Agents SDK adapter retains existing tools alongside its managed tool. A host
+that also exposes a merge-capable credential through another tool has another
+operation path; it is not automatically governed by this adapter. Local work
+permission is not external-action approval. These are deployment responsibilities,
+not a claim that the optional integrations provide whole-host enforcement.
+
 ## Assets and trust zones
 
 | Zone | Treatment |
@@ -31,6 +50,11 @@ symbolic links, accepts regular files only, and rejects directories, FIFOs, sock
 file identity and size before and after reading to detect relevant substitution or growth.
 
 These checks depend on POSIX descriptor features. See [Compatibility](compatibility.md).
+
+The bounded scope helpers (`mothership.scope.prepare_scope` and `open_output_leaf`) also open roots and parents
+without following symbolic links. If `O_NOFOLLOW` is absent or zero, their shared entry rejects the operation
+with `ValueError` before opening a root, reading input, staging files, or creating output. They provide no
+weaker fallback. This is a scope I/O boundary, not a package-wide claim of platform qualification.
 
 ## Packaged-resource threats
 
@@ -66,16 +90,16 @@ Router and observation fixtures keep `authority_effect: false` and `execution_ef
 
 ## Boundary record contracts
 
-The current source contains three strict, closed contracts for a future
-external-action workflow. Their implementation is limited to pure schema
+The Core exposes three strict, closed boundary record contracts. Their
+validation implementation is limited to pure schema
 validation and exact receipt/verification binding:
 
 - `consequence-proposal.v0` is non-authorizing and non-executing. It is limited
   to the current `github.merge_pr` action shape, including its exact target,
   `expected_head_sha`, and `expected_base`. Its `state_sha256` is a
-  proposal-only state snapshot/reference. The current `FrozenAction` binds
-  exactly `repository`, `pull_request`, `expected_head_sha`, `expected_base`,
-  and `merge_method`; there is no v0 path that binds a consequence proposal to
+  proposal-only state snapshot/reference. New `FrozenAction` issuance also
+  requires `expected_base_sha`, while old five-field actions remain readable;
+  there is no v0 path that binds a consequence proposal to
   a `FrozenAction` or Action Authority. Its policy disposition is preserved as
   `ELIGIBLE`, `DENY`, or `UNKNOWN`; validation does not implement a domain
   policy engine or convert either `DENY` or `UNKNOWN` into eligibility.
@@ -92,10 +116,13 @@ promote a receipt into verification, authorize a retry, or create authority.
 Schema validation proves only closed record shape and the declared
 action/receipt binding. It does not authenticate an executor or verifier,
 operationally isolate an executor, or enforce a verifier's read-only behavior.
-The package ships no executor, verifier producer, network mutation, or live
-external-action end-to-end path. A future executor must re-check mutable
-external preconditions immediately before mutation; the current package does
-not perform that check.
+The Core package ships no executor, verifier producer, or network mutation.
+The optional GitHub companion supplies a bounded executor and an opt-in read-back
+producer; its preflight checks do not eliminate external-state races. The optional
+adapters compose those facilities only for their selected operation path.
+Record validation remains distinct from executing or independently observing an
+operation. See the [composition guide](composition.md) and
+[host adapter guide](host-adapters.md).
 
 Policy eligibility, identity, role, and human-ceremony data are evidence
 references only. Mothership does not authenticate human identity, implement
@@ -135,11 +162,16 @@ The request hash is not a signature. It does not protect a host that substitutes
 both its expected request and context, or reuses issuance identifiers.
 
 Review validation is pure and repeatable; authority recording and consumption
-remain separate. Context is not persisted in ledger v0 by these helpers.
-Retain it separately if audit policy requires it. The unchanged companion has
-no host callback: validation before execution cannot guarantee that a later
-preflight, suspension or effect sees the same context. Runtime adapters must
-enforce that boundary and qualify it with actual suspend/revoke/resume tests.
+remain separate. The direct Core `record_action_decision()` API retains its v0
+row without request context. The optional `MergeReviewSession` instead records
+a v1 decision row containing the retained request ID, request digest, and closed
+host context. Each ledger read recomputes that request digest before accepting
+the row. These values are caller assertions, not proof of which human approved
+the request or authentication of the host. A copied, rewritten, or rolled-back
+ledger is not protected by this digest. The companion has no host callback:
+validation before execution cannot guarantee that a later preflight,
+suspension or effect sees the same context. Runtime adapters must enforce that
+boundary and qualify it with actual suspend/revoke/resume tests.
 No Dots or OpenClaw runtime enforcement is claimed by the offline example.
 
 The ledger is an explicit normalized local file with strict owner-only modes. Its immediate parent must be a real 0700
@@ -154,6 +186,11 @@ The one-shot consume guarantee requires one trusted, non-rollbackable live ledge
 another path, or
 rolled back or restored at the same path before consumption, creates an independent replay opportunity and must not be
 used as another authority source.
+Expiry checks use the local wall clock; clock drift or rollback is outside this
+ledger's guarantee. Historical five-field action records contain no approved
+base commit SHA, so their read-only verification cannot establish base-commit
+binding. New live issuance accepts only the `merge` method and requires the
+sixth `expected_base_sha` field.
 
 The legacy `mothership.approval` / `orchestration.lib.ledger` path remains invocation-evidence compatibility. Its
 `approval_granted`, `attempt_started`, and `attempt_finished` lifecycle is not the canonical Action Authority Plane.
@@ -167,6 +204,99 @@ Actual external effects require a separately configured bounded executor. That e
 preconditions, use only the consumed exact action, and produce receipt and verification evidence. Authority consumption
 does not authorize retries: a failed or ambiguous execution requires a newly attested exact action rather than
 automatic retry or fallback.
+
+## Session diagnostics and incomplete evidence
+
+Python `SessionError.diagnostic` is a finite, sanitized observation of the failing
+call. It does not read ledgers, authenticate records, certify an external effect,
+or authorize a retry. The last observed phase can precede the actual failure:
+`preflight_returned` also covers later consume/start failures,
+`pre_dispatch_guard` and `pre_dispatch_transport` identify the second read-only
+check after consume, and `mutation_returned` can precede a failed finish write.
+A returned transport value is not proof that the external operation succeeded.
+
+`authority_use` refers only to consume, not decision recording. Before entering
+the companion, `not_attempted BY THIS CALL` describes that invocation's consume
+and mutation path, not previous calls or effects from host callbacks/other tools.
+After companion entry both authority use and external effect remain `unknown`;
+a write can fail after persisting data. Owner/phase errors also remain unknown.
+Use the existing authority and attempt records to investigate; absence of a record
+is not proof of absence of an operation. Exception text, credentials, paths and
+input values are not included in this diagnostic mapping. The original exception
+messages remain unchanged. The owner/JavaScript protocol defaults to its strict
+code-only v0 errors. An explicit `sessionDiagnostics: true` selects the paired
+v1 protocol and forwards only actual `SessionError` diagnostics. It uses strict
+six-field tuples and the existing owner/sequence/reply/request/action checks;
+there is no negotiation, downgrade, restart or replay. Parent callback errors
+remain code-only, and parent-supplied diagnostics are rejected. Session itself
+can wrap such a rejection as its own UNKNOWN diagnostic. Native process/pipe
+failures without a matched Session diagnostic expose `null`, never an invented
+phase. `OwnerClientError.diagnostic` is detached on each read. This observation
+is not persisted evidence, authenticated provenance, authority or external
+confirmation. The opt-in requires updated files from the same checkout; older
+pinned setup revisions do not include it. OpenClaw/Lobster wrappers still use
+generic errors, so full-host forwarding or live acceptance is not claimed.
+
+The [Session diagnostic guide](host-adapters.md#session-failures-and-existing-evidence)
+explains the fixed next-check categories. Existing `inspect --human` can display
+missing finish/Receipt/Verification in an incomplete bundle. Existing `readback`
+still requires complete execution evidence missing only Verification. Do not
+invent a finish or Receipt to satisfy that prerequisite, reconsume an approval,
+or reexecute an uncertain operation. A new incomplete-attempt observation path
+is not provided by these diagnostics.
+
+## Saved reference-result inspection
+
+`mothership-evidence inspect-result` is a separate offline reader for the
+reference consumer's saved JSONL. It validates a finite ordered event prefix
+and supplied action/pair/Receipt/Verification/sidecar bindings before displaying
+an operation summary. It never reconstructs a portable request, approval,
+consume or absent Receipt. Input paths are opaque and never opened; only the
+existing bundled-schema reads are needed. Empty or partial saved evidence does
+not prove no effect. Legacy execution-summary rows lack an action/run identifier,
+so a same-shaped substituted row cannot be identified from that row alone.
+They remain positional-only and are never treated as bound completion.
+
+V1 saved rows declare `saved_result_schema: mothership.reference-result.v1`.
+The consumer obtains execution/verification row IDs and digests from its retained
+issued action. The reader checks these against the supplied frozen action and
+rejects wrong/missing identities, unknown versions and mixed forms before any
+summary; it does not fall back to legacy after a new-format failure. This adds
+structural association, including for unavailable reports, but does not turn a
+summary into a Receipt or change UNKNOWN and missing-authority semantics.
+Consistent hashes are not source authentication, freshness, execution-success or
+causation proof. Coherent forged records, same-action substitutions and complete
+rewriting into valid legacy input remain outside this check: versioning is not
+cryptographic downgrade protection. The reader does not fetch,
+execute, consume, repair records or add authority. Existing bundle inspection
+and readback eligibility remain unchanged.
+
+The optional `inspect-result --expect-action-sha256` guard compares the fully
+validated saved action with a caller's separately retained expected digest.
+The canonical digest includes the action ID and exact parameters/display.
+A mismatch, malformed expectation or missing action rejects before a summary;
+a match preserves all existing report/UNKNOWN/missing-record semantics. Both
+legacy and v1 inputs retain their original limits. Default inspection is
+unchanged when no expectation is supplied. An expectation extracted from the
+same input does not provide an independent target check. Matching does not
+authenticate the caller's expectation, the record source, freshness, execution,
+causation or current external truth, and does not detect substitution within
+that same action. No authority is created and no additional file is opened.
+
+The additional optional `inspect-result --expect-input-sha256` guard matches
+exact bounded saved-input bytes against a separately retained SHA-256. Unlike
+the action digest, it distinguishes files for the same action, including changed
+whitespace or removed complete rows. Strict expectation validation precedes stdin;
+full record validation and any expected-action comparison precede input matching.
+A matching hash never validates a malformed record or upgrades an incomplete
+result. Empty input with its expected hash remains unknown unless the action
+guard requires an action. Default output and legacy/v1 semantics are unchanged.
+With `--explain-error`, a validated mismatch uses only the fixed
+`expected_input_mismatch` code and static next check; neither digest is disclosed.
+This is equality against a caller-provided expectation, not authentication of
+that expectation, source, freshness, operation success or current external state.
+A digest taken from the received file itself supplies no independent handoff
+check. No paths are followed, records changed or authority created.
 
 ## Installation boundary
 

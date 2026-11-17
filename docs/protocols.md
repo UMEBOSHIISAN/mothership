@@ -10,9 +10,11 @@ companion semantics or enter the current Action Authority path.
 
 ## Portable action review schemas
 
-The `0.5.0.dev0` source candidate adds two closed contract kinds for the pure
-`mothership.action_review` API. The optional companion is paired at
-`0.3.0.dev0`; published `v0.4.2` remains the historical release. These schemas
+The `0.5.0.dev0` source candidate added two closed contract kinds for the pure
+`mothership.action_review` API. The unpublished `0.5.0.dev1` candidate adds a
+reviewed approval v1 row with the request ID, digest, and closed host context;
+the optional companion is paired at `0.3.0.dev1`. Published releases remain
+separate revisions. These schemas
 standardize review transport between a host UI or workflow and the existing
 Core action. They do not describe a new executor or a host runtime adapter.
 
@@ -20,6 +22,7 @@ Core action. They do not describe a new executor or a host runtime adapter.
 | --- | --- | --- | --- |
 | `authority-action-review-request` | `authority-action-review-request.v0` | `schema_version`, `request_id`, `action`, `action_sha256`, `expires_at`, `host_context`, `request_sha256` | Detached data derived from a retained live `FrozenAction` |
 | `authority-action-review-response` | `authority-action-review-response.v0` | `schema_version`, `request_id`, `request_sha256`, `action_id`, `action_sha256`, `decision` | Host response with `approve` or `reject` |
+| `authority-action-approval.v1` | `authority-action-approval.v1` | v0 approval fields plus `request_id`, `request_sha256`, `host_context` | Durable Session decision tied to its reviewed request |
 
 The request's `host_context` has exactly `host_id`, `session_id`, `actor_id`,
 `runtime_generation`, and ordered `scope`. IDs and scope entries use the closed
@@ -41,13 +44,17 @@ the retained expected request. Hashes are correlation values, not signatures.
 Expired actions propagate the existing Core expiry error. Host-context drift
 rejects both decisions before the caller records or consumes authority.
 
-The helper is pure and repeatable. It performs no ledger write, consume,
+The review helper is pure and repeatable. It performs no ledger write, consume,
 network call, credential read, executor callback, identity authentication,
 lease/revocation enforcement, or durable cross-process resume. The trusted live
 ledger remains the one-use boundary, and the host owns the effect-time check.
 See [Portable action review](action-review.md) for the API example and
 [Integration catalog](integrations.md) for the unimplemented host paths and
 their measurable completion criteria.
+
+The reviewed Session separately records a v1 approval row and rechecks its
+request digest when reading the ledger. Direct Core decision recording and old
+rows retain v0 shape. The row does not authenticate the human behind a response.
 
 The schema files are packaged under
 `evidence/contracts/authority-action-review-request.v0.schema.json` and

@@ -28,6 +28,7 @@ _HEAD = "a" * 40
 _OTHER_HEAD = "b" * 40
 _MERGE_SHA = "c" * 40
 _BASE_SHA = "d" * 40
+_SAVED_RESULT_SCHEMA = "mothership.reference-result.v1"
 
 
 class TTYBuffer(io.StringIO):
@@ -110,6 +111,7 @@ class FakeTransport:
                 "merged": False,
                 "head_sha": _HEAD,
                 "base_ref": "main",
+                "base_sha": _BASE_SHA,
             }
         ]
         self.mutation = (
@@ -233,7 +235,7 @@ class ReferenceRunnerTests(unittest.TestCase):
         code, output = self.run_runner(transport)
 
         self.assertEqual(0, code)
-        self.assertEqual(2, len(transport.get_calls))
+        self.assertEqual(3, len(transport.get_calls))
         self.assertEqual(1, len(transport.put_calls))
         self.assertEqual(
             {
@@ -495,6 +497,74 @@ class ReferenceRunnerTests(unittest.TestCase):
             }],
             saved,
         )
+
+    def test_saved_result_v1_binds_every_terminal_row_to_the_retained_action(self):
+        code, rows, _, _, _, _ = self.verified_run(save_result=True)
+
+        self.assertEqual(0, code)
+        saved = [row for row in rows if row.get("event") in {
+            "frozen_action", "execution_result", "verification_result"
+        }]
+        self.assertEqual(["frozen_action", "execution_result", "verification_result"],
+                         [row["event"] for row in saved])
+        frozen = saved[0]
+        self.assertEqual(_SAVED_RESULT_SCHEMA, frozen["saved_result_schema"])
+        self.assertNotIn("action_id", frozen)
+        for row in saved[1:]:
+            with self.subTest(event=row["event"]):
+                self.assertEqual(_SAVED_RESULT_SCHEMA, row["saved_result_schema"])
+                self.assertEqual(frozen["action"]["action_id"], row["action_id"])
+                self.assertEqual(frozen["action_sha256"], row["action_sha256"])
+
+        on_disk = [json.loads(line) for line in
+                   (self.ledger_dir / "result.jsonl").read_text().splitlines()]
+        self.assertEqual(saved, on_disk)
+
+    def test_unsaved_result_keeps_legacy_terminal_event_shape(self):
+        code, rows, _, _, _, _ = self.verified_run()
+
+        self.assertEqual(0, code)
+        for row in rows:
+            if row.get("event") not in {
+                "frozen_action", "execution_result", "verification_result"
+            }:
+                continue
+            with self.subTest(event=row["event"]):
+                self.assertNotIn("saved_result_schema", row)
+                if row["event"] != "frozen_action":
+                    self.assertNotIn("action_id", row)
+                    self.assertNotIn("action_sha256", row)
+
+    def test_saved_result_v1_binds_invalid_executor_return_and_unavailable_verification(self):
+        code, rows, _, _, _, _ = self.verified_run(
+            transform=lambda result: {"status": "not-a-valid-executor-result"},
+            save_result=True,
+        )
+
+        self.assertEqual(1, code)
+        saved = [row for row in rows if row.get("event") in {
+            "frozen_action", "execution_result", "verification_result"
+        }]
+        self.assertEqual("reconciliation_required", saved[1]["status"])
+        self.assertEqual("unavailable", saved[2]["status"])
+        for row in saved:
+            with self.subTest(event=row["event"]):
+                self.assertEqual(_SAVED_RESULT_SCHEMA, row["saved_result_schema"])
+                if row["event"] != "frozen_action":
+                    self.assertEqual(saved[0]["action"]["action_id"], row["action_id"])
+                    self.assertEqual(saved[0]["action_sha256"], row["action_sha256"])
+
+    def test_saved_result_v1_binds_verification_unavailable_after_receipt(self):
+        code, rows, _, _, _, _ = self.verified_run(mode="verifier_exception", save_result=True)
+
+        self.assertEqual(3, code)
+        saved = [row for row in rows if row.get("event") in {
+            "frozen_action", "execution_result", "verification_result"
+        }]
+        self.assertEqual("verification_unavailable", saved[2]["reason"])
+        self.assertEqual(_SAVED_RESULT_SCHEMA, saved[2]["saved_result_schema"])
+        self.assertEqual(saved[0]["action"]["action_id"], saved[2]["action_id"])
+        self.assertEqual(saved[0]["action_sha256"], saved[2]["action_sha256"])
 
     def test_each_saved_event_is_synced_before_terminal_display(self):
         result_paths = []
@@ -773,6 +843,10 @@ class ReferenceRunnerTests(unittest.TestCase):
             ["frozen_action", "execution_result"], [row["event"] for row in saved]
         )
         self.assertEqual("reconciliation_required", saved[-1]["status"])
+        self.assertEqual([_SAVED_RESULT_SCHEMA, _SAVED_RESULT_SCHEMA],
+                         [row["saved_result_schema"] for row in saved])
+        self.assertEqual(saved[0]["action"]["action_id"], saved[1]["action_id"])
+        self.assertEqual(saved[0]["action_sha256"], saved[1]["action_sha256"])
 
     def test_partial_result_is_never_reused_after_save_failure(self):
         transport = FakeTransport()
@@ -1183,6 +1257,7 @@ class ReferenceRunnerTests(unittest.TestCase):
         for changed in (
             {"head_sha": _OTHER_HEAD},
             {"base_ref": "release"},
+            {"base_sha": "e" * 40},
         ):
             with self.subTest(changed=changed):
                 self.ledger_dir = self.root / ("changed-" + next(iter(changed)))
@@ -1194,6 +1269,7 @@ class ReferenceRunnerTests(unittest.TestCase):
                     "merged": False,
                     "head_sha": _HEAD,
                     "base_ref": "main",
+                    "base_sha": _BASE_SHA,
                 }
                 second.update(changed)
                 transport = FakeTransport(snapshots=[FakeTransport().snapshots[0], second])
@@ -1449,13 +1525,30 @@ class ReferenceRunnerTests(unittest.TestCase):
     def test_merged_snapshot_stop_is_distinct_from_transport_failure(self):
         transport = FakeTransport(snapshots=[{
             "http_status": 200, "state": "closed", "merged": True,
-            "head_sha": _HEAD, "base_ref": "main",
+            "head_sha": _HEAD, "base_ref": "main", "base_sha": _BASE_SHA,
         }])
         code, text = self.run_runner(transport, input_stream=TTYBuffer(""))
         self.assertEqual(1, code)
         self.assertEqual({"reason_code": "snapshot_invalid", "http_status": None}, self.rows(text)[-1].get("diagnostic"))
         self.assertEqual([], transport.put_calls)
         self.assertEqual([], list(self.ledger_dir.iterdir()))
+
+    def test_missing_or_malformed_initial_base_sha_stops_before_review(self):
+        for base_sha in (None, "not-a-sha", _BASE_SHA.upper()):
+            with self.subTest(base_sha=base_sha):
+                snapshot = copy.deepcopy(FakeTransport().snapshots[0])
+                if base_sha is None:
+                    snapshot.pop("base_sha")
+                else:
+                    snapshot["base_sha"] = base_sha
+                transport = FakeTransport(snapshots=[snapshot])
+                code, text = self.run_runner(transport, input_stream=TTYBuffer(""))
+                self.assertEqual(1, code)
+                self.assertEqual({"reason_code": "snapshot_invalid", "http_status": None},
+                                 self.rows(text)[-1].get("diagnostic"))
+                self.assertEqual(1, len(transport.get_calls))
+                self.assertEqual([], transport.put_calls)
+                self.assertEqual([], list(self.ledger_dir.iterdir()))
 
     def test_preflight_interrupt_stops_without_exposing_exception_or_approval(self):
         for error in (KeyboardInterrupt("secret-interrupt"), SystemExit("secret-exit")):

@@ -347,6 +347,7 @@ class ExternalActionBindingTests(unittest.TestCase):
                 "pull_request": 42,
                 "expected_head_sha": "d" * 40,
                 "expected_base": "main",
+                "expected_base_sha": "b" * 40,
                 "merge_method": "merge",
             },
         )

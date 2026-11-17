@@ -90,7 +90,7 @@ def _as_path(value: object, name: str) -> pathlib.Path:
 
 
 def _validated_action_before_io(frozen_action: FrozenAction) -> tuple[dict[str, object], str]:
-    """Validate Core issuance, digest, profile, and expiry before any GET."""
+    """Validate Core issuance, digest, profile, and expiry before remote I/O."""
 
     action = action_authority._validated_frozen_action(frozen_action)
     if type(action) is not dict:
@@ -156,6 +156,7 @@ def _validate_preflight(snapshot: object, parameters: Mapping[str, object]) -> N
     merged = snapshot.get("merged", _MISSING)
     head_sha = snapshot.get("head_sha", _MISSING)
     base_ref = snapshot.get("base_ref", _MISSING)
+    base_sha = snapshot.get("base_sha", _MISSING)
     if type(snapshot.get("http_status")) is not int or snapshot["http_status"] != 200:
         raise ActionPreflightError("preflight HTTP status was not successful")
     if state != "open":
@@ -168,6 +169,8 @@ def _validate_preflight(snapshot: object, parameters: Mapping[str, object]) -> N
         raise ActionPreflightError("pull request head does not match the frozen action")
     if base_ref != parameters["expected_base"]:
         raise ActionPreflightError("pull request base does not match the frozen action")
+    if base_sha != parameters["expected_base_sha"]:
+        raise ActionPreflightError("pull request base commit does not match the frozen action")
 
 
 def _normalized_observation(
@@ -273,6 +276,8 @@ def execute_action_merge_pr(
     parameters = checked_action["execution_parameters"]
     if not isinstance(parameters, Mapping):
         raise ActionExecutionError("frozen action parameters are malformed")
+    if "expected_base_sha" not in parameters:
+        raise ActionExecutionError("live merge profile requires expected_base_sha")
     repository = parameters["repository"]
     pull_request = parameters["pull_request"]
 
@@ -317,6 +322,20 @@ def execute_action_merge_pr(
 
     mutation_result: object
     try:
+        # The durable start may have waited.  Read the selected PR again using
+        # the same bounded transport before dispatch.  This narrows, but does
+        # not eliminate, GitHub's GET-to-PUT destination race.
+        start_action, start_digest = _validated_action_before_io(frozen_action)
+        if start_digest != action_digest or start_action != verified_action:
+            raise ActionExecutionError("frozen action changed after attempt start")
+        latest = transport.get_pull_request(repository, pull_request)
+        _validate_preflight(latest, verified_action["execution_parameters"])
+        # A durable start can take us past the consume deadline.  Observe the
+        # same live action again after the final GET; after consume a
+        # rejection leaves an unresolved attempt and must never retry PUT.
+        dispatch_action, dispatch_digest = _validated_action_before_io(frozen_action)
+        if dispatch_digest != action_digest or dispatch_action != verified_action:
+            raise ActionExecutionError("frozen action changed before dispatch")
         mutation_result = transport.merge_pull_request(
             repository=verified_action["execution_parameters"]["repository"],
             pull_request=verified_action["execution_parameters"]["pull_request"],

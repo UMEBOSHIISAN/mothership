@@ -57,9 +57,8 @@ class DocumentationCommandTests(unittest.TestCase):
         self.assertNotIn("mothership demo\n```", readme)
 
     def test_installation_commands_match_the_supported_lifecycle(self) -> None:
-        version = (ROOT / "VERSION").read_text("utf-8").strip()
         blocks = _shell_blocks(INSTALLATION)
-        self.assertEqual(5, len(blocks))
+        self.assertEqual(6, len(blocks))
         self.assertEqual(
             (
                 "git clone https://github.com/UMEBOSHIISAN/mothership.git",
@@ -70,12 +69,29 @@ class DocumentationCommandTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "python3 -m venv .venv",
-                ". .venv/bin/activate",
-                f"python -m pip install --no-deps mothership_control_plane-{version}-py3-none-any.whl",
-                "mothership verify",
+                "python3.12 -m venv .venv",
+                ".venv/bin/python -m pip install --no-index --no-deps \\",
+                "mothership_control_plane-0.5.0.dev0-py3-none-any.whl \\",
+                "mothership_github-0.3.0.dev0-py3-none-any.whl \\",
+                "mothership_adapters-0.1.0.dev0-py3-none-any.whl",
+                ".venv/bin/python -m pip check",
+                ".venv/bin/mothership verify",
+                ".venv/bin/mothership-evidence inspect-result --help",
             ),
             blocks[1],
+        )
+        self.assertEqual(
+            (
+                "python3.12 -m venv .venv",
+                ".venv/bin/python -m pip install --no-index --no-deps \\",
+                "mothership_control_plane-0.5.0.dev1-py3-none-any.whl \\",
+                "mothership_github-0.3.0.dev1-py3-none-any.whl \\",
+                "mothership_adapters-0.1.0.dev1-py3-none-any.whl",
+                ".venv/bin/python -m pip check",
+                ".venv/bin/mothership verify",
+                ".venv/bin/mothership-evidence inspect-result --help",
+            ),
+            blocks[2],
         )
         self.assertEqual(
             (
@@ -84,7 +100,7 @@ class DocumentationCommandTests(unittest.TestCase):
                 'python -m pip install -e ".[test]"',
                 "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v",
             ),
-            blocks[2],
+            blocks[3],
         )
         self.assertEqual(
             (
@@ -93,15 +109,15 @@ class DocumentationCommandTests(unittest.TestCase):
                 "python tools/run_evaluation.py",
                 "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v",
             ),
-            blocks[3],
+            blocks[4],
         )
-        self.assertEqual(("python -m pip uninstall mothership-control-plane",), blocks[4])
+        self.assertEqual(("python -m pip uninstall mothership-control-plane",), blocks[5])
 
     def test_safe_verification_commands_execute_with_exact_tracked_outputs(self) -> None:
         expected = {
             ("-m", "mothership", "verify"): ROOT / "docs/generated/verify-output.json",
             ("-m", "mothership", "demo"): ROOT / "docs/generated/demo-output.json",
-            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.5.0.dev0.json",
+            ("tools/run_evaluation.py",): ROOT / "evaluation/results/mothership-0.5.0.dev1.json",
         }
         with tempfile.TemporaryDirectory() as directory:
             environment = _minimal_environment(Path(directory))

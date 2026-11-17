@@ -72,6 +72,10 @@
               "maxLength": 128,
               "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
             },
+            "expected_base_sha": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
             "merge_method": {
               "type": "string",
               "const": "merge"

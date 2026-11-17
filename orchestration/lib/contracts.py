@@ -25,6 +25,9 @@ _SCHEMAS = {
     "authority-action-approval": (
         _ROOT / "evidence/contracts/authority-action-approval.v0.schema.json"
     ),
+    "authority-action-approval.v1": (
+        _ROOT / "evidence/contracts/authority-action-approval.v1.schema.json"
+    ),
     "authority-action-consume": (
         _ROOT / "evidence/contracts/authority-action-consume.v0.schema.json"
     ),

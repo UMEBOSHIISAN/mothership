@@ -21,6 +21,9 @@ This is not a claim that every supported Python or POSIX combination has been ex
 - Declared Python support: **Python 3.12+**.
 - Runtime requirements: none outside the standard library.
 - Strict file boundaries require POSIX descriptor operations, no-follow flags, regular-file checks, and file locking.
+- The bounded scope APIs `prepare_scope()` and `open_output_leaf()` raise `ValueError` before filesystem access
+  when `O_NOFOLLOW` is absent or zero. They do not fall back to following symbolic links; importing the package
+  and lexical `validate_relative_path()` remain available. This guard is not a general platform-support probe.
 - Windows is not currently claimed as supported by the complete path and ledger boundary.
 - Linux is expected to provide the required primitives but needs an attended replication record before a support claim.
 

@@ -1,7 +1,7 @@
 # Integration catalog
 
-**Status: bounded source-candidate catalog for Core `0.5.0.dev0`, companion
-`0.3.0.dev0`, and optional adapters `0.1.0.dev0`.** The catalog records eight
+**Status: bounded unpublished source-candidate catalog for Core `0.5.0.dev1`, companion
+`0.3.0.dev1`, and optional adapters `0.1.0.dev1`.** The catalog records eight
 finite routes around one exact action profile. A local check demonstrates the
 selected seam and its retained state; it does not certify a provider, gateway,
 credential, live GitHub effect, or a host's complete coverage.
@@ -15,6 +15,13 @@ from Verification; missing or uncertain completion stays visible as UNKNOWN.
 
 ## Eight bounded routes
 
+For the thin Harness candidate, an additional **explicit local entry within the
+Harness route** consumes advisory preview JSON and uses `MergeReviewSession`
+directly, with real Git observation and injected transports. See the
+[handoff guide](thin-harness-handoff.md). It adds no custom Lease, normal-hook
+mutation or live-host qualification; the Lease-specific row below records the
+unchanged historical adapter, not the current thin Harness requirement.
+
 | Route and entry point | Implemented source | Local evidence recorded | Qualification limit |
 | --- | --- | --- | --- |
 | **OpenAI Agents SDK** — one typed function tool with approval interruption | `mothership_adapters.agents_sdk.AgentsMergeAdapter`; optional `openai-agents==0.23.1` | 11 pinned local checks with a public synthetic Model, including caller-hook rejection and fixed-tool mutation gates | Only hook-free caller agents and the adapter-owned fixed tool are qualified; provider calls, credentials, tracing, deployed runners, private SDK mutation, and live effects were not exercised |
@@ -24,11 +31,12 @@ from Verification; missing or uncertain completion stays visible as UNKNOWN.
 | **MCP read-only evidence** — inherited stdio server | `mothership_adapters.mcp_server`; MCP `2.3.0`; exactly `receipt_validate`, `receipt_verification_validate`, and `evidence_inspect` | 3 local in-process/stdio checks, including the ToolError boundary fix | Independent error-fix review passed; no mutation tool, identity proof, credential access, gateway permission, or external effect is exposed |
 | **Dots local evidence** — repository-local skill | `integrations/dots/SKILL.md` and its example bundle, inspected through `mothership-evidence inspect` | Repository-local SKILL/example bundle and synthetic CLI inspection recorded | Dots local/cloud runtime, installation, activation, connected-computer permissions, and effects remain unperformed |
 | **UME-HARNESS supplemental bridge** — local lease observation | `mothership_adapters.harness.HarnessMergeBridge` | 19 checks with the pinned real `LeaseStateStore` fixture (`v0.1.7`, commit `d7640a03b4b823d960f6e382607ad04aa8678c84`) plus synthetic transport | A lease observation is not external permission. No automatic runtime bridge or `begin_operation` for GitHub is provided |
-| **Evidence export and inspection** — detached bounded bundle | `mothership_adapters.evidence` and `mothership-evidence` CLI, including `inspect --human` | Deterministic evidence and offline CLI checks cover status separation, missing records, bounded display, and incomplete output | Bundles are caller-attested and source-unverified; export never authenticates a source, grants authority, reads a ledger, or proves an effect |
+| **Evidence export and inspection** — detached bounded bundle and saved reference JSONL | `mothership_adapters.evidence`, `saved_result`, and `mothership-evidence` CLI, including `inspect --human` and separate `inspect-result --human` | Deterministic evidence and offline CLI checks cover status separation, missing records, bounded display, and incomplete output | Records are caller-attested and source-unverified; no source authentication, authority, ledger discovery, or effect proof. Saved JSONL never becomes a fabricated portable-review bundle. [Retained recipient cases](../examples/saved-results/README.en.md) are synthetic; human/live-host acceptance is separate |
 
 The eight rows share the same exact operation: `github.merge_pr` with
-`repository`, `pull_request`, `expected_head_sha`, `expected_base`, and
-`merge_method`. A route may prepare or inspect a review, but no route turns a
+`repository`, `pull_request`, `expected_head_sha`, `expected_base`,
+`expected_base_sha`, and `merge_method` for new live execution. Historical
+five-field records remain readable. A route may prepare or inspect a review, but no route turns a
 generic `execute` call into authority. Future operations need a new reviewed
 profile, exact parameter schema, executor, transport owner, and independent
 observation path.

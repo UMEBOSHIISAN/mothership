@@ -1,7 +1,7 @@
 # Composition guide
 
-**Current status: Core `0.5.0.dev0`, optional companion `0.3.0.dev0`, and
-optional adapters `0.1.0.dev0` source candidate; historical `v0.4.2` and 0.2
+**Current status: unpublished Core `0.5.0.dev1`, optional companion `0.3.0.dev1`, and
+optional adapters `0.1.0.dev1` source candidate; published `v0.5.0.dev0`, historical `v0.4.2` and 0.2
 provenance remain separate.** The candidate pairing is not a published release
 or host-runtime integration.
 
@@ -10,7 +10,7 @@ Mothership is the Consequential Authority Plane in a three-product UME Stack:
 | Plane | Responsibility boundary | Authority boundary |
 | --- | --- | --- |
 | UME Presence | human-facing presentation contracts | no decision or execution authority |
-| UME-HARNESS | local work governance and exact local execution leases | no external consequential authority |
+| UME-HARNESS thin candidate | non-executing request preview and presentation; host-native work control | no external consequential authority |
 | Mothership | evidence, human decisions, and exact one-use action authority | no model, worker, or generic executor |
 
 There is no automatic runtime dependency between these products. The table is a
@@ -25,6 +25,13 @@ Mothership binds a human decision to bounded authority for one external action.
 
 This is a responsibility relationship, not a runtime dependency. The current
 public releases do not contain an automatic Harness-to-Mothership bridge.
+
+The [explicit thin handoff candidate](thin-harness-handoff.md) uses advisory
+Harness JSON, real bounded Git observation and the existing retained Session.
+It returns distinct execution/readback records to the same foreground entry and
+preserves files for offline reread. Its local tests use synthetic interpretation,
+terminal answers and transports. No custom Lease or permission conversion is
+introduced. The old Lease-specific bridge remains historical compatibility.
 
 ## Current receipt connection (source candidate)
 
@@ -81,8 +88,9 @@ from Verification status, and the receipt input remains unchanged.
 The [offline example](../examples/github_readback_verification.md) uses an
 explicit synthetic opener. Its result demonstrates contract binding only; it
 does not authenticate GitHub, the executor, a human, or the method used to
-create a merge. Two GETs are a bounded non-atomic snapshot, and the current
-action profile does not bind a base commit SHA.
+create a merge. Two GETs are a bounded non-atomic snapshot. New six-field
+actions bind a base commit SHA and compare it with the merge commit's first
+parent; old five-field records remain readable without retroactive binding.
 
 ### Read back a recorded bundle
 
@@ -157,6 +165,45 @@ listed in the [integration catalog](integrations.md) and the practical [host
 adapter guide](host-adapters.md). The source candidate has eight bounded routes
 with recorded local checks. Their qualification is route-specific; no row claims full gateway coverage,
 credentials, a live GitHub effect, or an automatic runtime bridge.
+
+## Delivery replies and one-use authority
+
+Keep delivery, review, authority use, execution reports, and independent
+Verification separate when connecting a host. Mothership does not implement a
+delivery ACK record, a retrying delivery service, or a durable owner restart.
+The existing owner protocol binds `result`/`error` replies to one command; the
+reply envelope does not promote its payload into another kind of evidence.
+For example, a reply to `prepare` carries a review request, not approval. A
+reply to `execute` can carry an executor SUCCESS Receipt, while Verification
+is still absent.
+
+When an execution reply is lost, retain the uncertainty and inspect existing
+records. Do not recover delivery by invoking the action again. Reading an
+exported bundle is a data-only operation: the inspector keeps
+`authority=false`, `source-unverified`, and `external_effect_verified=false`.
+These fields qualify the inspection, even when it reports internally
+consistent decision, consume, and Receipt records. Missing records do not
+prove that the corresponding events never occurred.
+
+The owner regressions in
+[`test_owner.py`](../packages/mothership-adapters/tests/test_owner.py) compose
+the existing Core, companion, and evidence functions at this boundary:
+
+| Bounded trace | Variants | Required observation |
+| --- | --- | --- |
+| Drain an execution reply as simulated application-delivery loss; inspect retained records; send another `execute` with the same owner/request/action IDs | SUCCESS or UNKNOWN, each with identical or changed PR parameters: four traces | One GET callback and one merge callback, one approval and consume, one start/finish pair; read-only inspections leave records unchanged; replay stops without another callback or Verification |
+| Reply to an execution context callback with the next sequence number but stale correlation or an unsupported ACK frame | Old `reply_to`, wrong request ID, or `ack`: three traces | A terminal sanitized error before consume, attempt recording, GET, or merge; the existing approval record stays unchanged |
+
+The second trace currently surfaces a `session` error because Session sanitizes
+nested callback failures; it does not expose the underlying protocol exception.
+The ACK case is a negative input, not a supported message or new approval form.
+These seven cases are bounded regression traces, not exhaustive state-space
+exploration, a formal proof, or cross-repository delivery acceptance. They use
+synthetic callback payloads and temporary fixture records, never production
+approvals or external transports. They do not test timing; existing
+[`test_action_review.py`](../tests/test_action_review.py) tests already use a
+fixed clock for expiry and host-context binding. No caller-controlled runtime
+clock, model checker, event store, or retry policy is added.
 
 ## Application and host handoff obligations
 

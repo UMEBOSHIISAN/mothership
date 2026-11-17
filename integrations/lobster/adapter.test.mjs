@@ -11,7 +11,7 @@ const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const modulePath=process.env.LOBSTER_CORE_MODULE;
 const runtime=modulePath ? await import(pathToFileURL(resolve(modulePath)).href) : null;
 process.env.PYTHONPATH=[ROOT,resolve(ROOT,'packages/mothership-github'),resolve(ROOT,'packages/mothership-adapters')].join(delimiter);
-const parameters={repository:'example/repo',pull_request:7,expected_head_sha:'a'.repeat(40),expected_base:'main',merge_method:'merge'};
+const parameters={repository:'example/repo',pull_request:7,expected_head_sha:'a'.repeat(40),expected_base:'main',expected_base_sha:'c'.repeat(40),merge_method:'merge'};
 const context={host_id:'lobster-test',session_id:'session',actor_id:'actor',runtime_generation:'gen',scope:['github.merge_pr']};
 const ref={ref_id:'executor:lobster-test',sha256:'c'.repeat(64)};
 const respond=(request,decision='approve')=>({schema_version:'authority-action-review-response.v0',decision,
@@ -25,7 +25,7 @@ async function fixture(t,mode,runtimeOverride=runtime) {
     contextProvider:async()=>structuredClone(current),transport:{
       getPullRequest:async()=>{
         if(mode==='drift-get')current.actor_id='changed';
-        return {http_status:200,state:'open',merged:false,head_sha:parameters.expected_head_sha,base_ref:'main'};
+        return {http_status:200,state:'open',merged:false,head_sha:parameters.expected_head_sha,base_ref:'main',base_sha:parameters.expected_base_sha};
       },mergePullRequest:async()=>{puts++;if(mode==='unknown')throw new Error('private');return {http_status:200,merged:true,merge_commit_sha:'b'.repeat(40)};},
     }});
   const adapter=new LobsterMergeAdapter({owner,runtime:runtimeOverride,stateDir:resolve(temp,'lobster'),parameters,executorRef:ref});

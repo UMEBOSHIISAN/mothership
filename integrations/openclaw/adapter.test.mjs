@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {MergeOwnerClient} from './owner-client.mjs';
 import { createSelectedMergeTool, OPENCLAW_PIN } from './adapter.mjs';
 
-const params = { repository: 'example/repo', pull_request: 7, expected_head_sha: 'a'.repeat(40), expected_base: 'main', merge_method: 'merge' };
+const params = { repository: 'example/repo', pull_request: 7, expected_head_sha: 'a'.repeat(40), expected_base: 'main', expected_base_sha: 'c'.repeat(40), merge_method: 'merge' };
 function fixture() {
   const calls = [];
   const request = { request_id: 'r', request_sha256: 'c'.repeat(64), action_sha256: 'd'.repeat(64), action: { action_id: 'a', execution_parameters: params } };
@@ -67,10 +67,13 @@ test('selected public schema matches the closed Core action; invalid targets nev
   assert.equal(selected.tool.parameters.properties.merge_method.const,'merge');
   assert.deepEqual(selected.tool.parameters.properties.expected_base,
     {type:'string',minLength:1,maxLength:128,pattern:'^[A-Za-z0-9][A-Za-z0-9._/-]*$'});
+  assert.deepEqual(selected.tool.parameters.properties.expected_base_sha,
+    {type:'string',pattern:'^[0-9a-f]{40}$'});
   for(const override of [{merge_method:'squash'},{merge_method:'rebase'},
     {repository:'example/repo/other'},{repository:'example repo/x'},
     {expected_base:'-main'},{expected_base:'x'.repeat(129)},{expected_base:'main\n'},
-    {expected_head_sha:'a'.repeat(40)+'\n'},{pull_request:true}]) {
+    {expected_head_sha:'a'.repeat(40)+'\n'},{expected_base_sha:'C'.repeat(40)},
+    {expected_base_sha:undefined},{pull_request:true}]) {
     const invalid={...params,...override};
     let prepared=0,executed=0;
     const owner={prepare:async()=>{prepared++;},execute:async()=>{executed++;},close:async()=>{}};
@@ -88,7 +91,7 @@ test('selected hook uses the real child and synthetic transport; abort stops eff
     const owner=new MergeOwnerClient({pythonExecutable:process.env.PYTHON_EXECUTABLE??resolve(root,'../ci-venv/bin/python'),
       authorityPath:resolve(temp,'authority.jsonl'),attemptsPath:resolve(temp,'attempts.jsonl'),
       contextProvider:()=>({host_id:'selected-test',session_id:'s',actor_id:'a',runtime_generation:'g',scope:['github.merge_pr']}),
-      transport:{getPullRequest:async()=>({http_status:200,state:'open',merged:false,head_sha:params.expected_head_sha,base_ref:'main'}),
+      transport:{getPullRequest:async()=>({http_status:200,state:'open',merged:false,head_sha:params.expected_head_sha,base_ref:'main',base_sha:params.expected_base_sha}),
         mergePullRequest:async()=>{puts++;return {http_status:200,merged:true,merge_commit_sha:'b'.repeat(40)};}}});
     const selected=createSelectedMergeTool({owner,parameters:params,executorRef:{ref_id:'executor:selected',sha256:'c'.repeat(64)}});
     try {

@@ -64,6 +64,7 @@ _REASON_EXPLANATIONS = {
     "duplicate_parent_sha": "merge commit parent data repeated a parent SHA.",
     "self_parent_sha": "merge commit listed its own SHA as a parent.",
     "merge_topology_mismatch": "merge commit did not have the requested two-parent topology.",
+    "base_sha_mismatch": "merge commit first parent differed from the frozen base commit.",
     "merge_confirmed": "merge commit had the requested two-parent topology.",
     "clock_rollback": "observation time moved backwards.",
 }
@@ -474,7 +475,8 @@ def _semantic_pr(
     except (TypeError, ValueError, AttributeError, OverflowError):
         return "UNKNOWN", None, "invalid_pr_observation"
 
-def _semantic_commit(payload: object, *, repository: str, expected_sha: str, expected_head: str) -> tuple[str, dict[str, object] | None, str]:
+def _semantic_commit(payload: object, *, repository: str, expected_sha: str, expected_head: str,
+                     expected_base_sha: str | None) -> tuple[str, dict[str, object] | None, str]:
     if type(payload) is not dict:
         return "UNKNOWN", None, "invalid_commit_observation"
     try:
@@ -499,6 +501,8 @@ def _semantic_commit(payload: object, *, repository: str, expected_sha: str, exp
             return "UNKNOWN", projection, "self_parent_sha"
         if len(parent_shas) != 2 or parent_shas[1] != expected_head:
             return "MISMATCH", projection, "merge_topology_mismatch"
+        if expected_base_sha is not None and parent_shas[0] != expected_base_sha:
+            return "MISMATCH", projection, "base_sha_mismatch"
         return "CONFIRMED", projection, "merge_confirmed"
     except (TypeError, ValueError, AttributeError):
         return "UNKNOWN", None, "invalid_commit_observation"
@@ -678,7 +682,9 @@ def _observe_merge_pr(
         lambda: adapter.fetch_commit(repository, merge_sha),
     )
     commit_kind, commit_projection, commit_reason = _semantic_commit(
-        commit_payload, repository=repository, expected_sha=merge_sha, expected_head=expected_head
+        commit_payload, repository=repository, expected_sha=merge_sha,
+        expected_head=expected_head,
+        expected_base_sha=action["execution_parameters"].get("expected_base_sha"),
     )
     if commit_projection is not None:
         evidence["state"]["commit"] = commit_projection

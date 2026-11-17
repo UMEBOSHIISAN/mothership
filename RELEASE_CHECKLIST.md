@@ -1,6 +1,42 @@
 # Release Checklist
 
-This checklist is for preparing a local package handoff. Completing it does
+The checked items below record an earlier Core-only local handoff. They are not
+evidence that the current three-package source candidate has been published.
+
+## Core 0.5.0.dev0 + companion 0.3.0.dev0 + adapters 0.1.0.dev0
+
+Use this section for a prospective GitHub prerelease. A local build or a green
+source CI run alone is not a published distribution. Keep the source revision,
+artifact hashes, installed validation, and GitHub Release record together.
+
+- [ ] Freeze one reviewed source revision and check that the Core, companion,
+  and adapters versions and exact dependencies agree.
+- [ ] Confirm the changelog, Japanese and English READMEs, installation guide,
+  and compatibility limits describe that revision. Do not claim stable, medical,
+  normal-host, human-acceptance, or all-tool coverage from the isolated canary.
+- [ ] Build three wheels and three source distributions from that exact clean
+  revision. Inspect package contents and metadata. The Python wheels do not
+  contain the source-tree Node wrappers or Dots skill.
+- [ ] Inspect every artifact for secrets and private host material; review
+  findings instead of treating a pattern scan as proof of safety.
+- [ ] Install the three wheels together into a fresh Python 3.12+ environment
+  without fetching runtime dependencies. Run `pip check`, `mothership verify`,
+  both installed evidence CLI forms on the six retained synthetic cases, and
+  the distribution tests relevant to the release tree.
+- [ ] Build wheels back from all three source distributions and compare their
+  payloads with the direct wheels. Record any intentional differences.
+- [ ] Generate an artifact `SHA256SUMS` only after final bytes are fixed and
+  verify all six files. Keep it separate from the tracked source-tree manifest.
+- [ ] Confirm the required CI and review on the exact final source revision.
+- [ ] Obtain target-specific authority before creating the tag or GitHub
+  Release. A source-build approval does not authorize publication.
+- [ ] After publication, read back the tag target, release assets, and hashes;
+  install the published bytes in a fresh environment. Do not replay a live
+  GitHub merge to validate packaging.
+
+## Historical Core-only local handoff
+
+This historical checklist prepared a local package handoff. Completing it did
 not publish, deploy, install, or otherwise distribute Mothership.
 
 ## Package contents

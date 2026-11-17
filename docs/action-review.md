@@ -1,7 +1,8 @@
 # Portable action review API
 
-**Status: source-candidate API for Core `0.5.0.dev0`.** The optional GitHub
-companion is paired at `0.3.0.dev0`; optional adapters are `0.1.0.dev0`.
+**Status: source-candidate API for Core `0.5.0.dev1`.** The optional GitHub
+companion is paired at `0.3.0.dev1`; optional adapters are `0.1.0.dev1`.
+The pinned dev0 installation below remains a historical reproduction recipe.
 Their bounded local qualification is recorded in the [integration catalog](integrations.md),
 with setup in the [host adapter guide](host-adapters.md). Published `v0.4.2`
 remains the historical public release.
@@ -92,6 +93,11 @@ authentication result, delegation proof, or target-specific authorization. An
 scope. A `reject` response with an unchanged empty scope remains valid.
 
 ## Install the source candidate
+
+For the current runtime including saved-result inspection, start with the
+[current pinned host setup](host-adapters.md#try-the-current-candidate).
+The older exact pin below reproduces the original portable-review setup and
+does not include later Session diagnostics or the saved-result reader.
 
 The remote default branch includes this portable review API because [PR #43](https://github.com/UMEBOSHIISAN/mothership/pull/43)
 is merged. The commands below pin its reviewed runtime revision,
