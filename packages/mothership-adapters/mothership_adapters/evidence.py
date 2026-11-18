@@ -929,6 +929,20 @@ def _escape_display_summary(value: object) -> str:
     return "".join(pieces) or "unavailable"
 
 
+def _human_target_line(action: dict[str, object]) -> str:
+    parameters = action["execution_parameters"]
+    base_sha_field = ""
+    if "expected_base_sha" in parameters:
+        base_sha_field = f"; expected_base_sha={parameters['expected_base_sha']}"
+    return (
+        f"target: action_id={action['action_id']}; operation={action['operation']}; "
+        f"repository={parameters['repository']}; pull_request={parameters['pull_request']}; "
+        f"expected_head_sha={parameters['expected_head_sha']}; "
+        f"expected_base={parameters['expected_base']}{base_sha_field}; "
+        f"merge_method={parameters['merge_method']}"
+    )
+
+
 def summarize_evidence(
     bundle: object, *, readback_evidence: object = None
 ) -> str:
@@ -995,15 +1009,6 @@ def summarize_evidence(
         # The closed bundle carries only observed_state.summary.  Without an
         # explicit sidecar, the structured reason code remains unavailable.
         reason = "unavailable in bundle"
-        action = checked["request"]["action"]
-        parameters = action["execution_parameters"]
-        target_text = (
-            f"target: action_id={action['action_id']}; operation={action['operation']}; "
-            f"repository={parameters['repository']}; pull_request={parameters['pull_request']}; "
-            f"expected_head_sha={parameters['expected_head_sha']}; "
-            f"expected_base={parameters['expected_base']}; merge_method={parameters['merge_method']}"
-        )
-
         if rejection_recorded:
             next_check = (
                 "review the recorded rejection; no independent Verification search is needed for this request"
@@ -1030,7 +1035,7 @@ def summarize_evidence(
         missing_text = "none" if not missing else ", ".join(str(item) for item in missing)
         lines = [
             f"bundle: {checked['bundle_sha256']}",
-            target_text,
+            _human_target_line(checked["request"]["action"]),
             "provided records (caller-reported)",
             f"approval: {approval_text}",
             f"authority use: {authority_text}",
