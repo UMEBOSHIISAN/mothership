@@ -333,6 +333,16 @@ def summarize_saved_result(
             "No Receipt or independent Verification was supplied."
         )
         next_check = "inspect retained attempt records for the displayed action ID"
+    elif view["execution_status"] == "reconciliation_required" and view["verification_reason"] == "receipt_unavailable":
+        conclusion = (
+            "outcome unknown. The consumer requested reconciliation. "
+            "This input supplies no Receipt or independent Verification."
+        )
+        next_check = (
+            "in retained records, find the consume event for the displayed action_id. "
+            "Match its event_id to attempt_started.consume_event_id, then match that start's event_id "
+            "to attempt_finished.attempt_started_event_id."
+        )
     elif receipt is None:
         conclusion = "outcome unknown; supplied summary is not a bound completion record"
         next_check = "inspect explicitly retained existing authority and attempt records for this action"
