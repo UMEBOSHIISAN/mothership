@@ -18,7 +18,7 @@ from orchestration.lib.action_authority import action_sha256
 
 from .evidence import (
     EvidenceError, MAX_ENCODED_BYTES, _SHA40, _bounded_plain,
-    _escape_display_summary, _invalid, _parse_utc, _readback_guidance,
+    _escape_display_summary, _human_target_line, _invalid, _parse_utc, _readback_guidance,
     _require_digest, _validate_readback_for_action, decode_json,
 )
 
@@ -320,13 +320,7 @@ def summarize_saved_result(
     action = view["action"]
     target = "target: unavailable in supplied input"
     if action is not None:
-        params = action["execution_parameters"]
-        target = (
-            f"target: action_id={action['action_id']}; operation={action['operation']}; "
-            f"repository={params['repository']}; pull_request={params['pull_request']}; "
-            f"expected_head_sha={params['expected_head_sha']}; expected_base={params['expected_base']}; "
-            f"merge_method={params['merge_method']}"
-        )
+        target = _human_target_line(action)
     receipt, verification = view["receipt_status"], view["verification_status"]
     if receipt is None:
         conclusion = "outcome unknown; supplied summary is not a bound completion record"

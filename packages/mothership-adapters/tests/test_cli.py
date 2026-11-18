@@ -12,11 +12,13 @@ import pathlib
 import unittest
 from unittest import mock
 
-from test_evidence import EvidenceFixture
+from test_evidence import EXECUTOR_REF, PARAMETERS, EvidenceFixture
 
 from mothership_adapters.cli import main as evidence_cli_main
-from mothership_adapters.evidence import EvidenceError, MAX_ENCODED_BYTES
+from mothership_adapters.evidence import EvidenceError, MAX_ENCODED_BYTES, export_evidence
 from mothership_adapters.saved_result import inspect_saved_result, summarize_saved_result
+from mothership.action_authority import freeze_action
+from mothership.action_review import build_review_request
 from mothership.contracts import canonical_json_sha256
 from mothership_github import public_observation
 from orchestration.lib.action_authority import action_sha256
@@ -1193,7 +1195,10 @@ class AdapterEvidenceCLITests(EvidenceFixture):
         self.assertEqual("invalid bounded evidence input\n", error)
 
     def _run(self, argv: list[str], payload: object) -> tuple[int, str, str]:
-        raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
+        if isinstance(payload, bytes):
+            raw = payload
+        else:
+            raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
         stdin = io.TextIOWrapper(io.BytesIO(raw), encoding="utf-8")
         stdout = io.StringIO()
         stderr = io.StringIO()
@@ -1470,6 +1475,38 @@ class AdapterEvidenceCLITests(EvidenceFixture):
             code = evidence_cli_main(["inspect"])
         self.assertEqual(2, code)
         self.assertEqual("invalid bounded evidence input\n", stderr.getvalue())
+
+    def test_human_readers_show_only_the_recorded_base_sha_on_target_line(self):
+        root = pathlib.Path(__file__).resolve().parents[3]
+        legacy_bundle = json.loads((root / "integrations/dots/example-bundle.json").read_text())
+        legacy_saved = (root / "examples/saved-results/case-04.jsonl").read_bytes()
+        cases = [(None, legacy_bundle, legacy_saved)]
+        # Identical target and SHA prefix, different final digit.
+        for base_sha in ("b" * 40, "b" * 39 + "c"):
+            action = freeze_action("act-evidence-test", "github.merge_pr", {
+                **PARAMETERS, "expected_base_sha": base_sha,
+            })
+            request = build_review_request(action, request_id=self.request["request_id"],
+                                           host_context=self.request["host_context"])
+            bundle = export_evidence(request, executor_ref=EXECUTOR_REF)
+            row = {"event": "frozen_action", "saved_result_schema": _SAVED_RESULT_SCHEMA,
+                   "action": request["action"], "action_sha256": request["action_sha256"],
+                   "expires_at": request["expires_at"]}
+            cases.append((base_sha, bundle, (json.dumps(row) + "\n").encode()))
+        for base_sha, bundle, saved in cases:
+            fields = (
+                "target: action_id=act-evidence-test; operation=github.merge_pr; "
+                "repository=UMEBOSHIISAN/mothership; pull_request=5; "
+                f"expected_head_sha={PARAMETERS['expected_head_sha']}; expected_base=main"
+            )
+            if base_sha is not None:
+                fields += f"; expected_base_sha={base_sha}"
+            for command, payload in (("inspect", bundle), ("inspect-result", saved)):
+                with self.subTest(command=command, base_sha=base_sha):
+                    code, text, error = self._run([command, "--human"], payload)
+                    self.assertEqual((0, ""), (code, error))
+                    target = [line for line in text.splitlines() if line.startswith("target:")]
+                    self.assertEqual([fields + "; merge_method=merge"], target)
 
     def test_inspect_human_is_bounded_text_and_default_json_remains_json(self) -> None:
         bundle = self.full()
