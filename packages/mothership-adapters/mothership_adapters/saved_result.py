@@ -321,7 +321,19 @@ def summarize_saved_result(
     if action is not None:
         target = _human_target_line(action)
     receipt, verification = view["receipt_status"], view["verification_status"]
-    if receipt is None:
+    if action is None:
+        conclusion = "outcome unknown. No action or execution report was supplied."
+        next_check = "identify the target using the sender's separately retained original task or action record"
+    elif view["execution_status"] is None:
+        conclusion = "outcome unknown. Only the frozen action was supplied."
+        next_check = "inspect retained authority and attempt records for the displayed action ID"
+    elif view["record_count"] == 2 and view["execution_status"] == "success":
+        conclusion = (
+            "outcome unknown. The consumer's success report is not a bound completion record. "
+            "No Receipt or independent Verification was supplied."
+        )
+        next_check = "inspect retained attempt records for the displayed action ID"
+    elif receipt is None:
         conclusion = "outcome unknown; supplied summary is not a bound completion record"
         next_check = "inspect explicitly retained existing authority and attempt records for this action"
     elif verification is None:

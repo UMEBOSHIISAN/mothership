@@ -262,6 +262,30 @@ class SavedResultCLITests(EvidenceFixture):
         self.assertIn("consumer execution report: success", text)
         self.assertIn("not a bound completion record", text)
 
+    def test_human_conclusion_and_next_check_for_incomplete_results(self):
+        cases = pathlib.Path(__file__).resolve().parents[3] / "examples" / "saved-results"
+        inputs = [(b"", "empty",
+                   "outcome unknown. No action or execution report was supplied.",
+                   "identify the target using the sender's separately retained original task or action record")]
+        for name, conclusion, next_check in (
+            ("case-04", "outcome unknown. Only the frozen action was supplied.",
+             "inspect retained authority and attempt records for the displayed action ID"),
+            ("case-02", "outcome unknown. The consumer's success report is not a bound completion record. "
+             "No Receipt or independent Verification was supplied.",
+             "inspect retained attempt records for the displayed action ID"),
+        ):
+            raw = (cases / (name + ".jsonl")).read_bytes()
+            rows = [json.loads(line) for line in raw.splitlines()]
+            inputs.append((raw, name, conclusion, next_check))
+            inputs.append((self.encode_rows(self.v1_rows(rows)), name + " v1", conclusion, next_check))
+        for raw, name, conclusion, next_check in inputs:
+            with self.subTest(case=name):
+                code, text, error = self.run_saved(raw)
+                self.assertEqual((0, ""), (code, error))
+                lines = text.splitlines()
+                self.assertIn("conclusion: " + conclusion, lines)
+                self.assertIn("next read-only check: " + next_check, lines)
+
     def test_legacy_execution_linkage_requires_an_execution_row(self):
         cases = pathlib.Path(__file__).resolve().parents[3] / "examples" / "saved-results"
         for name, raw, expected_json, expected_human in (
