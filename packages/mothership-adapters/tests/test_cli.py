@@ -262,6 +262,24 @@ class SavedResultCLITests(EvidenceFixture):
         self.assertIn("consumer execution report: success", text)
         self.assertIn("not a bound completion record", text)
 
+    def test_legacy_execution_linkage_requires_an_execution_row(self):
+        cases = pathlib.Path(__file__).resolve().parents[3] / "examples" / "saved-results"
+        for name, raw, expected_json, expected_human in (
+            ("empty", b"", "not supplied", "not supplied"),
+            ("action only", (cases / "case-04.jsonl").read_bytes(), "not supplied", "not supplied"),
+            ("success report", (cases / "case-02.jsonl").read_bytes(),
+             "positional only; no action/run ID in execution row",
+             "unlabelled execution summary; sequence only, not authenticated run association"),
+        ):
+            with self.subTest(case=name, mode="json"):
+                code, output, error = self.run_saved(raw, human=False)
+                self.assertEqual((0, ""), (code, error))
+                self.assertEqual(expected_json, json.loads(output)["execution_summary_binding"])
+            with self.subTest(case=name, mode="human"):
+                code, output, error = self.run_saved(raw)
+                self.assertEqual((0, ""), (code, error))
+                self.assertIn("execution linkage: " + expected_human, output.splitlines())
+
     def test_v1_clean_prefixes_keep_unknown_status_and_structural_binding_only(self):
         rows = self.v1_rows(self.saved_rows())
         for length in (1, 2, 3):

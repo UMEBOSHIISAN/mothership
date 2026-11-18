@@ -276,13 +276,12 @@ def inspect_saved_result(
             raise _ExpectedInputError()
         receipt = None if verification is None else verification["receipt"]
         observed = None if verification is None else verification["verification"]
-        binding = (
-            "action ID and digest match (structural only; source-unverified)"
-            if version == "v1" and execution is not None
-            else "not supplied"
-            if version == "v1"
-            else "positional only; no action/run ID in execution row"
-        )
+        if execution is None:
+            binding = "not supplied"
+        elif version == "v1":
+            binding = "action ID and digest match (structural only; source-unverified)"
+        else:
+            binding = "positional only; no action/run ID in execution row"
         view = {
             "format": "reference-result-jsonl", "input_sha256": input_sha256,
             "record_count": len(rows), "action": action,
