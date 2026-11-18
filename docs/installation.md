@@ -111,6 +111,43 @@ GitHub Release, not a claim of package-index availability. Node host wrappers
 and the Dots skill are source-tree files, not wheel contents; optional SDK
 extras require their own dependency installation.
 
+### Published dev0 reader on Ubuntu and Mac mini (2026-11-18)
+
+Both hosts installed the same three published wheels listed above in fresh venvs.
+Each wheel matched its entry in the Release asset `SHA256SUMS` on both hosts;
+the manifest itself hashed to `7e82d305ddf7b9f3201ac40e14a61582a349ab6669291aab62679876f2ffee0a`.
+The inputs and [answer key](../examples/saved-results/answers.md) came from
+source revision `6514dd138116e75c84a113c5248c46bccda2f097`.
+
+| Host | OS and architecture | Python | Installed reader |
+| --- | --- | --- | --- |
+| Linux | Ubuntu 26.04.1 LTS, x86_64 | 3.12.14 | 6/6 cases matched |
+| Mac mini | macOS 27.2.1, arm64 | 3.12.16 | 6/6 cases matched |
+
+On each host, `pip check` passed. From an empty directory outside the checkout,
+run the installed `mothership-evidence inspect-result` with and without
+`--human`, feeding each [saved input](../examples/saved-results/README.en.md)
+on stdin. The two hosts produced identical exit codes and byte-identical stdout
+and stderr for all 12 case/mode pairs. Both output streams also matched the
+retained November 8 release-preparation outputs. All six inputs retained their
+original SHA-256 values.
+
+| Case | Exit | Execution report | Receipt | Recorded verification |
+| --- | --- | --- | --- | --- |
+| 01 | 0 | success | SUCCESS | CONFIRMED |
+| 02 | 0 | success | absent | absent |
+| 03 | 0 | success | SUCCESS | UNKNOWN (ambiguous merge time) |
+| 04 | 0 | absent | absent | absent |
+| 05 | 0 | reconciliation_required | absent | absent |
+| 06 | 2 | rejected, empty stdout | — | — |
+
+Case 06 emitted `invalid bounded evidence input` on stderr. The Mac trial used
+a sandbox denying network access. Linux traced network syscalls across the
+installation and reader processes and denied socket creation: both observed
+IPv6 socket attempts returned `EACCES`. This record covers offline interpretation
+of these synthetic inputs on the two environments listed above. Human acceptance
+and live execution remain separate.
+
 ### Unpublished v0.5.0.dev1 source candidate
 
 The following names describe an unpublished source candidate, not Release assets.
