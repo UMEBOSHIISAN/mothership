@@ -273,6 +273,11 @@ class SavedResultCLITests(EvidenceFixture):
             ("case-02", "outcome unknown. The consumer's success report is not a bound completion record. "
              "No Receipt or independent Verification was supplied.",
              "inspect retained attempt records for the displayed action ID"),
+            ("case-05", "outcome unknown. The consumer requested reconciliation. "
+             "This input supplies no Receipt or independent Verification.",
+             "in retained records, find the consume event for the displayed action_id. "
+             "Match its event_id to attempt_started.consume_event_id, then match that start's event_id "
+             "to attempt_finished.attempt_started_event_id."),
         ):
             raw = (cases / (name + ".jsonl")).read_bytes()
             rows = [json.loads(line) for line in raw.splitlines()]
