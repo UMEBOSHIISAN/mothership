@@ -185,12 +185,24 @@ class SavedResultCLITests(EvidenceFixture):
         )
         rows[2].update(execution_status="failure", receipt=receipt)
         rows[2]["verification"]["receipt_ref"]["sha256"] = canonical_json_sha256(receipt)
-        code, text, error = self.run_saved(self.encode_rows(rows))
-        self.assertEqual(0, code, error)
-        self.assertIn("consumer execution report: failure", text)
-        self.assertIn("receipt: FAILED", text)
-        self.assertIn("verification: CONFIRMED", text)
-        self.assertNotIn("execution succeeded", text)
+        for version, records in (("legacy", rows), ("v1", self.v1_rows(rows))):
+            with self.subTest(version=version):
+                code, text, error = self.run_saved(self.encode_rows(records))
+                self.assertEqual((0, ""), (code, error))
+                self.assertIn("consumer execution report: failure", text)
+                self.assertIn("receipt: FAILED", text)
+                self.assertIn("verification: CONFIRMED", text)
+                self.assertNotIn("execution succeeded", text)
+                self.assertIn(
+                    "conclusion: The executor reported failure. The saved independent observation "
+                    "reported the target PR as merged. Whether this attempt caused the merge is unknown.",
+                    text.splitlines(),
+                )
+                self.assertIn(
+                    "next read-only check: compare the response in the saved attempt_finished record "
+                    "with the observed PR number and merge_commit_sha. Check the Verification's observed_at.",
+                    text.splitlines(),
+                )
 
     def test_actual_missing_finish_save_remains_unknown_without_reading_ledger(self):
         from examples import reference_result_handoff as example

@@ -349,6 +349,15 @@ def summarize_saved_result(
     elif verification is None:
         conclusion = "executor Receipt recorded; independent confirmation not established by this input"
         next_check = "inspect an existing independent Verification and its referenced evidence, if available"
+    elif receipt == "FAILED" and verification == "CONFIRMED":
+        conclusion = (
+            "The executor reported failure. The saved independent observation reported the target PR as merged. "
+            "Whether this attempt caused the merge is unknown."
+        )
+        next_check = (
+            "compare the response in the saved attempt_finished record with the observed PR number and "
+            "merge_commit_sha. Check the Verification's observed_at."
+        )
     elif verification == "CONFIRMED":
         conclusion = "independent observation recorded; not proof of this attempt's causation or current state"
         next_check = _readback_guidance(view["readback_reason"])
