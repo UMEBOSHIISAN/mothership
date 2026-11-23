@@ -11,7 +11,7 @@
 
 Python 3.12以上と、下で固定するreader。Node、追加SDK、モデル、tokenは不要です。
 コードの導入には通信やビルド用依存関係の取得があり得ます。導入後の閲覧はオフラインです。
-この6ファイルは後から追加された入力データで、固定runtime revisionの中にあるとは限りません。
+この6ファイルはreaderとは別に保持する入力データです。
 3パッケージのコードはすべて同じ固定revisionから導入し、受け取った入力はそのまま別に保持します。
 
 リポジトリのルートで読んでいる場合は、次で入力と手順だけを新しい作業フォルダへコピーします。
@@ -27,11 +27,15 @@ cd "$recipient_dir"
 
 空の `reader-runtime` へcloneします。印字されたSHAが以下の40桁と一致することを確認してください。
 すでに同じ場所へこのrevisionのreaderが用意されている場合は、導入を繰り返さず次へ進みます。
+ここではPR #90を含むマージ済みソースを固定します。これは配布wheelや実機が更新済みという意味ではありません。
+以前の固定SHA `f9ef944bf54cb413824066f968010c0aaedc47ff` は別のreaderです。
+旧readerは `expected_base_sha` を含むactionと `mothership.reference-result.v1` の行形式を受理しません。
+既存readerのSHAが異なる場合は、その環境を上書きせず別フォルダへ下記revisionを導入し、受領原本をそのまま読みます。
 
 ```sh
 git clone https://github.com/UMEBOSHIISAN/mothership.git reader-runtime
-git -C reader-runtime fetch origin f9ef944bf54cb413824066f968010c0aaedc47ff
-git -C reader-runtime checkout --detach f9ef944bf54cb413824066f968010c0aaedc47ff
+git -C reader-runtime fetch origin 374e0a7f1bb6751198006dc3c097467f75ef0ba9
+git -C reader-runtime checkout --detach 374e0a7f1bb6751198006dc3c097467f75ef0ba9
 git -C reader-runtime rev-parse HEAD
 python3 -m venv reader-runtime/.venv
 reader-runtime/.venv/bin/python -m pip install ./reader-runtime ./reader-runtime/packages/mothership-github ./reader-runtime/packages/mothership-adapters
@@ -55,6 +59,13 @@ printf 'reader exit=%s\n' "$?"
   `CONFIRMED`も、提供された独立観測の記録であって、出所認証・この試行の因果関係・現在状態の証明ではありません。
 - `not supplied` は「この入力にはない」という意味です。実行や確認がなかったとは断定できません。
   保存物だけでは、人の承認や権限使用も確認できません。
+
+`receipt: FAILED` と `verification: CONFIRMED` が併記される場合も、実行成功へ読み替えません。
+この試行がmergeを起こした因果関係は不明のままです。`next read-only check` に従い、受領JSONLの
+`verification_result` 行にある `source_pair.finished`（`attempt_finished`）の応答 `observation` と、
+`evidence.state.pull_request` の `number` / `merge_commit_sha`、`verification.observed_at` を照合します。
+表示された `action_id` を原本と照合し、原本内の対応する `action_sha256` も確認します。提供されていない記録は未提供として残します。
+別途保管された記録が必要なら送信者に既存記録の提示を求め、結果不明の操作を再実行・再consumeしません。
 
 ## 受け取った人・AIの回答
 
